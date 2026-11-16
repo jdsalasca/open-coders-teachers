@@ -171,6 +171,7 @@ LANGS = (
         check=(
             Command(["mvn", "-q", "-B", "spotless:check"]),
             Command(["mvn", "-q", "-B", "checkstyle:check"]),
+            Command(["mvn", "-q", "-B", "pmd:cpd-check"]),
             Command(["mvn", "-q", "-B", "test"]),
         ),
         fix=(Command(["mvn", "-q", "-B", "spotless:apply"]),),
@@ -205,7 +206,11 @@ def git_files(*args: str) -> list[str]:
             timeout=60,
             check=True,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return []
     return [p for p in out.stdout.split("\0") if p]
 
@@ -411,11 +416,12 @@ def execute(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str
     return run(cmd, lang, files)
 
 
-def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> int:
+def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
     """Reporta archivos que exceden el maximo de lineas del lenguaje."""
     if not lang.max_file_lines:
-        return 0
+        return 0, []
     status = 0
+    lines: list[str] = []
     for name in files:
         if Path(name).suffix not in lang.exts:
             continue
@@ -424,30 +430,38 @@ def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> int:
         except OSError:
             continue
         if total > lang.max_file_lines:
-            print(f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})")
+            lines.append(f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})")
             status = 1
-    return status
+    return status, lines
 
 
-def report(lang: Lang, files: list[str], fix: tuple[Command, ...] = ()) -> int:
+def report(
+    lang: Lang,
+    files: list[str],
+    fix: tuple[Command, ...] = (),
+    fast: bool = False,
+) -> tuple[int, list[str]]:
     """Corre el linter. 0 limpio, 1 problemas, 2 herramienta ausente."""
-    print(f"\n== {lang.name} ({len(files)} archivo(s)) ==")
+    lines = [f"== {lang.name} ({len(files)} archivo(s)) =="]
     for cmd in fix:
         run(cmd, lang, files)
-    status = size_check(lang, files)
+    status, size_lines = size_check(lang, files)
+    lines.extend(size_lines)
     for cmd in lang.check:
+        if fast and not cmd.file_exts:
+            continue
         if not should_run(cmd, lang, files):
             continue
         code, output = execute(cmd, lang, files)
         if code is None:
-            print(output)
-            return 2
+            lines.append(output)
+            return 2, lines
         if code != 0:
             status = 1
             if output:
-                print(output)
-    print("  ok" if status == 0 else "  con problemas")
-    return status
+                lines.append(output)
+    lines.append("  ok" if status == 0 else "  con problemas")
+    return status, lines
 
 
 AUDIT: dict[str, Command] = {
@@ -759,6 +773,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="archivos concretos (por defecto todo)")
     parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="solo herramientas de archivo (sin tests, tipos ni arquitectura)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="salida JSON para agentes (solo modo normal)",
+    )
+    parser.add_argument(
         "--unsafe",
         action="store_true",
         help="con --fix: incluye arreglos que pueden cambiar comportamiento",
@@ -800,6 +824,35 @@ def dirty_count() -> int:
     return len([line for line in proc.stdout.splitlines() if line.strip()])
 
 
+def emit_json(status: int, banned: list[str], records: list[dict[str, object]]) -> int:
+    """Imprime el resumen estructurado y devuelve el estado."""
+    print(
+        json.dumps(
+            {
+                "ok": status == 0,
+                "status": status,
+                "banned": banned,
+                "languages": records,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return status
+
+
+def finish(status: int) -> int:
+    """Mensaje final en texto segun el estado."""
+    if status == 2:
+        print("\nFalta una herramienta. Instalala y reintenta (ver README).")
+        return 2
+    if status == 1:
+        print("\nProblemas de lint. Arreglo automatico: python tools/lint.py --fix")
+        return 1
+    print("\nTodo limpio.")
+    return 0
+
+
 def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: list[str]) -> int:
     """Corre los linters de cada lenguaje y resume el resultado."""
     before = dirty_count() if (args.fix or args.unsafe) else 0
@@ -809,21 +862,30 @@ def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: li
         print("\n".join(banned))
 
     fixers = args.fix or args.unsafe
+    records: list[dict[str, object]] = []
     for lang in LANGS:
-        if lang.name in by_lang:
-            commands = lang.fix_unsafe if args.unsafe else lang.fix
-            status = max(status, report(lang, by_lang[lang.name], commands if fixers else ()))
+        if lang.name not in by_lang:
+            continue
+        commands = lang.fix_unsafe if args.unsafe else lang.fix
+        lang_status, lines = report(lang, by_lang[lang.name], commands if fixers else (), args.fast)
+        status = max(status, lang_status)
+        records.append(
+            {
+                "name": lang.name,
+                "files": len(by_lang[lang.name]),
+                "status": lang_status,
+                "output": lines,
+            }
+        )
+        if not args.json:
+            print("\n".join(lines))
 
-    if args.fix or args.unsafe:
+    if fixers and not args.json:
         print(f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s).")
-    if status == 2:
-        print("\nFalta una herramienta. Instalala y reintenta (ver README).")
-        return 2
-    if status == 1:
-        print("\nProblemas de lint. Arreglo automatico: python tools/lint.py --fix")
-        return 1
-    print("\nTodo limpio.")
-    return 0
+
+    if args.json:
+        return emit_json(status, banned, records)
+    return finish(status)
 
 
 def is_inside(path: Path) -> bool:
@@ -867,11 +929,19 @@ def repo_mode(args: argparse.Namespace) -> int:
     if args.security:
         return security(sorted(by_lang) or everything)
     if not by_lang and not banned:
-        print("Nada que revisar.")
-        if args.files:
-            print("Si es un proyecto externo, usa: --project <ruta>")
-            return 2
-        return 0
+        if args.json:
+            print(
+                json.dumps(
+                    {"ok": True, "status": 0, "banned": [], "languages": []},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        else:
+            print("Nada que revisar.")
+            if args.files:
+                print("Si es un proyecto externo, usa: --project <ruta>")
+        return 2 if args.files else 0
     return lint_all(args, by_lang, banned)
 
 
@@ -881,6 +951,10 @@ def validate(args: argparse.Namespace) -> str | None:
         return "--unsafe solo tiene sentido junto a --fix"
     if args.project and (args.audit or args.security):
         return "--project no se combina con --audit ni --security"
+    if args.fast and (args.audit or args.security or args.project or args.skip is not None):
+        return "--fast solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
+    if args.json and (args.audit or args.security or args.project or args.skip is not None):
+        return "--json solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
     return None
 
 

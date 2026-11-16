@@ -55,6 +55,8 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --skip "motivo"` | permite el próximo commit sin linters (un solo uso) |
 | `python tools/lint.py --fix --unsafe` | arreglos que pueden cambiar comportamiento |
 | `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
+| `python tools/lint.py --fast <archivo>` | solo herramientas de archivo (sin tests ni capas) |
+| `python tools/lint.py --json` | salida estructurada para agentes y scripts |
 | `python tools/lint.py --unsafe` | con `--fix`: arreglos que cambian comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
@@ -145,7 +147,7 @@ todas las capas.
 | Sin documentación | ruff `D` | `jsdoc/require-jsdoc` | `jsdoc/require-jsdoc` | `revive exported` | `MissingJavadoc*` |
 | Orden de miembros | — | `member-ordering` | `member-ordering` | — | `DeclarationOrder` |
 | Anidamiento profundo | `C901` | `max-depth` | `max-depth` | `cyclop` | `NestedIfDepth` |
-| Código duplicado | — | `jscpd` | `jscpd` + Stylelint | `dupl` | — |
+| Código duplicado | — | `jscpd` | `jscpd` + Stylelint | `dupl` | CPD |
 | Estilos duplicados | — | — | Stylelint | — | — |
 | Rompe capas | `import-linter` | `dependency-cruiser` | `dependency-cruiser` | `depguard` | ArchUnit |
 | Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador |
@@ -283,6 +285,18 @@ sepa dónde mirar.
 2. Agrega un `Lang(...)` en `tools/lint.py` con sus comandos `check` y `fix`.
 3. Escribe su `AGENTS.md` con los límites y la arquitectura.
 4. `python tools/test_lint.py` y `python tools/lint.py`.
+
+## Lint en cada edición
+
+`.opencode/plugins/lint-on-edit.ts` engancha `tool.execute.after`: cuando un
+agente escribe o edita un archivo dentro de las cinco carpetas, corre
+`python tools/lint.py --fast <archivo>` y **añade el reporte al resultado de la
+herramienta**. El agente ve el problema en el mismo turno, sin esperar al commit.
+
+- `--fast` corre solo lo que entiende de un archivo (ESLint, ruff, Prettier,
+  Stylelint) y omite tests, tipos, capas y cobertura: Python ~0.2 s, React ~5 s.
+- El commit sigue ejecutando la suite completa; el plugin es feedback temprano,
+  no un reemplazo del hook.
 
 ## Notas de robustez
 

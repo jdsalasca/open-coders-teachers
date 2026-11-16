@@ -20,7 +20,7 @@ def check(condition: bool, message: str = "") -> None:
 
 def run(argv: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     """Corre una herramienta y devuelve el resultado completo."""
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 - argv fijo de los tests
         argv,
         cwd=cwd,
         capture_output=True,
@@ -55,9 +55,7 @@ def test_ignora_extension_y_carpeta_equivocadas() -> None:
 
 def test_clasifica_css_prohibido() -> None:
     """Un .css en React-teacher se reporta como prohibido."""
-    by_lang, banned = lint.classify(
-        ["React-teacher/src/App.css", "React-teacher/src/App.tsx"]
-    )
+    by_lang, banned = lint.classify(["React-teacher/src/App.css", "React-teacher/src/App.tsx"])
     check(list(by_lang) == ["react"])
     check(len(banned) == 1)
 
@@ -66,13 +64,7 @@ def test_expand_ignora_generados() -> None:
     """Una carpeta se expande sin entrar en node_modules ni dist."""
     files = lint.expand(["React-teacher"])
     check(bool(files))
-    check(
-        not [
-            f
-            for f in files
-            if "node_modules" in f or f.startswith("React-teacher/dist")
-        ]
-    )
+    check(not [f for f in files if "node_modules" in f or f.startswith("React-teacher/dist")])
 
 
 def test_descubre_proyecto_por_manifiesto() -> None:
@@ -166,9 +158,9 @@ def test_tamano_de_archivo() -> None:
         base = Path(tmp)
         (base / "big.py").write_text("x\n" * 10, encoding="utf-8")
         lang = lint.Lang("x", "python-teacher", (".py",), (), (), max_file_lines=5)
-        with contextlib.redirect_stdout(io.StringIO()):
-            code = lint.size_check(lang, ["big.py"], base=base)
+        code, lines = lint.size_check(lang, ["big.py"], base=base)
     check(code == 1, "no detecto el archivo largo")
+    check(bool(lines), "no reporto el archivo largo")
 
 
 def test_cada_carpeta_configurada_existe() -> None:

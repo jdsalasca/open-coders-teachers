@@ -27,7 +27,7 @@ catálogo de antipatrones para la revisión humana.
 |---|---|---|---|
 | Long Method | ver Clean Code | todas | automático |
 | Long Parameter List | ver Clean Code | todas | automático |
-| Duplicate Code | `dupl`, `jscpd`, `no-duplicate-selectors` | Go, Node, SCSS | automático |
+| Duplicate Code | `dupl`, `jscpd`, `no-duplicate-selectors`, CPD | Go, Node, SCSS, Java | automático |
 | Dead Code | `F401`/`F841`, `unused`, `knip`, `UnusedImports` | todas | automático |
 | Large Class | `FileLength`, `ClassFanOutComplexity`, `interfacebloat` | Java, Go | parcial |
 | Divergent Change / Shotgun Surgery | — | — | manual |

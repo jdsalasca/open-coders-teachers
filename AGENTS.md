@@ -12,6 +12,8 @@ python tools/lint.py --fix --unsafe  # incluye arreglos que cambian comportamien
 python tools/lint.py --audit     # vulnerabilidades en dependencias (requiere red)
 python tools/lint.py --security  # secretos, patrones inseguros y dependencias
 python tools/lint.py --project "ruta"  # audita un proyecto externo
+python tools/lint.py --json      # resumen estructurado
+python tools/lint.py --fast <archivo>  # un archivo, sin tests ni capas
 python tools/lint.py --skip "motivo"  # permite el próximo commit sin linters
 python tools/lint.py <carpeta>   # revisa una carpeta (ej. React-teacher)
 python tools/lint.py <archivos>  # revisa solo esos archivos
@@ -20,6 +22,12 @@ python tools/lint.py <archivos>  # revisa solo esos archivos
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
 que está en stage: **un commit con violaciones se rechaza** y devuelve el
 reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push.
+
+## Lint en cada edición
+
+El plugin `.opencode/plugins/lint-on-edit.ts` corre `--fast` sobre el archivo que
+acabas de escribir y pega el reporte en el resultado de la herramienta. Si el
+reporte aparece, corrígelo antes de seguir; el commit volverá a verificar todo.
 
 ## Proyectos externos
 
