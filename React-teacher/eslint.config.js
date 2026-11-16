@@ -81,6 +81,16 @@ export default tseslint.config(
         { selector: "enumMember", format: ["UPPER_CASE", "PascalCase"] },
         { selector: "objectLiteralProperty", format: null },
       ],
+      "@typescript-eslint/no-restricted-types": [
+        "error",
+        {
+          types: {
+            "{}": "Un tipo vacio no describe nada: usa una interfaz con campos.",
+            Object: "Usa un tipo con forma, no Object.",
+            Function: "Usa una firma explicita (parametros) => retorno.",
+          },
+        },
+      ],
       "@typescript-eslint/no-unused-vars": [
         "error",
         { args: "all", argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },

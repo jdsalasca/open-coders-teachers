@@ -3,20 +3,25 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint . --format=unix",
+    "dup": "jscpd src",
     "fix": "eslint . --fix && prettier --write .",
+    "lint": "eslint . --format=unix",
+    "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
     "dependency-cruiser": "^18.7.2",
     "eslint": "^10.15.0",
     "eslint-formatter-unix": "^9.0.1",
     "eslint-plugin-jsdoc": "^65.4.8",
     "eslint-plugin-simple-import-sort": "^14.0.0",
+    "jscpd": "^5.4.3",
     "prettier": "^3.10.1",
     "typescript": "^5.9.0",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
   }
 }

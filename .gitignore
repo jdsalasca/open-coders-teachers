@@ -9,3 +9,8 @@ dist/
 .idea/
 .vscode/
 *.log
+coverage/
+coverage.out
+.jscpd/
+
+.coverage

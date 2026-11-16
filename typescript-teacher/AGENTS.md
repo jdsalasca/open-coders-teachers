@@ -33,3 +33,8 @@ Con informacion de tipos (`projectService`): `no-floating-promises`,
 Imports relativos con extension `.js` (NodeNext): `"./model/counter.js"`.
 Orden de miembros en clase: campos estaticos, campos de instancia, constructor,
 metodos.
+
+## Tests
+
+`src/**/*.test.ts` con vitest; cobertura minima 80% en `model` y `controller`.
+`npm run test` y `npm run dup` (jscpd: clones de 70+ tokens).

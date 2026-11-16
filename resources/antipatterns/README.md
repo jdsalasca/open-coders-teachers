@@ -33,6 +33,12 @@ puede ver: requiere revisión humana y por eso está escrita aquí.
 | [Componente anidado inestable](frontend.md#componente-anidado-inestable) | React | automático |
 | [Prop drilling](frontend.md#prop-drilling) | React | manual |
 | [Mutación de estado](frontend.md#mutación-de-estado) | React, TS | parcial |
+| [Test que no prueba nada](testing.md#test-que-no-prueba-nada) | todos | parcial |
+| [Test dependiente del orden](testing.md#test-dependiente-del-orden) | todos | manual |
+| [Test gigante](testing.md#test-gigante) | todos | parcial |
+| [Mock de todo](testing.md#mock-de-todo) | todos | manual |
+| [`assert` desactivado](testing.md#assert-desactivado-en-producción) | Python | automático |
+| [Cobertura sin intención](testing.md#cobertura-sin-intención) | todos | parcial |
 
 \* Java no tiene detector de duplicación en este repo: `mvn pmd:cpd-check` es la
 vía cuando el curso lo necesite.

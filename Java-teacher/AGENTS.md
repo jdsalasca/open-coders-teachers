@@ -33,3 +33,8 @@ nombres (`TypeName`, `MethodName`, `MemberName`, `ConstantName`,
 
 Orden que exige `DeclarationOrder`: campos estaticos, campos de instancia,
 constructores, metodos. La indentacion la decide Spotless, no la edites a mano.
+
+## Tests
+
+`*Test.java` con JUnit 5. `mvn test` corre ademas ArchUnit y JaCoCo (60% de
+lineas, excluyendo `Main`).

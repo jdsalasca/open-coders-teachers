@@ -18,6 +18,7 @@ select = [
   "SIM", # simplify
   "RUF", # reglas propias de ruff
   "S",   # bandit: seguridad (eval, subprocess, secretos)
+  "PT",  # estilo de pytest en tests
 ]
 ignore = [
   "D100",     # docstring de modulo: no aporta en scripts de clase
@@ -58,6 +59,11 @@ warn_return_any = true
 warn_unused_ignores = true
 no_implicit_optional = true
 strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
 
 [tool.importlinter]
 root_packages = ["app"]

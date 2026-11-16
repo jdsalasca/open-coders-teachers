@@ -44,3 +44,9 @@ vulnerabilidades (`--audit`, requiere red).
 Este proyecto usa **ESLint 9** porque `eslint-plugin-react` todavía no declara
 soporte para ESLint 10. `typescript-teacher` sí usa 10. No unifiques versiones
 sin comprobar los peer deps.
+
+## Tests
+
+`src/**/*.test.ts(x)` con vitest + jsdom; cobertura minima 80% en `model` y
+`viewmodel`. `npm run test` y `npm run dup` (jscpd). Tipos vagos (`{}`,
+`Object`, `Function`, `any`) son error.

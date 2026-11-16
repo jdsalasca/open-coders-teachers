@@ -9,6 +9,7 @@ IA.
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
+[![lint](https://github.com/jdsalasca/open-coders-teachers/actions/workflows/ci.yml/badge.svg)](https://github.com/jdsalasca/open-coders-teachers/actions/workflows/ci.yml)
 
 > El problema no es que la IA escriba código rápido. Es que lo escribe con
 > variables muertas, funciones de 200 líneas, cinco parámetros, nombres
@@ -55,15 +56,37 @@ extensión, y ejecuta lo que corresponda:
 
 Códigos de salida: `0` limpio, `1` problemas, `2` falta una herramienta.
 
+## Testing y TDD
+
+Primero el test que falla, después el código que lo hace pasar. El runner
+ejecuta las pruebas de las cinco carpetas en cada commit y **falla si la
+cobertura baja del mínimo**:
+
+| Carpeta | Runner | Mínimo | Archivo |
+|---|---|---|---|
+| `python-teacher` | pytest + pytest-cov | 60% | `tests/test_*.py` |
+| `typescript-teacher` | vitest + v8 | 80% | `src/**/*.test.ts` |
+| `React-teacher` | vitest + v8 + jsdom | 80% | `src/**/*.test.tsx?` |
+| `go-teacher` | `go test` + `go tool cover` | 50% | `*_test.go` |
+| `Java-teacher` | JUnit 5 + JaCoCo | 60% | `*Test.java` |
+
+```powershell
+cd typescript-teacher; npm run test    # vitest + cobertura
+cd React-teacher;       npm run test
+cd python-teacher;      pytest --cov=app
+cd go-teacher;          go test ./... -cover
+cd Java-teacher;        mvn test
+```
+
 ## Estructura
 
 ```
 open-coders-teachers/
-├── python-teacher/      ruff + mypy + import-linter      hexagonal
-├── typescript-teacher/  ESLint 10 + tsc + depcruise      MVC
-├── React-teacher/       ESLint + Stylelint + knip        MVVM
-├── go-teacher/          golangci-lint + depguard         hexagonal
-├── Java-teacher/        Checkstyle + Spotless + ArchUnit hexagonal
+├── python-teacher/      ruff + mypy + import-linter + pytest   hexagonal
+├── typescript-teacher/  ESLint 10 + tsc + depcruise + vitest   MVC
+├── React-teacher/       ESLint + Stylelint + knip + vitest     MVVM
+├── go-teacher/          golangci-lint + depguard + go test     hexagonal
+├── Java-teacher/        Checkstyle + Spotless + ArchUnit + JaCoCo hexagonal
 ├── tools/
 │   ├── lint.py          runner único
 │   ├── test_lint.py     autochequeo del runner
@@ -117,15 +140,16 @@ todas las capas.
 | Sin documentación | ruff `D` | `jsdoc/require-jsdoc` | `jsdoc/require-jsdoc` | `revive exported` | `MissingJavadoc*` |
 | Orden de miembros | — | `member-ordering` | `member-ordering` | — | `DeclarationOrder` |
 | Anidamiento profundo | `C901` | `max-depth` | `max-depth` | `cyclop` | `NestedIfDepth` |
-| Código duplicado | — | — | Stylelint | `dupl` | — |
+| Código duplicado | — | `jscpd` | `jscpd` + Stylelint | `dupl` | — |
 | Estilos duplicados | — | — | Stylelint | — | — |
 | Rompe capas | `import-linter` | `dependency-cruiser` | `dependency-cruiser` | `depguard` | ArchUnit |
 | Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador |
 | Dependencias muertas | — | — | `knip` | — | — |
 | Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` |
 | Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | OWASP (manual) |
+| Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo |
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
-| Tipos | `mypy` | `tsc` | `tsc` | compilador | compilador |
+| Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
 
 ## Antipatrones
@@ -141,6 +165,8 @@ sepa dónde mirar.
   capas, ciclos, dominio anémico, service locator.
 - [`frontend.md`](resources/antipatterns/frontend.md): estilos inline,
   duplicados, `useEffect` para estado derivado, índice como key.
+- [`testing.md`](resources/antipatterns/testing.md): tests que no prueban nada,
+  orden implícito, mocks de todo, `assert` desactivado.
 
 ## Reglas de React (SCSS)
 
@@ -181,6 +207,8 @@ sepa dónde mirar.
 - React usa ESLint 9 porque `eslint-plugin-react` aún no soporta ESLint 10.
   No unifiques versiones sin revisar los peer deps.
 - `--audit` requiere red. No corre en el hook: es una revisión periódica.
+- La cobertura es un piso, no una meta: un test que ejecuta código sin afirmar
+  nada sube el número y no la confianza.
 
 ## Licencia
 

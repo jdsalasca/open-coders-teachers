@@ -1,0 +1,6 @@
+{
+  "minTokens": 70,
+  "threshold": 0,
+  "reporters": ["console"],
+  "ignore": ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/*.test.*"]
+}

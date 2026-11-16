@@ -33,11 +33,15 @@ class Command:
 
     file_exts: se le pasan los archivos del lote con esas extensiones.
     needs: solo se ejecuta si el lote trae alguna de esas extensiones.
+    requires: ruta que debe existir dentro de la carpeta del lenguaje.
+    parser: post-proceso del resultado ("go-cover" exige cobertura minima).
     """
 
     argv: list[str]
     file_exts: tuple[str, ...] = ()
     needs: tuple[str, ...] = ()
+    requires: str = ""
+    parser: str = ""
 
 
 @dataclass(frozen=True)
@@ -62,6 +66,15 @@ LANGS = (
             Command(["ruff", "format", "--check"], (".py",)),
             Command(["mypy", "."]),
             Command(["lint-imports"]),
+            Command(
+                [
+                    "pytest",
+                    "--cov=app",
+                    "--cov-report=term-missing",
+                    "--cov-fail-under=60",
+                ],
+                requires="tests",
+            ),
         ),
         fix=(
             Command(["ruff", "check", "--fix"], (".py",)),
@@ -74,13 +87,19 @@ LANGS = (
         exts=(".ts", ".tsx", ".js", ".jsx"),
         check=(
             Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
-            Command(["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
+            Command(
+                ["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")
+            ),
             Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
             Command(["depcruise", "src", "--config", ".dependency-cruiser.js"]),
+            Command(["vitest", "run", "--coverage"], requires="vitest.config.ts"),
+            Command(["jscpd", "src"], requires=".jscpd.json"),
         ),
         fix=(
             Command(["eslint", "--fix"], (".ts", ".tsx", ".js", ".jsx")),
-            Command(["prettier", "--write"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
+            Command(
+                ["prettier", "--write"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")
+            ),
         ),
     ),
     Lang(
@@ -93,6 +112,9 @@ LANGS = (
             Command(["stylelint"], (".scss",)),
             Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
             Command(["knip", "--no-config-hints"]),
+            Command(["depcruise", "src", "--config", ".dependency-cruiser.js"]),
+            Command(["vitest", "run", "--coverage"], requires="vitest.config.ts"),
+            Command(["jscpd", "src"], requires=".jscpd.json"),
             Command(
                 ["prettier", "--check"],
                 (".ts", ".tsx", ".js", ".jsx", ".scss", ".json", ".html"),
@@ -114,6 +136,11 @@ LANGS = (
         check=(
             # golangci-lint ya corre gofmt como formatter.
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
+            Command(
+                ["go", "test", "./...", "-coverprofile=coverage.out"],
+                requires="go.mod",
+                parser="go-cover",
+            ),
         ),
         fix=(
             Command(["gofmt", "-w"], (".go",)),
@@ -127,7 +154,7 @@ LANGS = (
         check=(
             Command(["mvn", "-q", "-B", "spotless:check"]),
             Command(["mvn", "-q", "-B", "checkstyle:check"]),
-            Command(["mvn", "-q", "-B", "test", "-Dtest=ArchitectureTest"]),
+            Command(["mvn", "-q", "-B", "test"]),
         ),
         fix=(Command(["mvn", "-q", "-B", "spotless:apply"]),),
     ),
@@ -162,7 +189,18 @@ def git_files(*args: str) -> list[str]:
     return [p for p in out.stdout.split("\0") if p]
 
 
-SKIP = {"node_modules", ".git", "dist", "target", ".venv", "__pycache__", ".mypy_cache"}
+SKIP = {
+    "node_modules",
+    ".git",
+    "dist",
+    "target",
+    ".venv",
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    "coverage",
+    ".jscpd",
+}
 
 
 def expand(files: list[str]) -> list[str]:
@@ -171,7 +209,9 @@ def expand(files: list[str]) -> list[str]:
     for f in files:
         path = ROOT / f
         if path.is_dir():
-            out.extend(x.relative_to(ROOT).as_posix() for x in path.rglob("*") if x.is_file())
+            out.extend(
+                x.relative_to(ROOT).as_posix() for x in path.rglob("*") if x.is_file()
+            )
         else:
             out.append(f)
     return [f for f in out if not SKIP & set(Path(f).parts)]
@@ -187,8 +227,10 @@ def candidates(staged: bool) -> list[str]:
     return [f for f in found if (ROOT / f).exists()]
 
 
-def should_run(cmd: Command, files: list[str]) -> bool:
-    """False si el lote no trae archivos que este comando sepa revisar."""
+def should_run(cmd: Command, lang: Lang, files: list[str]) -> bool:
+    """False si el lote o la carpeta no cumplen los requisitos del comando."""
+    if cmd.requires and not (ROOT / lang.folder / cmd.requires).exists():
+        return False
     gate = cmd.needs or cmd.file_exts
     return not gate or any(Path(f).suffix in gate for f in files)
 
@@ -237,6 +279,34 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
     return proc.returncode, output.replace(prefix + "\\", "").replace(prefix + "/", "")
 
 
+def go_cover(cmd: Command, lang: Lang) -> tuple[int | None, str]:
+    """Corre las pruebas de Go y exige 50% de cobertura total."""
+    code, output = run(cmd, lang, [])
+    if code is None or code != 0:
+        return code, output
+    code, report = run(Command(["go", "tool", "cover", "-func=coverage.out"]), lang, [])
+    if code is None or code != 0:
+        return code, report
+    total = next(
+        (
+            float(line.split()[-1].rstrip("%"))
+            for line in report.splitlines()
+            if line.startswith("total:")
+        ),
+        0.0,
+    )
+    if total < 50.0:
+        return 1, f"{report}\n[!] cobertura total {total:.1f}% < 50%"
+    return 0, f"  cobertura Go: {total:.1f}%"
+
+
+def execute(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
+    """Ejecuta un comando de revision, con su parser si lo tiene."""
+    if cmd.parser == "go-cover":
+        return go_cover(cmd, lang)
+    return run(cmd, lang, files)
+
+
 def report(lang: Lang, files: list[str], fix: bool) -> int:
     """Corre el linter. 0 limpio, 1 problemas, 2 herramienta ausente."""
     print(f"\n== {lang.name} ({len(files)} archivo(s)) ==")
@@ -245,9 +315,9 @@ def report(lang: Lang, files: list[str], fix: bool) -> int:
             run(cmd, lang, files)
     status = 0
     for cmd in lang.check:
-        if not should_run(cmd, files):
+        if not should_run(cmd, lang, files):
             continue
-        code, output = run(cmd, lang, files)
+        code, output = execute(cmd, lang, files)
         if code is None:
             print(output)
             return 2
@@ -277,7 +347,9 @@ def audit(langs: list[str]) -> int:
             if not req.exists():
                 print("  sin requirements.txt: nada que auditar")
                 continue
-            code, output = run(Command(["pip-audit", "-r", "requirements.txt"]), lang, [])
+            code, output = run(
+                Command(["pip-audit", "-r", "requirements.txt"]), lang, []
+            )
         elif name == "java":
             print("  OWASP dependency-check no corre en el hook; usa")
             print("  mvn org.owasp:dependency-check-maven:check")
@@ -313,9 +385,13 @@ def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
 def main() -> int:
     """Punto de entrada: corre los linters y resume el resultado."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("files", nargs="*", help="archivos concretos (por defecto todo)")
+    parser.add_argument(
+        "files", nargs="*", help="archivos concretos (por defecto todo)"
+    )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
+    group.add_argument(
+        "--staged", action="store_true", help="solo lo que esta en stage"
+    )
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
     group.add_argument(
         "--audit", action="store_true", help="busca vulnerabilidades en dependencias"

@@ -15,7 +15,27 @@ python tools/lint.py <archivos>  # revisa solo esos archivos
 
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
 que está en stage: **un commit con violaciones se rechaza** y devuelve el
-reporte.
+reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push.
+
+## TDD: primero el test
+
+1. Escribe el test que falla (nombre en español, una intención por test).
+2. Escribe el mínimo código que lo hace pasar.
+3. Refactoriza; el test sigue verde.
+
+Un cambio sin test no está terminado. El runner ejecuta las pruebas de las
+cinco carpetas y **falla si la cobertura baja del mínimo**:
+
+| Carpeta | Runner | Mínimo |
+|---|---|---|
+| `python-teacher` | pytest + pytest-cov | 60% líneas (`app/`) |
+| `typescript-teacher` | vitest + v8 | 80% líneas (`model`, `controller`) |
+| `React-teacher` | vitest + v8 + jsdom | 80% líneas (`model`, `viewmodel`) |
+| `go-teacher` | `go test` + `go tool cover` | 50% total |
+| `Java-teacher` | JUnit 5 + JaCoCo | 60% líneas |
+
+Nombres de archivo: `test_*.py`, `*.test.ts`, `*.test.tsx`, `*_test.go`,
+`*Test.java`.
 
 ## Límites duros por lenguaje
 
@@ -33,13 +53,13 @@ reporte.
 | Orden de imports | ruff (I) | simple-import-sort | simple-import-sort | gofmt | google-java-format |
 | Orden de miembros en clase | — | member-ordering | member-ordering | — | DeclarationOrder |
 | Nombres | ruff (N) | naming-convention | naming-convention | revive | checkstyle |
-| Duplicación | — | — | stylelint | dupl | — |
+| Duplicación | — | jscpd | jscpd + stylelint | dupl | — |
 | Dependencias | — | — | knip | — | — |
 
 Configs donde viven las reglas:
 
-- `python-teacher/pyproject.toml` (ruff + mypy)
-- `typescript-teacher/eslint.config.js` + `tsconfig.json`
+- `python-teacher/pyproject.toml` (ruff + mypy + import-linter + pytest)
+- `typescript-teacher/eslint.config.js` + `tsconfig.json` + `vitest.config.ts`
 - `React-teacher/eslint.config.js` + `stylelint.config.js` + `knip.json`
 - `go-teacher/.golangci.yml`
 - `Java-teacher/config/checkstyle/checkstyle.xml` + `pom.xml`
@@ -74,8 +94,11 @@ Reglas de dependencia:
   `no-duplicate-selectors`, `shorthand-property-no-redundant-values`.
 - **`@use`, nunca `@import`** en SCSS.
 - **Tokens**: colores, espacios y radios salen de `src/styles/_tokens.scss`.
+- **Sin tipos vagos**: `{}`, `Object` y `Function` están prohibidos; define la
+  forma real. `any` también es error.
 - **Dependencias**: `knip` falla con dependencias sin usar o imports que no
   están declarados en `package.json`.
+- **Funciones duplicadas**: `jscpd` falla con clones de 70+ tokens.
 
 ## Cómo leer el reporte
 
@@ -87,6 +110,6 @@ no lo toques a mano: corre `--fix` primero y revisa el diff.
 
 - `# noqa`, `// eslint-disable`, `//nolint`, `@SuppressWarnings` sin justificar
   por escrito en el mismo archivo el motivo técnico.
-- Bajar límites del linter para que pase el código.
+- Bajar límites del linter o de cobertura para que pase el código.
 - `style={{ ... }}` o archivos `.css` en React.
 - Commits con `--no-verify`.

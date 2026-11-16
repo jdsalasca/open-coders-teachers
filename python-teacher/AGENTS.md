@@ -28,3 +28,9 @@ parametros, max 40 statements), `C90` (complejidad 8), `B,UP,SIM,RUF` y `S`
 
 `mypy` exige anotaciones (`disallow_untyped_defs`). Una funcion sin tipos es
 error, no sugerencia.
+
+## Tests
+
+`tests/test_*.py` con pytest; cobertura minima 60% sobre `app/`. El runner corre
+`pytest --cov=app --cov-fail-under=60`. Reglas `PT` para estilo de pytest y
+`B011` para `assert False`.
