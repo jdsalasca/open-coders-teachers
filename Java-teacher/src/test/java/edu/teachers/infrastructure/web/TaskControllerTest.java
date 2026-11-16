@@ -26,6 +26,29 @@ class TaskControllerTest {
   }
 
   @Test
+  void conservaEspacios() {
+    TaskView view = controller.create(new CreateTaskRequest("  estudiar  "));
+
+    assertEquals("  estudiar  ", view.title());
+  }
+
+  @Test
+  void aceptaDoscientosCaracteresUnicode() {
+    String title = "😀".repeat(200);
+
+    TaskView view = controller.create(new CreateTaskRequest(title));
+
+    assertEquals(title, view.title());
+  }
+
+  @Test
+  void rechazaDoscientosUnoCaracteresUnicode() {
+    CreateTaskRequest request = new CreateTaskRequest("😀".repeat(201));
+
+    assertThrows(ConstraintViolationException.class, () -> controller.create(request));
+  }
+
+  @Test
   void rechazaTituloEnBlanco() {
     CreateTaskRequest request = new CreateTaskRequest("   ");
 

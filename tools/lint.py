@@ -72,6 +72,11 @@ class Lang:
     fix_unsafe: tuple[Command, ...] = ()
     banned: tuple[str, ...] = ()
     max_file_lines: int = 0
+    test_glob: str = ""
+
+
+# -race requiere cgo; el runner no asume gcc en Windows.
+GO_RACE = () if sys.platform == "win32" else ("-race",)
 
 
 LANGS = (
@@ -80,6 +85,7 @@ LANGS = (
         folder="python-teacher",
         exts=(".py",),
         max_file_lines=400,
+        test_glob="test_*.py",
         check=(
             Command(["ruff", "check", "--output-format=concise"], (".py",)),
             Command(["ruff", "format", "--check"], (".py",)),
@@ -109,6 +115,7 @@ LANGS = (
         name="typescript",
         folder="typescript-teacher",
         exts=(".ts", ".tsx", ".js", ".jsx"),
+        test_glob="*.test.ts",
         check=(
             Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
             Command(["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
@@ -127,6 +134,7 @@ LANGS = (
         folder="React-teacher",
         exts=(".ts", ".tsx", ".js", ".jsx", ".scss"),
         banned=(".css",),
+        test_glob="*.test.ts*",
         check=(
             Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
             Command(["stylelint"], (".scss",)),
@@ -154,6 +162,7 @@ LANGS = (
         folder="go-teacher",
         exts=(".go",),
         max_file_lines=500,
+        test_glob="*_test.go",
         check=(
             # golangci-lint ya corre gofmt como formatter.
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
@@ -161,6 +170,7 @@ LANGS = (
                 [
                     "go",
                     "test",
+                    *GO_RACE,
                     "./...",
                     "-coverpkg=./internal/...",
                     "-coverprofile=coverage.out",
@@ -180,6 +190,7 @@ LANGS = (
         folder="Rust-teacher",
         exts=(".rs",),
         max_file_lines=400,
+        test_glob="tests/*.rs",
         check=(
             Command(["cargo", "fmt", "--check"], (".rs",), takes_files=False),
             Command(
@@ -220,6 +231,7 @@ LANGS = (
         name="java",
         folder="Java-teacher",
         exts=(".java",),
+        test_glob="*Test.java",
         check=(
             Command(["mvn", "-q", "-B", "spotless:check"]),
             Command(["mvn", "-q", "-B", "checkstyle:check"]),
@@ -1538,6 +1550,17 @@ def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> bool:
     return True
 
 
+def missing_tests() -> list[str]:
+    """Cada lenguaje del repo debe conservar al menos un test."""
+    missing = []
+    for lang in LANGS:
+        if not lang.test_glob:
+            continue
+        if not any((ROOT / lang.folder).rglob(lang.test_glob)):
+            missing.append(f"  {lang.folder}: no encontre {lang.test_glob}")
+    return missing
+
+
 def empty_result(args: argparse.Namespace) -> int:
     """Sin lenguajes ni docs: explica el caso y devuelve el estado."""
     if args.json:
@@ -1562,6 +1585,11 @@ def repo_mode(args: argparse.Namespace) -> int:
     if files is None:
         print("[X] git no respondio: no pude listar los archivos a revisar.")
         return 2
+    missing = missing_tests()
+    if missing:
+        print("[X] tests obligatorios ausentes:")
+        print("\n".join(missing))
+        return 1
     if args.staged:
         guard = staged_guard(files)
         if guard is not None:

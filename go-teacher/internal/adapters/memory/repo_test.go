@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"teachers/goteacher/internal/adapters/memory"
+	"teachers/goteacher/internal/domain"
 	"teachers/goteacher/internal/testutil"
 )
 
@@ -25,13 +26,13 @@ func TestAllDevuelveCopia(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tasks[0].Title = "mutado"
+	tasks[0] = domain.Task{}
 
 	again, err := repo.All(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again[0].Title != "uno" {
+	if again[0].Title() != "uno" {
 		t.Fatal("All debe devolver una copia")
 	}
 }
@@ -78,7 +79,7 @@ func addConcurrent(t *testing.T, count int) []int {
 				t.Errorf("Add fallo: %v", err)
 				return
 			}
-			ids <- task.ID
+			ids <- task.ID()
 		}()
 	}
 	wg.Wait()
@@ -88,5 +89,22 @@ func addConcurrent(t *testing.T, count int) []int {
 	for id := range ids {
 		out = append(out, id)
 	}
+	assertStored(t, repo, count)
 	return out
+}
+
+func assertStored(t *testing.T, repo *memory.Repository, count int) {
+	t.Helper()
+	all, err := repo.All(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != count {
+		t.Fatalf("quiero %d tareas, hay %d", count, len(all))
+	}
+	for _, task := range all {
+		if task.Title() == "" {
+			t.Fatal("hay una tarea con titulo vacio")
+		}
+	}
 }

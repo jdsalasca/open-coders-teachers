@@ -34,8 +34,12 @@ def test_task_rechaza_id_invalido() -> None:
 
 
 def test_ids_unicos_en_concurrente() -> None:
-    """Cincuenta creaciones en paralelo no repiten id."""
+    """Cincuenta creaciones en paralelo no repiten id ni pierden tareas."""
     service = _service()
     with ThreadPoolExecutor(max_workers=8) as pool:
         tasks = list(pool.map(lambda index: service.add(f"t{index}"), range(50)))
+
+    stored = service.list_all()
     assert len({task.id for task in tasks}) == 50
+    assert len(stored) == 50
+    assert {task.title for task in stored} == {f"t{index}" for index in range(50)}

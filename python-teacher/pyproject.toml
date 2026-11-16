@@ -81,7 +81,19 @@ include_external_packages = true
 name = "Hexagonal: el dominio no conoce application ni infrastructure"
 type = "forbidden"
 source_modules = ["app.domain"]
-forbidden_modules = ["app.application", "app.infrastructure"]
+forbidden_modules = ["app.application", "app.infrastructure", "app.interfaces"]
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal: application no conoce interfaces"
+type = "forbidden"
+source_modules = ["app.application"]
+forbidden_modules = ["app.interfaces"]
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal: interfaces no conoce infrastructure"
+type = "forbidden"
+source_modules = ["app.interfaces"]
+forbidden_modules = ["app.infrastructure"]
 
 [[tool.importlinter.contracts]]
 name = "Hexagonal: el dominio no importa frameworks"

@@ -21,8 +21,8 @@ func RepositoryContract(t *testing.T, repo domain.RepositoryPort) {
 	if err != nil {
 		t.Fatalf("agregar fallo: %v", err)
 	}
-	if first.ID == second.ID {
-		t.Fatalf("ids repetidos: %d", first.ID)
+	if first.ID() == second.ID() {
+		t.Fatalf("ids repetidos: %d", first.ID())
 	}
 
 	all, err := repo.All(ctx)

@@ -17,8 +17,13 @@ edu/teachers/Main.java         composition root
 ```
 
 `src/test/java/edu/teachers/ArchitectureTest.java` falla el build si el dominio
-toca application/infrastructure, si application toca infrastructure o si
-infrastructure usa application.
+toca application/infrastructure, si application toca infrastructure, si
+persistence usa application o si web usa domain. El adaptador de entrada
+(`infrastructure.web`) sí usa application: es su trabajo.
+
+El controller valida con Bean Validation (`@NotBlank` y `@CodePointLength`
+1..200) y devuelve `TaskView`; nunca expone `Task`. El título se conserva sin
+recortar y el límite cuenta code points, no unidades UTF-16.
 
 ## Reglas
 
@@ -38,6 +43,10 @@ constructores, metodos. La indentacion la decide Spotless, no la edites a mano.
 
 `*Test.java` con JUnit 5. `mvn test` corre ademas ArchUnit y JaCoCo (60% de
 lineas, excluyendo `Main`).
+
+El repositorio en memoria usa `AtomicInteger`; al llegar a `Integer.MAX_VALUE`
+lanza `IllegalStateException` en vez de desbordar, y hay tests del último ID y
+del agotamiento. Una entrada inválida puede consumir un ID (hueco documentado).
 
 Ademas: `SummaryJavadoc`, `NonEmptyAtclauseDescription`, `IllegalCatch`,
 `IllegalThrows`, `HiddenField`, `ParameterAssignment`, `BooleanExpressionComplexity`,

@@ -25,7 +25,7 @@ func (r *Repository) Add(ctx context.Context, title string) (domain.Task, error)
 		return domain.Task{}, err
 	}
 
-	task, err := domain.NewTask(len(r.tasks)+1, title)
+	task, err := domain.NewTask(len(r.tasks)+1, title, false)
 	if err != nil {
 		return domain.Task{}, err
 	}

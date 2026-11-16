@@ -71,7 +71,8 @@ preguntar, el commit se revisa y se corrige igual.
 3. Refactoriza; el test sigue verde.
 
 Un cambio sin test no está terminado. El runner ejecuta las pruebas de las
-seis carpetas y **falla si la cobertura baja del mínimo**:
+seis carpetas y **falla si la cobertura baja del mínimo**. Además,
+`missing_tests()` falla si una carpeta se queda sin al menos un archivo de test:
 
 | Carpeta | Runner | Mínimo |
 |---|---|---|

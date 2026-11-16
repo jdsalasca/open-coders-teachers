@@ -223,6 +223,13 @@ def test_cada_carpeta_configurada_existe() -> None:
         check((lint.ROOT / lang.folder).is_dir(), lang.folder)
 
 
+def test_todos_los_lenguajes_tienen_tests() -> None:
+    """El gate falla si un lenguaje se queda sin tests."""
+    missing = lint.missing_tests()
+
+    check(not missing, str(missing))
+
+
 def test_expand_normaliza_separadores() -> None:
     """Una ruta con backslash se compara igual que una con slash."""
     files = lint.expand(["typescript-teacher\\tsconfig.json"])

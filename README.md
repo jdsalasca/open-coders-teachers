@@ -169,7 +169,7 @@ conoce todas las capas.
 | Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
 | Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
 | Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) | `TaskView` (DTO) |
-| Validación de entrada | Pydantic + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | errores + título | Bean Validation + `Objects.requireNonNull` | `serde` + `validator` |
+| Validación de entrada | Pydantic + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | errores + título (200 runas) | Bean Validation (code points) + `Objects.requireNonNull` | `serde` + `validator` |
 | IDs únicos | repositorio + lock + test | - | - | repositorio + mutex + test | repositorio + `AtomicInteger` + test | repositorio + mutex + test |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless | `rustfmt` |
 
@@ -357,7 +357,7 @@ propósito y comprueba si los tests lo detectan.
 |---|---|---|
 | `typescript-teacher` | 11 | **100%** |
 | `React-teacher` | 10 | **90%** |
-| `Java-teacher` | 10 | **80%** |
+| `Java-teacher` | 13 | **92%** |
 
 ```powershell
 python tools/lint.py --mutation          # ambos

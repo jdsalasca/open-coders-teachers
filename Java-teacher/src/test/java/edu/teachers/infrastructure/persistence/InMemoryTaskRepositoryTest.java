@@ -45,6 +45,23 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
   }
 
   @Test
+  void permiteElUltimoId() {
+    InMemoryTaskRepository repo = new InMemoryTaskRepository(Integer.MAX_VALUE - 1);
+
+    Task task = repo.create("uno");
+
+    assertEquals(Integer.MAX_VALUE, task.id());
+  }
+
+  @Test
+  void rechazaElAgotamientoDeIds() {
+    InMemoryTaskRepository repo = new InMemoryTaskRepository(Integer.MAX_VALUE);
+
+    assertThrows(IllegalStateException.class, () -> repo.create("uno"));
+    assertTrue(repo.all().isEmpty());
+  }
+
+  @Test
   void creaIdsUnicosEnConcurrente() throws Exception {
     InMemoryTaskRepository repo = new InMemoryTaskRepository();
     ExecutorService pool = Executors.newFixedThreadPool(8);

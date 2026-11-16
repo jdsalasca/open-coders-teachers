@@ -12,12 +12,17 @@ python tools/lint.py --fix python-teacher   # desde la raiz
 app/
 ├── domain/          entidades y puertos (Protocol). No importa nada de app.
 ├── application/     casos de uso. Importa domain.
-└── infrastructure/  adaptadores que implementan los puertos. Importa domain.
+├── infrastructure/  adaptadores que implementan los puertos. Importa domain.
+└── interfaces/      frontera de entrada (Pydantic + controller).
 ```
 
-El dominio **no puede** importar `app.application` ni `app.infrastructure`; la
-infraestructura **no puede** importar `app.application`. Lo verifica
-`lint-imports` con los contratos de `pyproject.toml`.
+El dominio **no puede** importar `app.application`, `app.infrastructure` ni
+`app.interfaces`; application no puede importar `app.interfaces` ni
+infrastructure, e interfaces no puede importar infrastructure. Lo verifican
+`lint-imports` (`pyproject.toml`) y `tests/test_layers.py` con AST.
+
+La frontera Pydantic valida 1..200 caracteres (code points), rechaza títulos en
+blanco y **no recorta** el texto: el dominio conserva el título original.
 
 ## Reglas
 
@@ -34,6 +39,10 @@ error, no sugerencia.
 `tests/test_*.py` con pytest; cobertura minima 60% sobre `app/`. El runner corre
 `pytest --cov=app --cov-fail-under=60`. Reglas `PT` para estilo de pytest y
 `B011` para `assert False`.
+
+Además: `tests/test_service.py` prueba 50 altas concurrentes (IDs únicos y
+cardinalidad), `tests/test_repository_contract.py` fija el contrato del puerto y
+`tests/test_layers.py` comprueba las capas con AST.
 
 - `A`: no sombrear builtins (`id`, `list`, `type`).
 - `RET`: sin `else` tras `return` ni asignaciones antes de retornar.

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+	"unicode/utf8"
 
 	"teachers/goteacher/internal/app"
 	"teachers/goteacher/internal/domain"
@@ -25,7 +26,7 @@ func (f *fakeRepo) Add(ctx context.Context, title string) (domain.Task, error) {
 	if f.addErr != nil {
 		return domain.Task{}, f.addErr
 	}
-	task, err := domain.NewTask(len(f.tasks)+1, title)
+	task, err := domain.NewTask(len(f.tasks)+1, title, false)
 	if err != nil {
 		return domain.Task{}, err
 	}
@@ -52,8 +53,8 @@ func TestAddGuardaLaTarea(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if task.ID != 1 {
-		t.Fatalf("id = %d, quiero 1", task.ID)
+	if task.ID() != 1 {
+		t.Fatalf("id = %d, quiero 1", task.ID())
 	}
 	tasks, err := service.List(context.Background())
 	if err != nil {
@@ -96,14 +97,24 @@ func TestAddRespetaContextoCancelado(t *testing.T) {
 	}
 }
 
+func TestAddRechazaTituloLargo(t *testing.T) {
+	service := app.NewService(&fakeRepo{})
+
+	_, err := service.Add(context.Background(), strings.Repeat("😀", domain.MaxTitleLength+1))
+
+	if !errors.Is(err, domain.ErrTitleTooLong) {
+		t.Fatalf("err = %v, quiero ErrTitleTooLong", err)
+	}
+}
+
 func TestAddConservaTitulo(t *testing.T) {
 	f := func(title string) bool {
-		if strings.TrimSpace(title) == "" {
+		if strings.TrimSpace(title) == "" || utf8.RuneCountInString(title) > domain.MaxTitleLength {
 			return true
 		}
 		service := app.NewService(&fakeRepo{})
 		task, err := service.Add(context.Background(), title)
-		return err == nil && task.Title == title
+		return err == nil && task.Title() == title
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Fatal(err)
