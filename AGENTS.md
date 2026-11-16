@@ -22,7 +22,8 @@ python tools/lint.py <archivos>  # revisa solo esos archivos
 
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
 que está en stage: **un commit con violaciones se rechaza** y devuelve el
-reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push.
+reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push a `main`
+y en cada pull request.
 
 ## Lint en cada edición
 
@@ -159,9 +160,9 @@ Reglas de dependencia:
 - **Java**: PMD caza metodos/campos privados sin usar (`UnusedPrivate*`).
 - **Property tests**: una propiedad por funcion pura (Hypothesis, fast-check, quick, jqwik).
 - **E2E**: `npm run e2e` en React (Playwright + axe) antes de tocar la vista.
-- **Politica propia**: `.semgrep/rules.yml` bloquea datos en la vista, storage fuera de capa, env filtrado y prints.
+- **Politica propia**: `.semgrep/rules.yml` detecta patrones concretos (fetch/axios en la vista, storage fuera de capa, env filtrado, prints); un alias o API equivalente puede escapar.
 - **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
-- **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y Dependabot para Maven.
+- **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y OSV para Maven; Dependabot es el complemento cuando el token puede leer alertas.
 - **Null-safety**: `Objects.requireNonNull` (Java), errores (Go), Pydantic (Python), `no-unsafe-*` (TS).
 - **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python, Zod en TypeScript/React; el dominio mantiene invariantes.
 - **IDs**: los asigna el repositorio (`AtomicInteger`, lock o mutex) y nunca el caso de uso; en producción los asigna la base de datos.

@@ -34,6 +34,17 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
   }
 
   @Test
+  void unaEntradaInvalidaNoAgregaYDejaHueco() {
+    InMemoryTaskRepository repo = new InMemoryTaskRepository();
+
+    assertThrows(IllegalArgumentException.class, () -> repo.create("   "));
+    Task valid = repo.create("uno");
+
+    assertEquals(2, valid.id());
+    assertEquals(1, repo.all().size());
+  }
+
+  @Test
   void creaIdsUnicosEnConcurrente() throws Exception {
     InMemoryTaskRepository repo = new InMemoryTaskRepository();
     ExecutorService pool = Executors.newFixedThreadPool(8);

@@ -21,6 +21,9 @@ func (r *Repository) Add(ctx context.Context, title string) (domain.Task, error)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return domain.Task{}, err
+	}
 
 	task, err := domain.NewTask(len(r.tasks)+1, title)
 	if err != nil {
@@ -37,6 +40,9 @@ func (r *Repository) All(ctx context.Context) ([]domain.Task, error) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	out := make([]domain.Task, len(r.tasks))
 	copy(out, r.tasks)

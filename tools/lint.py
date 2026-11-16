@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -247,7 +248,7 @@ def expand(files: list[str]) -> list[str]:
             out.extend(x.relative_to(ROOT).as_posix() for x in path.rglob("*") if x.is_file())
         else:
             out.append(f)
-    return [f for f in out if not SKIP & set(Path(f).parts)]
+    return [f.replace("\\", "/") for f in out if not SKIP & set(Path(f).parts)]
 
 
 def candidates(staged: bool) -> list[str] | None:
@@ -705,6 +706,77 @@ def parse_alerts(raw: str) -> list[dict] | None:
     return pages
 
 
+OSV_URL = "https://api.osv.dev/v1/querybatch"
+MAVEN_TYPES = {"jar", "war", "pom", "ejb", "ejb-client", "test-jar", "maven-plugin"}
+
+
+def parse_maven_dependencies(text: str) -> list[tuple[str, str]]:
+    """Extrae (group:artifact, version) del listado de Maven."""
+    packages = []
+    for raw in text.splitlines():
+        parts = raw.strip().split(" -- ")[0].split(":")
+        if len(parts) >= 4 and parts[2] in MAVEN_TYPES and parts[3]:
+            packages.append((f"{parts[0]}:{parts[1]}", parts[3]))
+    return sorted(set(packages))
+
+
+def maven_packages() -> list[tuple[str, str]] | None:
+    """Dependencias runtime de Java-teacher; None si Maven no responde."""
+    exe = shutil.which("mvn")
+    if exe is None:
+        return None
+    output = ROOT / "Java-teacher" / "target" / "dependencies.txt"
+    try:
+        proc = subprocess.run(  # noqa: S603 - executable resuelto con shutil.which
+            [
+                exe,
+                "-q",
+                "-B",
+                "dependency:list",
+                "-DincludeScope=runtime",
+                f"-DoutputFile={output}",
+            ],
+            cwd=ROOT / "Java-teacher",
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0 or not output.exists():
+        return None
+    return parse_maven_dependencies(output.read_text(encoding="utf-8"))
+
+
+def osv_queries(packages: list[tuple[str, str]]) -> dict[str, object]:
+    """Cuerpo de la consulta batch a OSV."""
+    return {
+        "queries": [
+            {"package": {"name": name, "ecosystem": "Maven"}, "version": version}
+            for name, version in packages
+        ]
+    }
+
+
+def osv_vulnerabilities(packages: list[tuple[str, str]]) -> list[str] | None:
+    """Vulnerabilidades conocidas por OSV; None si no hay respuesta."""
+    request = urllib.request.Request(
+        OSV_URL,
+        data=json.dumps(osv_queries(packages)).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:  # noqa: S310 - URL https fija
+            data = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return None
+    return [
+        f"  {name}@{version}: {vuln.get('id', '?')}"
+        for (name, version), result in zip(packages, data.get("results", []), strict=False)
+        for vuln in result.get("vulns", [])
+    ]
+
+
 def dependabot_alerts() -> tuple[int | None, str]:
     """Alertas abiertas de Maven via Dependabot, con paginacion."""
     slug = repo_slug()
@@ -752,16 +824,33 @@ def dependabot_alerts() -> tuple[int | None, str]:
 
 
 def audit_maven() -> int:
-    """Dependabot para Maven: el resto de ecosistemas tiene su scanner."""
+    """Dependabot para Maven: complemento de OSV, no su sustituto."""
     print("\n== dependencias Java (Dependabot) ==")
     if os.environ.get("LINT_SKIP_DEPENDABOT") == "1":
-        print("  omitido en CI: lo cubre dependency-review en PRs")
+        print("  omitido: el token de CI no lee alertas Dependabot (OSV ya audita Maven)")
         return 0
     code, output = dependabot_alerts()
     if code == 0 and output.strip():
         print(output)
         return 0
     return show(code, output, "sin alertas abiertas")
+
+
+def audit_java() -> int:
+    """Audita Maven con OSV; 2 si no se pudo verificar."""
+    packages = maven_packages()
+    if packages is None:
+        print("  [X] no pude listar las dependencias Maven: verificacion incompleta")
+        return 2
+    rows = osv_vulnerabilities(packages)
+    if rows is None:
+        print("  [X] OSV no respondio: verificacion incompleta")
+        return 2
+    if rows:
+        print("\n".join(rows))
+        return 1
+    print(f"  sin vulnerabilidades conocidas (OSV, {len(packages)} deps)")
+    return 0
 
 
 def audit(langs: list[str]) -> int:
@@ -777,7 +866,7 @@ def audit(langs: list[str]) -> int:
                 continue
             code, output = run(Command(["pip-audit", "-r", "requirements.txt"]), lang, [])
         elif name == "java":
-            print("  cubierto por Dependabot (ver abajo)")
+            status = max(status, audit_java())
             continue
         else:
             code, output = run(AUDIT[name], lang, [])
@@ -1207,6 +1296,8 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
     md = [f for f in files if f.endswith(".md")]
 
     checks: list[tuple[str, list[str]]] = []
+    if any(f.startswith("tools/") and f.endswith(".py") for f in files):
+        checks.append(("autochequeo (test_lint)", ["python", "tools/test_lint.py"]))
     if md:
         markdown = ["markdownlint", *md, "--config", ".markdownlint.json"]
         checks.append(("docs (markdownlint)", markdown + (["--fix"] if fix else [])))
@@ -1219,7 +1310,14 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
         checks.append(
             (
                 "politica (semgrep)",
-                ["semgrep", "--config", ".semgrep/rules.yml", "--error", "--quiet", *policy],
+                [
+                    "semgrep",
+                    "--config",
+                    ".semgrep/rules.yml",
+                    "--error",
+                    "--quiet",
+                    *policy,
+                ],
             )
         )
     checks.append(("nombres (ls-lint)", ["ls-lint"]))
@@ -1242,16 +1340,21 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
 # Un cambio de configuracion debe disparar el gate completo del proyecto.
 CONFIG_LANGS = {
     "python-teacher/pyproject.toml": "python",
+    "python-teacher/requirements.txt": "python",
     "typescript-teacher/package.json": "typescript",
     "typescript-teacher/tsconfig.json": "typescript",
     "typescript-teacher/eslint.config.js": "typescript",
     "typescript-teacher/vitest.config.ts": "typescript",
+    "typescript-teacher/.jscpd.json": "typescript",
+    "typescript-teacher/.prettierrc.json": "typescript",
+    "typescript-teacher/stryker.conf.json": "typescript",
     "React-teacher/package.json": "react",
     "React-teacher/tsconfig.json": "react",
     "React-teacher/eslint.config.js": "react",
     "React-teacher/stylelint.config.js": "react",
     "React-teacher/knip.json": "react",
     "React-teacher/vitest.config.ts": "react",
+    "React-teacher/.jscpd.json": "react",
     "React-teacher/stryker.conf.json": "react",
     "React-teacher/playwright.config.ts": "react",
     "typescript-teacher/package-lock.json": "typescript",
@@ -1264,6 +1367,16 @@ CONFIG_LANGS = {
     "Java-teacher/pom.xml": "java",
     "Java-teacher/config/checkstyle/checkstyle.xml": "java",
     "Java-teacher/config/pmd/ruleset.xml": "java",
+    # Afectan a todo el repo o al propio gate: corren las cinco carpetas.
+    ".semgrep/rules.yml": "*",
+    ".markdownlint.json": "*",
+    ".ls-lint.yml": "*",
+    ".github/workflows/ci.yml": "*",
+    ".github/workflows/mutation.yml": "*",
+    "tools/lint.py": "*",
+    "tools/test_lint.py": "*",
+    "tools/check_links.py": "*",
+    "tools/check_adr.py": "*",
 }
 
 
@@ -1286,19 +1399,28 @@ def staged_guard(files: list[str]) -> int | None:
     return 2
 
 
-def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> None:
-    """Un cambio de configuracion dispara el gate completo de su lenguaje."""
+def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> bool:
+    """Un cambio de configuracion dispara el gate completo de su lenguaje.
+
+    Devuelve True si hubo configuracion en el lote, aunque ya hubiera archivos
+    de ese lenguaje: un config staged con codigo no debe saltarse el gate.
+    """
     changed = [path for path in files if path in CONFIG_LANGS]
     if not changed:
-        return
+        return False
     everything = candidates(False) or []
     for path in changed:
         language = CONFIG_LANGS[path]
-        if language in by_lang:
-            continue
-        folder = next(lang.folder for lang in LANGS if lang.name == language)
-        project = [f for f in everything if f.startswith(folder + "/")]
-        by_lang[language] = project or [path]
+        names = [lang.name for lang in LANGS] if language == "*" else [language]
+        for name in names:
+            lang = next(lg for lg in LANGS if lg.name == name)
+            project = [
+                f
+                for f in everything
+                if f.startswith(lang.folder + "/") and Path(f).suffix in lang.exts
+            ]
+            by_lang[name] = project or by_lang.get(name, [path])
+    return True
 
 
 def empty_result(args: argparse.Namespace) -> int:
@@ -1330,7 +1452,10 @@ def repo_mode(args: argparse.Namespace) -> int:
         if guard is not None:
             return guard
     by_lang, banned = classify(files)
-    add_config_langs(files, by_lang)
+    if add_config_langs(files, by_lang) and not (args.fix or args.unsafe):
+        # El gate completo tambien cubre semgrep, docs y nombres del repo.
+        # Con --fix no se expande: evita reformatear docs y JSON ajenos al cambio.
+        files = sorted(set(files) | set(candidates(False) or []))
     mode = special_mode(args, by_lang)
     if mode is not None:
         return mode

@@ -154,7 +154,7 @@ todas las capas.
 | Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador |
 | Dependencias muertas | — | — | `knip` | — | — |
 | Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` |
-| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | Dependabot / dependency-review |
+| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | OSV + Dependabot |
 | Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo |
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
@@ -204,7 +204,9 @@ estilo no. Un resultado `2` significa "no pude verificar", nunca "está limpio".
 `.semgrep/rules.yml` convierte convenciones del repo en bloqueo: la vista no
 llama `fetch`/`axios`, `localStorage` no sale de su capa, `process.env` solo en
 el composition root, `System.out` solo en `Main`, y `print`/`fmt.Print` solo en
-entrypoints. Se ejecuta con `--security` y en CI.
+entrypoints. Corre en el gate normal, en `--security` y en CI. Son patrones
+concretos: un alias o una API equivalente puede escapar; la regla no sustituye
+la revisión.
 
 ## Seguridad
 
@@ -220,7 +222,7 @@ python tools/lint.py --audit      # solo dependencias
 | Go | `gosec` | crypto débil, path traversal, TLS inseguro |
 | Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
 | Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
-| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **Dependabot (Maven)** | CVEs conocidas |
+| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **OSV + Dependabot (Maven)** | CVEs conocidas |
 
 Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
 propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron
@@ -404,7 +406,9 @@ está configurado; quedan documentados como pendientes.
   No unifiques versiones sin revisar los peer deps.
 - `--audit` requiere red. No corre en el hook: es una revisión periódica.
 - La cobertura es un piso, no una meta: un test que ejecuta código sin afirmar
-  nada sube el número y no la confianza.
+  nada sube el número y no la confianza. Además es agregada por carpeta: una
+  carpeta puede compensar un archivo débil, así que no se reporta como calidad
+  por módulo.
 
 ## Licencia
 

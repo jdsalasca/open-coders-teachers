@@ -13,4 +13,10 @@ describe("counter", () => {
     expect(inc(state)).toEqual({ value: 1 });
     expect(state.value).toBe(0);
   });
+
+  it("satura en el maximo entero seguro", () => {
+    const state = { value: Number.MAX_SAFE_INTEGER };
+
+    expect(inc(state)).toEqual({ value: Number.MAX_SAFE_INTEGER });
+  });
 });

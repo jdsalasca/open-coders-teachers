@@ -14,4 +14,8 @@ describe("parseCounter", () => {
   it("rechaza tipos equivocados", () => {
     expect(() => parseCounter({ value: "2" })).toThrow();
   });
+
+  it("rechaza enteros inseguros", () => {
+    expect(() => parseCounter({ value: Number.MAX_SAFE_INTEGER + 1 })).toThrow();
+  });
 });

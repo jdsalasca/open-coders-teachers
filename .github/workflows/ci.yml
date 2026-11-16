@@ -176,6 +176,12 @@ jobs:
         run: |
           curl.exe -sSfL -o "$env:RUNNER_TEMP\golangci.zip" `
             https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-windows-amd64.zip
+          curl.exe -sSfL -o "$env:RUNNER_TEMP\golangci-checksums.txt" `
+            https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-checksums.txt
+          $expected = (Select-String -Path "$env:RUNNER_TEMP\golangci-checksums.txt" `
+            -Pattern ' golangci-lint-2.15.0-windows-amd64.zip$').Line.Split(' ')[0]
+          $actual = (Get-FileHash "$env:RUNNER_TEMP\golangci.zip" -Algorithm SHA256).Hash.ToLower()
+          if (-not $expected -or $actual -ne $expected) { throw "checksum invalido de golangci-lint" }
           Expand-Archive "$env:RUNNER_TEMP\golangci.zip" -DestinationPath "$env:RUNNER_TEMP\golangci"
           $bin = Get-ChildItem "$env:RUNNER_TEMP\golangci" -Recurse -Filter golangci-lint.exe |
             Select-Object -First 1

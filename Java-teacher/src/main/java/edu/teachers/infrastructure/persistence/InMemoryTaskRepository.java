@@ -12,6 +12,10 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
   private final List<Task> tasks = new CopyOnWriteArrayList<>();
   private final AtomicInteger nextId = new AtomicInteger();
 
+  /**
+   * Crea una tarea. Si el titulo es invalido no se agrega nada, pero el contador puede dejar un
+   * hueco: los ids no garantizan continuidad.
+   */
   @Override
   public Task create(String title) {
     Task task = new Task(nextId.incrementAndGet(), title, false);

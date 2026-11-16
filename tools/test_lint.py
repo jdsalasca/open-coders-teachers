@@ -189,7 +189,8 @@ def test_slop_exige_justificacion() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
         (base / "x.ts").write_text(
-            "// eslint-disable-next-line no-console -- lo pide la CLI\n", encoding="utf-8"
+            "// eslint-disable-next-line no-console -- lo pide la CLI\n",
+            encoding="utf-8",
         )
         (base / "y.py").write_text("import os  # noqa: S603 - motivo\n", encoding="utf-8")
         code, lines = lint.slop_check(["x.ts", "y.py"], base=base)
@@ -219,6 +220,76 @@ def test_cada_carpeta_configurada_existe() -> None:
     """Las carpetas de LANGS existen en disco."""
     for lang in lint.LANGS:
         check((lint.ROOT / lang.folder).is_dir(), lang.folder)
+
+
+def test_expand_normaliza_separadores() -> None:
+    """Una ruta con backslash se compara igual que una con slash."""
+    files = lint.expand(["typescript-teacher\\tsconfig.json"])
+
+    check(files == ["typescript-teacher/tsconfig.json"], str(files))
+
+
+def test_config_con_codigo_expande_el_proyecto() -> None:
+    """Un config staged junto a codigo no se salta el gate completo."""
+    by_lang = {"typescript": ["typescript-teacher/src/model/counter.ts"]}
+
+    changed = lint.add_config_langs(
+        ["typescript-teacher/tsconfig.json", "typescript-teacher/src/model/counter.ts"],
+        by_lang,
+    )
+
+    check(changed, "no detecto el cambio de configuracion")
+    check(
+        "typescript-teacher/src/controller/counter-controller.ts" in by_lang["typescript"],
+        "no expandio al proyecto completo",
+    )
+
+
+def test_config_solo_expande_su_lenguaje() -> None:
+    """Un config de Python no dispara los demas lenguajes."""
+    by_lang: dict[str, list[str]] = {}
+
+    lint.add_config_langs(["python-teacher/pyproject.toml"], by_lang)
+
+    check(set(by_lang) == {"python"}, f"lenguajes: {sorted(by_lang)}")
+    check(len(by_lang["python"]) > 1, "no expandio al proyecto python")
+
+
+def test_config_global_expande_los_cinco_lenguajes() -> None:
+    """Las reglas de semgrep y el runner afectan a todos."""
+    by_lang: dict[str, list[str]] = {}
+
+    lint.add_config_langs([".semgrep/rules.yml"], by_lang)
+
+    check(
+        set(by_lang) == {lang.name for lang in lint.LANGS},
+        f"lenguajes: {sorted(by_lang)}",
+    )
+
+
+def test_parsea_dependencias_maven() -> None:
+    """El listado de Maven se convierte en coordenadas para OSV."""
+    text = (
+        "The following files have been resolved:\n"
+        "   jakarta.validation:jakarta.validation-api:jar:3.1.1:compile -- module x\n"
+        "   org.hibernate.validator:hibernate-validator:jar:9.0.1.Final:runtime -- module y\n"
+    )
+
+    check(
+        lint.parse_maven_dependencies(text)
+        == [
+            ("jakarta.validation:jakarta.validation-api", "3.1.1"),
+            ("org.hibernate.validator:hibernate-validator", "9.0.1.Final"),
+        ],
+        "parseo incorrecto",
+    )
+
+
+def test_consulta_osv() -> None:
+    """La consulta batch usa el ecosistema Maven y la version."""
+    expected = {"queries": [{"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}]}
+
+    check(lint.osv_queries([("g:a", "1.0")]) == expected, "consulta incorrecta")
 
 
 if __name__ == "__main__":
