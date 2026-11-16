@@ -86,7 +86,7 @@ LANGS = (
         folder="go-teacher",
         exts=(".go",),
         check=(
-            Command(["gofmt", "-l"], True),
+            # golangci-lint ya corre gofmt como formatter.
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
         ),
         fix=(
