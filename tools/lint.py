@@ -29,6 +29,12 @@ if hasattr(sys.stdout, "reconfigure"):
 # (golangci-lint, mvn) corren sobre el modulo completo.
 @dataclass(frozen=True)
 class Command:
+    """Un comando del linter.
+
+    takes_files: si acepta rutas de archivo como argumentos.
+    needs: extensiones que deben existir en el lote para ejecutarlo.
+    """
+
     argv: list[str]
     takes_files: bool = False
     # Solo se ejecuta si hay archivos con estas extensiones en el lote (tsc
@@ -38,6 +44,8 @@ class Command:
 
 @dataclass(frozen=True)
 class Lang:
+    """Lenguaje, carpeta del repo y comandos de revision/arreglo."""
+
     name: str
     folder: str
     exts: tuple[str, ...]
@@ -111,28 +119,25 @@ def lang_for(rel_path: str) -> str | None:
 
 
 def git_files(*args: str) -> list[str]:
-    out = subprocess.run(
-        ["git", *args, "-z"], cwd=ROOT, capture_output=True, text=True, check=True
-    )
+    """Lista de archivos que devuelve git, sin vacios."""
+    out = subprocess.run(["git", *args, "-z"], cwd=ROOT, capture_output=True, text=True, check=True)
     return [p for p in out.stdout.split("\0") if p]
 
 
 def candidates(staged: bool) -> list[str]:
+    """Archivos a revisar: staged o todos (incluye los no rastreados)."""
     if staged:
         return git_files("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     return git_files("ls-files", "--cached", "--others", "--exclude-standard")
 
 
 def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int, str]:
+    """Ejecuta un comando en la carpeta del lenguaje y filtra ruido."""
     local_bin = ROOT / lang.folder / LOCAL_BIN
     exe = shutil.which(cmd.argv[0], path=str(local_bin)) or shutil.which(cmd.argv[0])
     if exe is None:
         return 2, f"[X] falta '{cmd.argv[0]}' (ver README)"
-    extra = (
-        [Path(f).relative_to(lang.folder).as_posix() for f in files]
-        if cmd.takes_files
-        else []
-    )
+    extra = [Path(f).relative_to(lang.folder).as_posix() for f in files] if cmd.takes_files else []
     proc = subprocess.run(
         [exe, *cmd.argv[1:], *extra],
         cwd=ROOT / lang.folder,
@@ -185,14 +190,11 @@ def report(lang: Lang, files: list[str], fix: bool) -> bool:
 
 
 def main() -> int:
+    """Punto de entrada: corre los linters y resume el resultado."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "files", nargs="*", help="archivos concretos (por defecto todo)"
-    )
+    parser.add_argument("files", nargs="*", help="archivos concretos (por defecto todo)")
     group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--staged", action="store_true", help="solo lo que esta en stage"
-    )
+    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
     args = parser.parse_args()
 
