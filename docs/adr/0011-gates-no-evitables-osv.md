@@ -20,7 +20,7 @@ Una cuarta auditoría con foco en determinismo encontró cuatro huecos:
 
 1. **Un config siempre expande a su proyecto**, aunque el lote ya tenga código
    de ese lenguaje. `.semgrep/rules.yml`, `.markdownlint.json`, `.ls-lint.yml`,
-   los workflows y `tools/*.py` expanden a las cinco carpetas.
+   los workflows y `tools/*.py` expanden a todas las carpetas.
 2. **El gate completo incluye repo checks**: en modo normal, al cambiar un
    config se ejecutan también Semgrep, markdownlint, enlaces y ls-lint sobre
    todo el repo. Cambiar `tools/*.py` añade `python tools/test_lint.py` al

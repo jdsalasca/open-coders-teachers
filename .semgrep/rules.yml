@@ -80,3 +80,16 @@ rules:
       - pattern: fmt.Print(...)
       - pattern: fmt.Println(...)
       - pattern: fmt.Printf(...)
+
+  - id: rust-print
+    languages: [rust]
+    severity: ERROR
+    message: >-
+      println!/eprintln! solo en el composition root (main.rs); el resto no
+      imprime.
+    paths:
+      exclude:
+        - "Rust-teacher/src/main.rs"
+    pattern-either:
+      - pattern: println!(...)
+      - pattern: eprintln!(...)

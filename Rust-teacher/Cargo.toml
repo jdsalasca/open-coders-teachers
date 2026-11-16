@@ -1,0 +1,32 @@
+[package]
+name = "rust-teacher"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+description = "Ejemplo de arquitectura hexagonal con gates de calidad en Rust"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+validator = { version = "0.21.0", features = ["derive"] }
+
+[dev-dependencies]
+proptest = "1.12.0"
+
+[lints.rust]
+missing_docs = "deny"
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+cognitive_complexity = "deny"
+dbg_macro = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+too_many_arguments = "deny"
+too_many_lines = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"

@@ -14,6 +14,9 @@ ARCH_FILES = (
     "stryker.conf.json",
     "pyproject.toml",
     "pom.xml",
+    "Cargo.toml",
+    "clippy.toml",
+    "rust-toolchain.toml",
 )
 
 

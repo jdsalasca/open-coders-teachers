@@ -7,28 +7,28 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 
 | Patrón | Dónde vive | Cómo se verifica |
 |---|---|---|
-| **Ports & Adapters** (hexagonal) | `domain` define puertos `*Port`; `infrastructure` los implementa | `import-linter` (Python), `depguard` (Go), ArchUnit (Java) |
+| **Ports & Adapters** (hexagonal) | `domain` define puertos `*Port`; `infrastructure` los implementa | `import-linter` (Python), `depguard` (Go), ArchUnit (Java), `tests/layers.rs` (Rust) |
 | **Repository** | `TaskRepositoryPort` es el puerto; `InMemoryTaskRepository` el adaptador | ArchUnit: puertos terminan en `Port`; adaptadores viven en `infrastructure` y terminan en `Repository` |
-| **Composition Root** | `main.go`, `Main.java`, `main.ts`, `main.tsx` | convención: solo el root conoce todas las capas |
+| **Composition Root** | `main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs` | convención: solo el root conoce todas las capas |
 | **MVC** | `model` / `view` / `controller` | `dependency-cruiser`: `view` no importa `controller`; `model` aislado |
 | **MVVM** | `model` / `viewmodel` / `view` | `dependency-cruiser`: `view` no importa `model`; `viewmodel` no importa `view` |
-| **Contract Test** | Python (`tests/test_repository_contract.py`), Go (`internal/testutil`), Java (`TaskRepositoryContractTest`) | el mismo test corre contra cada adaptador nuevo |
-| **DTO de salida** | `TaskView` en `application`; `TaskController` lo devuelve | ArchUnit: `..infrastructure.web..` no depende de `..domain..` |
-| **DTO de entrada validado** | `CreateTaskRequest` con Bean Validation; `CreateTaskRequest` Pydantic en Python | el controller invoca el validador; tests de payload inválido |
+| **Contract Test** | Python (`tests/test_repository_contract.py`), Go (`internal/testutil`), Java (`TaskRepositoryContractTest`), Rust (`tests/repository_contract.rs`) | el mismo test corre contra cada adaptador nuevo |
+| **DTO de salida** | `TaskView` en `application`; `TaskController` lo devuelve | ArchUnit: `..infrastructure.web..` no depende de `..domain..`; Rust: `TaskView` en `application` |
+| **DTO de entrada validado** | `CreateTaskRequest` con Bean Validation; Pydantic en Python; serde + validator en Rust | el controller invoca el validador; tests de payload inválido |
 | **Singleton sin estado** | beans `@Service`/`@Component`/`@RestController` | ArchUnit (se activa con Spring): solo campos `final` |
 
 ## Reglas de diseño que se hacen cumplir
 
 | Principio | Regla determinista | Dónde |
 |---|---|---|
-| **DIP**: el dominio no conoce frameworks ni infraestructura | dominio solo `java..`/`..domain..` (ArchUnit), solo stdlib+dominio (depguard), capas (import-linter) | Java, Go, Python |
-| **SRP**: una clase, una razón de cambio | `FileLength`, `ClassFanOutComplexity`, 400 líneas (TS/Python) | todas |
-| **OCP**: extender sin tocar `switch` | `exhaustive` (Go), `switch-exhaustiveness-check` (TS), `MissingSwitchDefault` (Java) | Go, TS, Java |
+| **DIP**: el dominio no conoce frameworks ni infraestructura | dominio solo `java..`/`..domain..` (ArchUnit), solo stdlib+dominio (depguard), capas (import-linter), `tests/layers.rs` (Rust) | Java, Go, Python, Rust |
+| **SRP**: una clase, una razón de cambio | `FileLength`, `ClassFanOutComplexity`, 400 líneas (TS/Python/Rust) | todas |
+| **OCP**: extender sin tocar `switch` | `exhaustive` (Go), `switch-exhaustiveness-check` (TS), `MissingSwitchDefault` (Java), `match` exhaustivo (Rust) | Go, TS, Java, Rust |
 | **ISP**: interfaces pequeñas | `interfacebloat` máx. 10 | Go |
-| **No exponer el dominio en la API** | `web_sin_dominio` (controllers usan DTOs) | Java |
+| **No exponer el dominio en la API** | `web_sin_dominio` (controllers usan DTOs) | Java, Rust |
 | **Beans singleton sin estado** | `beans_sin_estado` (solo campos finales) | Java + Spring |
 | **LSP / composición sobre herencia** | `max-classes-per-file: 1`, jerarquías planas | TS, React |
-| **DRY** | `dupl`, `jscpd`, CPD, Stylelint | todas |
+| **DRY** | `dupl`, `jscpd`, CPD, Stylelint | TS/React, Go, Java |
 | **KISS**: sin anidamiento ni métodos largos | profundidad 3, 40 líneas, complejidad 8 | todas |
 
 Las métricas de tamaño, complejidad y exhaustividad son **señales**, no pruebas

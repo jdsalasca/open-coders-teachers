@@ -5,6 +5,8 @@ ls:
     .go: snake_case
   Java-teacher:
     .java: PascalCase
+  Rust-teacher:
+    .rs: snake_case
   React-teacher:
     .tsx: PascalCase
 ignore:

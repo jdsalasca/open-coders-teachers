@@ -71,7 +71,7 @@ preguntar, el commit se revisa y se corrige igual.
 3. Refactoriza; el test sigue verde.
 
 Un cambio sin test no está terminado. El runner ejecuta las pruebas de las
-cinco carpetas y **falla si la cobertura baja del mínimo**:
+seis carpetas y **falla si la cobertura baja del mínimo**:
 
 | Carpeta | Runner | Mínimo |
 |---|---|---|
@@ -80,33 +80,34 @@ cinco carpetas y **falla si la cobertura baja del mínimo**:
 | `React-teacher` | vitest + v8 + jsdom | 80% líneas (`model`, `viewmodel`) |
 | `go-teacher` | `go test` + `go tool cover` | 50% total |
 | `Java-teacher` | JUnit 5 + JaCoCo | 60% líneas |
+| `Rust-teacher` | `cargo llvm-cov` | 60% líneas |
 
 Nombres de archivo: `test_*.py`, `*.test.ts`, `*.test.tsx`, `*_test.go`,
-`*Test.java`.
+`*Test.java`, `tests/*.rs` (y `#[cfg(test)]` en el modulo).
 
 ## Límites duros por lenguaje
 
-| Regla | Python | TypeScript | React | Go | Java |
-|---|---|---|---|---|---|
-| Línea máxima | 100 | 100 | 100 | 100 | formatter |
-| Parámetros por función | 4 | 4 | 4 | 4 | 4 |
-| Líneas por función | 40 stmts | 40 | 40 | 40 | 40 |
-| Complejidad ciclomática | 8 | 8 | 8 | 8 | 8 |
-| Doc obligatoria en API pública | sí | sí | sí | sí | sí |
-| Imports sin usar | error | error | error | error | error |
-| Variables/parámetros sin usar | error | error | error | error | error |
-| Tipos | mypy | tsc | tsc | compilador | compilador |
-| Indentación | ruff format | prettier | prettier | gofmt | spotless |
-| Orden de imports | ruff (I) | simple-import-sort | simple-import-sort | gci | google-java-format |
-| Orden de miembros en clase | — | member-ordering | member-ordering | — | DeclarationOrder |
-| Nombres | ruff (N, A) | naming-convention | naming-convention | revive, predeclared | checkstyle |
-| Doc con descripción real | D + Google | jsdoc/require-description | jsdoc/require-description | revive exported | SummaryJavadoc |
-| Sin reasignar parámetros | — | no-param-reassign | no-param-reassign | — | ParameterAssignment |
-| Sin `init`/globales | — | — | — | gochecknoinits, gochecknoglobals | StaticVariableName |
-| Duplicación | — | jscpd | jscpd + stylelint | dupl | — |
-| Accesibilidad | — | — | `jsx-a11y` | — | — |
-| Archivo/Clase grande | 400 líneas | 400 | 400 | 500 | FileLength 500, ClassFanOutComplexity |
-| Dependencias | — | — | knip | — | — |
+| Regla | Python | TypeScript | React | Go | Java | Rust |
+|---|---|---|---|---|---|---|
+| Línea máxima | 100 | 100 | 100 | 100 | formatter | 100 |
+| Parámetros por función | 4 | 4 | 4 | 4 | 4 | 4 |
+| Líneas por función | 40 stmts | 40 | 40 | 40 | 40 | 40 |
+| Complejidad ciclomática | 8 | 8 | 8 | 8 | 8 | 8 |
+| Doc obligatoria en API pública | sí | sí | sí | sí | sí | sí |
+| Imports sin usar | error | error | error | error | error | error |
+| Variables/parámetros sin usar | error | error | error | error | error | error |
+| Tipos | mypy | tsc | tsc | compilador | compilador | compilador + clippy |
+| Indentación | ruff format | prettier | prettier | gofmt | spotless | rustfmt |
+| Orden de imports | ruff (I) | simple-import-sort | simple-import-sort | gci | google-java-format | rustfmt |
+| Orden de miembros en clase | — | member-ordering | member-ordering | — | DeclarationOrder | — |
+| Nombres | ruff (N, A) | naming-convention | naming-convention | revive, predeclared | checkstyle | clippy |
+| Doc con descripción real | D + Google | jsdoc/require-description | jsdoc/require-description | revive exported | SummaryJavadoc | `missing_docs` |
+| Sin reasignar parámetros | — | no-param-reassign | no-param-reassign | — | ParameterAssignment | — |
+| Sin `init`/globales | — | — | — | gochecknoinits, gochecknoglobals | StaticVariableName | — |
+| Duplicación | — | jscpd | jscpd + stylelint | dupl | — | — |
+| Accesibilidad | — | — | `jsx-a11y` | — | — | — |
+| Archivo/Clase grande | 400 líneas | 400 | 400 | 500 | FileLength 500, ClassFanOutComplexity | 400 líneas |
+| Dependencias | — | — | knip | — | — | OSV (`Cargo.lock`) |
 
 Configs donde viven las reglas:
 
@@ -115,6 +116,7 @@ Configs donde viven las reglas:
 - `React-teacher/eslint.config.js` + `stylelint.config.js` + `knip.json`
 - `go-teacher/.golangci.yml`
 - `Java-teacher/config/checkstyle/checkstyle.xml` + `pom.xml`
+- `Rust-teacher/Cargo.toml` + `clippy.toml` + `rustfmt.toml`
 
 ## Arquitectura: las capas no se rompen
 
@@ -126,6 +128,7 @@ import va hacia el lado equivocado, el commit falla.
 | `python-teacher` | `domain` ← `application` ← `infrastructure` | `lint-imports` |
 | `go-teacher` | `internal/domain` ← `internal/app` ← `internal/adapters` | `depguard` |
 | `Java-teacher` | `domain` ← `application` ← `infrastructure` | ArchUnit |
+| `Rust-teacher` | `domain` ← `application` ← `infrastructure` | `tests/layers.rs` |
 | `typescript-teacher` | `model` aislado; `controller` → `model` y `view`; `view` → `model` | `depcruise` |
 | `React-teacher` | `model` ← `viewmodel` ← `view` (la vista no importa el modelo) | `depcruise` |
 
@@ -134,8 +137,8 @@ Reglas de dependencia:
 - El dominio **no** conoce casos de uso, adaptadores, frameworks ni bases de
   datos. Habla con el exterior solo por puertos (interfaces/Protocols).
 - La infraestructura implementa los puertos del dominio; no llama casos de uso.
-- El composition root (`main.go`, `Main.java`, `main.ts`, `main.tsx`) es la
-  única pieza que conoce todas las capas.
+- El composition root (`main.go`, `Main.java`, `main.ts`, `main.tsx`,
+  `main.rs`) es la única pieza que conoce todas las capas.
 - Prohibido crear ciclos entre módulos.
 
 ## Reglas propias de React
@@ -152,20 +155,22 @@ Reglas de dependencia:
   están declarados en `package.json`.
 - **Funciones duplicadas**: `jscpd` falla con clones de 70+ tokens.
 - **Accesibilidad**: `jsx-a11y` (alt, labels, roles, tabindex).
-- **Sin APIs deprecadas**: `no-deprecated` (con tipos) y `staticcheck` en Go.
-- **DTOs en la API**: un controller nunca devuelve entidades de dominio (Java).
-- **Puertos con nombre**: interfaces de dominio terminan en `Port`; adaptadores en `Repository`.
+- **Sin APIs deprecadas**: `no-deprecated` (con tipos), `staticcheck` en Go y
+  `-D warnings` en Rust.
+- **DTOs en la API**: un controller nunca devuelve entidades de dominio (Java, Rust).
+- **Puertos con nombre**: interfaces/traits de dominio terminan en `Port`; adaptadores en `Repository`.
 - **Docs**: markdownlint y enlaces locales se validan en cada commit.
-- **Nombres**: `ls-lint` (py/go snake_case, java/tsx PascalCase).
+- **Nombres**: `ls-lint` (py/go/rs snake_case, java/tsx PascalCase).
 - **Java**: PMD caza metodos/campos privados sin usar (`UnusedPrivate*`).
-- **Property tests**: una propiedad por funcion pura (Hypothesis, fast-check, quick, jqwik).
+- **Rust**: `rustfmt` + `clippy` (`missing_docs`, `unwrap_used`, `expect_used`, `panic`, `unsafe` prohibidos) y `cargo-llvm-cov` al 60%.
+- **Property tests**: una propiedad por funcion pura (Hypothesis, fast-check, quick, jqwik, proptest).
 - **E2E**: `npm run e2e` en React (Playwright + axe) antes de tocar la vista.
-- **Politica propia**: `.semgrep/rules.yml` detecta patrones concretos (fetch/axios en la vista, storage fuera de capa, env filtrado, prints); un alias o API equivalente puede escapar.
+- **Politica propia**: `.semgrep/rules.yml` detecta patrones concretos (fetch/axios en la vista, storage fuera de capa, env filtrado, prints y `println!`); un alias o API equivalente puede escapar.
 - **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
-- **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y OSV para Maven; Dependabot es el complemento cuando el token puede leer alertas.
-- **Null-safety**: `Objects.requireNonNull` (Java), errores (Go), Pydantic (Python), `no-unsafe-*` (TS).
-- **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python, Zod en TypeScript/React; el dominio mantiene invariantes.
-- **IDs**: los asigna el repositorio (`AtomicInteger`, lock o mutex) y nunca el caso de uso; en producción los asigna la base de datos.
+- **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y OSV para Maven y crates.io; Dependabot es el complemento cuando el token puede leer alertas.
+- **Null-safety**: `Objects.requireNonNull` (Java), errores (Go), Pydantic (Python), `no-unsafe-*` (TS), `Result` sin `unwrap` (Rust).
+- **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python, Zod en TypeScript/React, serde + validator en Rust; el dominio mantiene invariantes.
+- **IDs**: los asigna el repositorio (`AtomicInteger`, lock, mutex o `AtomicU64`) y nunca el caso de uso; en producción los asigna la base de datos.
 
 ## Cómo leer el reporte
 

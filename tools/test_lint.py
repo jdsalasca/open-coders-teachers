@@ -38,6 +38,7 @@ def test_detecta_cada_lenguaje() -> None:
     check(lint.lang_for("React-teacher/src/App.tsx") == "react")
     check(lint.lang_for("go-teacher/main.go") == "go")
     check(lint.lang_for("Java-teacher/src/main/java/App.java") == "java")
+    check(lint.lang_for("Rust-teacher/src/domain/task.rs") == "rust")
 
 
 def test_react() -> None:
@@ -290,6 +291,22 @@ def test_consulta_osv() -> None:
     expected = {"queries": [{"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}]}
 
     check(lint.osv_queries([("g:a", "1.0")]) == expected, "consulta incorrecta")
+
+
+def test_parsea_cargo_lock() -> None:
+    """Cargo.lock se convierte en paquetes de crates.io, sin el crate local."""
+    text = """
+[[package]]
+name = "rust-teacher"
+version = "0.1.0"
+
+[[package]]
+name = "serde"
+version = "1.0.229"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+"""
+
+    check(lint.parse_cargo_lock(text) == [("serde", "1.0.229")], "parseo incorrecto")
 
 
 if __name__ == "__main__":

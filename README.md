@@ -1,6 +1,6 @@
 # open-coders-teachers
 
-Cinco carpetas de enseñanza, cada una con el linter de su ecosistema y **un solo
+Seis carpetas de enseñanza, cada una con el linter de su ecosistema y **un solo
 runner** que convierte el lint en retroalimentación determinista para agentes de
 IA.
 
@@ -9,6 +9,7 @@ IA.
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-1.99-000000?logo=rust&logoColor=white)
 [![lint](https://github.com/jdsalasca/open-coders-teachers/actions/workflows/ci.yml/badge.svg)](https://github.com/jdsalasca/open-coders-teachers/actions/workflows/ci.yml)
 
 > El problema no es que la IA escriba código rápido. Es que lo escribe con
@@ -27,7 +28,8 @@ python tools/lint.py --audit  # vulnerabilidades en dependencias
 ```
 
 `tools/setup.ps1` activa `.githooks/pre-commit`, hace `npm install` en las dos
-carpetas de Node y compila el proyecto Maven una vez para cachear los plugins.
+carpetas de Node, compila el proyecto Maven una vez para cachear los plugins y
+descarga las dependencias de Rust.
 
 ## Cómo funciona
 
@@ -67,7 +69,7 @@ Códigos de salida: `0` limpio, `1` problemas, `2` falta una herramienta.
 ## Testing y TDD
 
 Primero el test que falla, después el código que lo hace pasar. El runner
-ejecuta las pruebas de las cinco carpetas en cada commit y **falla si la
+ejecuta las pruebas de las seis carpetas en cada commit y **falla si la
 cobertura baja del mínimo**:
 
 | Carpeta | Runner | Mínimo | Archivo |
@@ -77,6 +79,7 @@ cobertura baja del mínimo**:
 | `React-teacher` | vitest + v8 + jsdom | 80% | `src/**/*.test.tsx?` |
 | `go-teacher` | `go test` + `go tool cover` | 50% | `*_test.go` |
 | `Java-teacher` | JUnit 5 + JaCoCo | 60% | `*Test.java` |
+| `Rust-teacher` | `cargo llvm-cov` | 60% | `src/**/*.rs`, `tests/*.rs` |
 
 ```powershell
 cd typescript-teacher; npm run test    # vitest + cobertura
@@ -84,6 +87,7 @@ cd React-teacher;       npm run test
 cd python-teacher;      pytest --cov=app
 cd go-teacher;          go test ./... -cover
 cd Java-teacher;        mvn test
+cd Rust-teacher;        cargo llvm-cov --fail-under-lines 60
 ```
 
 ## Estructura
@@ -95,6 +99,7 @@ open-coders-teachers/
 ├── React-teacher/       ESLint + Stylelint + knip + vitest     MVVM
 ├── go-teacher/          golangci-lint + depguard + go test     hexagonal
 ├── Java-teacher/        Checkstyle + Spotless + ArchUnit + JaCoCo hexagonal
+├── Rust-teacher/        rustfmt + clippy + cargo-llvm-cov       hexagonal
 ├── tools/
 │   ├── lint.py          runner único
 │   ├── test_lint.py     autochequeo del runner
@@ -112,7 +117,7 @@ importa hacia el lado equivocado, el commit falla.
 
 ```mermaid
 flowchart LR
-  subgraph hex["Hexagonal (Python, Go, Java)"]
+  subgraph hex["Hexagonal (Python, Go, Java, Rust)"]
     I[Infrastructure] --> A[Application] --> D[Domain]
   end
   subgraph mvc["MVC (TypeScript)"]
@@ -130,42 +135,43 @@ flowchart LR
 | `python-teacher` | `domain` ← `application` ← `infrastructure` | `import-linter` | `pyproject.toml` |
 | `go-teacher` | `internal/domain` ← `internal/app` ← `internal/adapters` | `depguard` | `.golangci.yml` |
 | `Java-teacher` | `domain` ← `application` ← `infrastructure` | ArchUnit | `ArchitectureTest` |
+| `Rust-teacher` | `domain` ← `application` ← `infrastructure` | test de capas | `tests/layers.rs` |
 | `typescript-teacher` | `model` ← `view`, `controller` → ambos | `dependency-cruiser` | `.dependency-cruiser.js` |
 | `React-teacher` | `model` ← `viewmodel` ← `view` | `dependency-cruiser` | `.dependency-cruiser.js` |
 
 La infraestructura implementa puertos del dominio; el composition root
-(`main.go`, `Main.java`, `main.ts`, `main.tsx`) es la única pieza que conoce
-todas las capas.
+(`main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs`) es la única pieza que
+conoce todas las capas.
 
 ## Qué caza cada carpeta
 
-| Defecto típico de la IA | Python | TypeScript | React | Go | Java |
-|---|---|---|---|---|---|
-| Imports / variables sin usar | ruff `F` | `no-unused-vars` | `no-unused-vars` | `unused`, `unparam` | `UnusedImports`, `UnusedLocalVariable` |
-| Función demasiado larga | `PLR0915` | `max-lines-per-function` | `max-lines-per-function` | `funlen` | `MethodLength` |
-| Demasiados parámetros | `PLR0913` | `max-params` | `max-params` | `revive argument-limit` | `ParameterNumber` |
-| Nombres malos | ruff `N` | `naming-convention` | `naming-convention` | `revive var-naming` | `TypeName`, `MethodName`, … |
-| Sin documentación | ruff `D` | `jsdoc/require-jsdoc` | `jsdoc/require-jsdoc` | `revive exported` | `MissingJavadoc*` |
-| Orden de miembros | — | `member-ordering` | `member-ordering` | — | `DeclarationOrder` |
-| Anidamiento profundo | `C901` | `max-depth` | `max-depth` | `cyclop` | `NestedIfDepth` |
-| Código duplicado | — | `jscpd` | `jscpd` + Stylelint | `dupl` | CPD |
-| Estilos duplicados | — | — | Stylelint | — | — |
-| Rompe capas | `import-linter` | `dependency-cruiser` | `dependency-cruiser` | `depguard` | ArchUnit |
-| Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador |
-| Dependencias muertas | — | — | `knip` | — | — |
-| Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` |
-| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | OSV + Dependabot |
-| Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo |
-| Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
-| Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
-| Código deprecado | — | `no-deprecated` (tipos) | `no-deprecated` (tipos) | `staticcheck` | `-Xlint:all` |
-| Métodos/campos privados muertos | — | — | — | `unused` | PMD `UnusedPrivate*` |
-| Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
-| Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
-| Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) |
-| Validación de entrada | Pydantic + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | errores + título | Bean Validation + `Objects.requireNonNull` |
-| IDs únicos | repositorio + lock + test | - | - | repositorio + mutex + test | repositorio + `AtomicInteger` + test |
-| Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
+| Defecto típico de la IA | Python | TypeScript | React | Go | Java | Rust |
+|---|---|---|---|---|---|---|
+| Imports / variables sin usar | ruff `F` | `no-unused-vars` | `no-unused-vars` | `unused`, `unparam` | `UnusedImports`, `UnusedLocalVariable` | `clippy` |
+| Función demasiado larga | `PLR0915` | `max-lines-per-function` | `max-lines-per-function` | `funlen` | `MethodLength` | `too_many_lines` |
+| Demasiados parámetros | `PLR0913` | `max-params` | `max-params` | `revive argument-limit` | `ParameterNumber` | `too_many_arguments` |
+| Nombres malos | ruff `N` | `naming-convention` | `naming-convention` | `revive var-naming` | `TypeName`, `MethodName`, … | `clippy` |
+| Sin documentación | ruff `D` | `jsdoc/require-jsdoc` | `jsdoc/require-jsdoc` | `revive exported` | `MissingJavadoc*` | `missing_docs` |
+| Orden de miembros | — | `member-ordering` | `member-ordering` | — | `DeclarationOrder` | — |
+| Anidamiento profundo | `C901` | `max-depth` | `max-depth` | `cyclop` | `NestedIfDepth` | `cognitive_complexity` |
+| Código duplicado | — | `jscpd` | `jscpd` + Stylelint | `dupl` | CPD | — |
+| Estilos duplicados | — | — | Stylelint | — | — | — |
+| Rompe capas | `import-linter` | `dependency-cruiser` | `dependency-cruiser` | `depguard` | ArchUnit | `tests/layers.rs` |
+| Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador | compilador |
+| Dependencias muertas | — | — | `knip` | — | — | `dead_code` |
+| Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` | `clippy` + Semgrep |
+| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | OSV + Dependabot | OSV |
+| Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo | `cargo-llvm-cov` |
+| Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — | — |
+| Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador | compilador + `clippy` |
+| Código deprecado | — | `no-deprecated` (tipos) | `no-deprecated` (tipos) | `staticcheck` | `-Xlint:all` | compilador `-D warnings` |
+| Métodos/campos privados muertos | — | — | — | `unused` | PMD `UnusedPrivate*` | `dead_code` |
+| Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
+| Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
+| Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) | `TaskView` (DTO) |
+| Validación de entrada | Pydantic + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | errores + título | Bean Validation + `Objects.requireNonNull` | `serde` + `validator` |
+| IDs únicos | repositorio + lock + test | - | - | repositorio + mutex + test | repositorio + `AtomicInteger` + test | repositorio + mutex + test |
+| Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless | `rustfmt` |
 
 ## Auditar un proyecto externo
 
@@ -184,9 +190,10 @@ el nombre de las carpetas:
 | `go.mod` | golangci-lint (sin reglas de capas) |
 | `pyproject.toml` | ruff |
 | `pom.xml` | Semgrep `p/java` + CodeQL Java (autobuild) |
+| `Cargo.toml` | `cargo fmt` + `cargo clippy` |
 
 Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y
-salía con 0: solo conocía sus cinco carpetas. Ahora, si encuentra archivos pero
+salía con 0: solo conocía sus seis carpetas. Ahora, si encuentra archivos pero
 ningún manifiesto, **falla con código 2** en vez de fingir que está limpio.
 
 El baseline portable aplica reglas de calidad, no opiniones de estilo:
@@ -197,16 +204,17 @@ límites de tamaño.
 
 Límites conocidos: no ejecuta `tsc` ni los tests del proyecto externo (necesita
 sus dependencias). Java se revisa con Semgrep: seguridad sí, arquitectura y
-estilo no. Un resultado `2` significa "no pude verificar", nunca "está limpio".
+estilo no. Rust se revisa con `cargo fmt` y `cargo clippy`, sin tests ni
+cobertura. Un resultado `2` significa "no pude verificar", nunca "está limpio".
 
 ## Política propia (Semgrep)
 
 `.semgrep/rules.yml` convierte convenciones del repo en bloqueo: la vista no
 llama `fetch`/`axios`, `localStorage` no sale de su capa, `process.env` solo en
-el composition root, `System.out` solo en `Main`, y `print`/`fmt.Print` solo en
-entrypoints. Corre en el gate normal, en `--security` y en CI. Son patrones
-concretos: un alias o una API equivalente puede escapar; la regla no sustituye
-la revisión.
+el composition root, `System.out` solo en `Main`, y
+`print`/`fmt.Print`/`println!` solo en entrypoints. Corre en el gate normal, en
+`--security` y en CI. Son patrones concretos: un alias o una API equivalente
+puede escapar; la regla no sustituye la revisión.
 
 ## Seguridad
 
@@ -222,7 +230,8 @@ python tools/lint.py --audit      # solo dependencias
 | Go | `gosec` | crypto débil, path traversal, TLS inseguro |
 | Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
 | Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
-| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **OSV + Dependabot (Maven)** | CVEs conocidas |
+| Rust | `clippy` + Semgrep | `unwrap`/`expect`, `panic`, `unsafe`, prints fuera de `main` |
+| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **OSV (Maven, crates.io)** + Dependabot | CVEs conocidas |
 
 Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
 propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron
@@ -263,7 +272,7 @@ marcado como manual: [`resources/antipatterns/books.md`](resources/antipatterns/
 | Refactoring | duplicación, código muerto, clase grande, anidamiento |
 | Code Complete | complejidad, anidamiento, alcance de variables, doc por rutina |
 | Effective Java | visibilidad, `equals`/`hashCode`, `IllegalCatch`, interfaz pequeña |
-| Clean Architecture | regla de dependencias y ciclos en las 5 carpetas |
+| Clean Architecture | regla de dependencias y ciclos en las 6 carpetas |
 | Pragmatic Programmer | DRY, secretos, CI bloqueante |
 | TDD | test antes del código + cobertura mínima |
 
@@ -316,20 +325,21 @@ sepa dónde mirar.
 ## Lint en cada edición
 
 `.opencode/plugins/lint-on-edit.ts` engancha `tool.execute.after`: cuando un
-agente escribe o edita un archivo dentro de las cinco carpetas, corre
+agente escribe o edita un archivo dentro de las seis carpetas, corre
 `python tools/lint.py --fast <archivo>` y **añade el reporte al resultado de la
 herramienta**. El agente ve el problema en el mismo turno, sin esperar al commit.
 
 - `--fast` corre solo lo que entiende de un archivo (ESLint, ruff, Prettier,
-  Stylelint) y omite tests, tipos, capas y cobertura: Python ~0.2 s, React ~5 s.
+  Stylelint, rustfmt/clippy) y omite tests, tipos, capas y cobertura: Python
+  ~0.2 s, React ~5 s.
 - El commit sigue ejecutando la suite completa; el plugin es feedback temprano,
   no un reemplazo del hook.
 
 ## Property tests y E2E
 
-- **Property-based tests** en los cinco lenguajes: Hypothesis (Python),
-  fast-check (TS/React), `testing/quick` (Go) y jqwik (Java). No prueban un caso:
-  prueban una propiedad para cientos de entradas.
+- **Property-based tests** en los seis lenguajes: Hypothesis (Python),
+  fast-check (TS/React), `testing/quick` (Go), jqwik (Java) y proptest (Rust).
+  No prueban un caso: prueban una propiedad para cientos de entradas.
 - **E2E con accesibilidad real**: Playwright + axe-core sobre la app renderizada.
   Un `alt` faltante o un contraste bajo que el linter estático no ve, sí lo ve
   axe.
@@ -355,8 +365,8 @@ cd React-teacher; npm run mutation       # uno solo
 ```
 
 Java usa PIT con bytecode 21 (JDK 25). Corre en PRs que tocan `src/` y semanalmente en `.github/workflows/mutation.yml` y rompe si el puntaje
-baja de 80%. Python (`mutmut`) no soporta Windows nativo y Java (PIT) todavía no
-está configurado; quedan documentados como pendientes.
+baja de 80%. Python (`mutmut`) no soporta Windows nativo y Rust
+(`cargo-mutants`) queda pendiente; ambos quedan documentados como límites.
 
 ## Disciplina de repositorio
 
@@ -364,11 +374,11 @@ está configurado; quedan documentados como pendientes.
 |---|---|
 | Mensajes de commit convencionales | `commitlint` en `.githooks/commit-msg` |
 | Mutantes sobrevivientes | Stryker, semanal |
-| Property tests | Hypothesis, fast-check, testing/quick, jqwik |
+| Property tests | Hypothesis, fast-check, testing/quick, jqwik, proptest |
 | Accesibilidad renderizada | Playwright + axe-core |
 | Enlaces y tablas rotas | `markdownlint` + `check_links.py` |
 | Nombres fuera de convención | `ls-lint` |
-| Supply-chain del CI | CodeQL (JS/TS, Python, Go y Java) |
+| Supply-chain del CI | CodeQL (JS/TS, Python, Go y Java; Rust no está soportado) |
 | Bundle inflado | `size-limit` en React (120 kB) |
 | Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |
 | Decisiones de arquitectura | `docs/adr/` + gate `check_adr.py` |
@@ -405,6 +415,8 @@ está configurado; quedan documentados como pendientes.
 - React usa ESLint 9 porque `eslint-plugin-react` aún no soporta ESLint 10.
   No unifiques versiones sin revisar los peer deps.
 - `--audit` requiere red. No corre en el hook: es una revisión periódica.
+- Rust se instala con `rustup` (toolchain 1.99 + `llvm-tools-preview`); la
+  cobertura usa `cargo-llvm-cov`, instalado en global con `cargo install`.
 - La cobertura es un piso, no una meta: un test que ejecuta código sin afirmar
   nada sube el número y no la confianza. Además es agregada por carpeta: una
   carpeta puede compensar un archivo débil, así que no se reporta como calidad

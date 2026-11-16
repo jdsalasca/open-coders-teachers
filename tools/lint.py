@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,6 +57,7 @@ class Command:
     needs: tuple[str, ...] = ()
     requires: str = ""
     parser: str = ""
+    takes_files: bool = True
 
 
 @dataclass(frozen=True)
@@ -174,6 +176,47 @@ LANGS = (
         ),
     ),
     Lang(
+        name="rust",
+        folder="Rust-teacher",
+        exts=(".rs",),
+        max_file_lines=400,
+        check=(
+            Command(["cargo", "fmt", "--check"], (".rs",), takes_files=False),
+            Command(
+                [
+                    "cargo",
+                    "clippy",
+                    "--all-targets",
+                    "--all-features",
+                    "--",
+                    "-D",
+                    "warnings",
+                ],
+                (".rs",),
+                takes_files=False,
+            ),
+            Command(
+                ["cargo", "llvm-cov", "--fail-under-lines", "60", "--summary-only"],
+                needs=(".rs",),
+                requires="Cargo.toml",
+            ),
+        ),
+        fix=(Command(["cargo", "fmt"]),),
+        fix_unsafe=(
+            Command(["cargo", "fmt"]),
+            Command(
+                [
+                    "cargo",
+                    "clippy",
+                    "--fix",
+                    "--all-targets",
+                    "--allow-dirty",
+                    "--allow-staged",
+                ]
+            ),
+        ),
+    ),
+    Lang(
         name="java",
         folder="Java-teacher",
         exts=(".java",),
@@ -288,7 +331,11 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
     exe = shutil.which(cmd.argv[0], path=str(local_bin)) or shutil.which(cmd.argv[0])
     if exe is None:
         return None, f"[X] falta '{cmd.argv[0]}' (ver README)"
-    extra = [Path(f).relative_to(lang.folder).as_posix() for f in matching(cmd, files)]
+    extra = (
+        [Path(f).relative_to(lang.folder).as_posix() for f in matching(cmd, files)]
+        if cmd.takes_files
+        else []
+    )
     try:
         proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
             [exe, *cmd.argv[1:], *extra],
@@ -491,6 +538,7 @@ SLOP_RULES = (
     ),
     ((".java",), re.compile(r"@Disabled\b"), "test deshabilitado (@Disabled)", None),
     ((".go",), re.compile(r"//\s*nolint"), "nolint", "//"),
+    ((".rs",), re.compile(r"#\[allow\("), "allow sin justificar", "reason"),
 )
 
 
@@ -748,21 +796,45 @@ def maven_packages() -> list[tuple[str, str]] | None:
     return parse_maven_dependencies(output.read_text(encoding="utf-8"))
 
 
-def osv_queries(packages: list[tuple[str, str]]) -> dict[str, object]:
+def cargo_packages() -> list[tuple[str, str]] | None:
+    """Dependencias de Cargo.lock; None si no existe o no parsea."""
+    lock = ROOT / "Rust-teacher" / "Cargo.lock"
+    if not lock.exists():
+        return None
+    try:
+        return parse_cargo_lock(lock.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+
+
+def parse_cargo_lock(text: str) -> list[tuple[str, str]]:
+    """Extrae (crate, version) de Cargo.lock, solo de crates.io."""
+    data = tomllib.loads(text)
+    packages = [
+        (package["name"], package["version"])
+        for package in data.get("package", [])
+        if str(package.get("source", "")).startswith("registry+")
+    ]
+    return sorted(set(packages))
+
+
+def osv_queries(packages: list[tuple[str, str]], ecosystem: str = "Maven") -> dict[str, object]:
     """Cuerpo de la consulta batch a OSV."""
     return {
         "queries": [
-            {"package": {"name": name, "ecosystem": "Maven"}, "version": version}
+            {"package": {"name": name, "ecosystem": ecosystem}, "version": version}
             for name, version in packages
         ]
     }
 
 
-def osv_vulnerabilities(packages: list[tuple[str, str]]) -> list[str] | None:
+def osv_vulnerabilities(
+    packages: list[tuple[str, str]], ecosystem: str = "Maven"
+) -> list[str] | None:
     """Vulnerabilidades conocidas por OSV; None si no hay respuesta."""
     request = urllib.request.Request(
         OSV_URL,
-        data=json.dumps(osv_queries(packages)).encode("utf-8"),
+        data=json.dumps(osv_queries(packages, ecosystem)).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
     try:
@@ -836,13 +908,12 @@ def audit_maven() -> int:
     return show(code, output, "sin alertas abiertas")
 
 
-def audit_java() -> int:
-    """Audita Maven con OSV; 2 si no se pudo verificar."""
-    packages = maven_packages()
+def audit_osv(packages: list[tuple[str, str]] | None, ecosystem: str, source: str) -> int:
+    """Audita paquetes con OSV; 2 si no se pudo verificar."""
     if packages is None:
-        print("  [X] no pude listar las dependencias Maven: verificacion incompleta")
+        print(f"  [X] no pude leer {source}: verificacion incompleta")
         return 2
-    rows = osv_vulnerabilities(packages)
+    rows = osv_vulnerabilities(packages, ecosystem)
     if rows is None:
         print("  [X] OSV no respondio: verificacion incompleta")
         return 2
@@ -853,33 +924,57 @@ def audit_java() -> int:
     return 0
 
 
+def audit_java(_lang: Lang) -> int:
+    """Dependencias Maven via OSV."""
+    return audit_osv(maven_packages(), "Maven", "las dependencias Maven")
+
+
+def audit_rust(_lang: Lang) -> int:
+    """Dependencias de crates.io via OSV."""
+    return audit_osv(cargo_packages(), "crates.io", "Cargo.lock")
+
+
+def audit_python(lang: Lang) -> int:
+    """Dependencias Python con pip-audit; sin requirements no hay nada que ver."""
+    req = ROOT / lang.folder / "requirements.txt"
+    if not req.exists():
+        print("  sin requirements.txt: nada que auditar")
+        return 0
+    return audit_command(Command(["pip-audit", "-r", "requirements.txt"]), lang)
+
+
+def audit_command(cmd: Command, lang: Lang) -> int:
+    """Corre un scanner de dependencias y traduce su estado."""
+    code, output = run(cmd, lang, [])
+    if code is None:
+        print(output)
+        return 2
+    if code != 0:
+        if output:
+            print(output)
+        return 1
+    print("  sin vulnerabilidades conocidas")
+    return 0
+
+
+AUDIT_HANDLERS = {
+    "java": audit_java,
+    "python": audit_python,
+    "rust": audit_rust,
+}
+
+
 def audit(langs: list[str]) -> int:
     """Busca vulnerabilidades conocidas en las dependencias de cada lenguaje."""
     status = 0
     for name in langs:
         lang = next(lg for lg in LANGS if lg.name == name)
         print(f"\n== vulnerabilidades: {name} ==")
-        if name == "python":
-            req = ROOT / lang.folder / "requirements.txt"
-            if not req.exists():
-                print("  sin requirements.txt: nada que auditar")
-                continue
-            code, output = run(Command(["pip-audit", "-r", "requirements.txt"]), lang, [])
-        elif name == "java":
-            status = max(status, audit_java())
-            continue
+        handler = AUDIT_HANDLERS.get(name)
+        if handler is not None:
+            status = max(status, handler(lang))
         else:
-            code, output = run(AUDIT[name], lang, [])
-        if code is None:
-            print(output)
-            return 2
-        if code != 0:
-            status = 1
-            if output:
-                print(output)
-        else:
-            print("  sin vulnerabilidades conocidas")
-
+            status = max(status, audit_command(AUDIT[name], lang))
     return max(status, audit_maven())
 
 
@@ -902,6 +997,7 @@ PROJECTS = (
     ("go", "go.mod"),
     ("java", "pom.xml"),
     ("python", "pyproject.toml"),
+    ("rust", "Cargo.toml"),
 )
 TOOLS = ROOT / "tools"
 NODE_EXTS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
@@ -1026,6 +1122,16 @@ def go_project(project: Project, fix: bool) -> int:
     return show(*exec_external(argv, project.folder), "sin hallazgos")
 
 
+def rust_project(project: Project, fix: bool) -> int:
+    """Formatea y lintea con el baseline portable (sin tests)."""
+    fmt = ["cargo", "fmt"] if fix else ["cargo", "fmt", "--check"]
+    status = show(*exec_external(fmt, project.folder), "sin hallazgos")
+    clippy = ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
+    if fix:
+        clippy = ["cargo", "clippy", "--fix", "--all-targets", "--allow-dirty"]
+    return max(status, show(*exec_external(clippy, project.folder), "sin hallazgos"))
+
+
 def java_project(project: Project) -> int:
     """Semgrep (p/java) como baseline de seguridad: no requiere Maven."""
     argv = ["semgrep", "--config", "p/java", "--error", "--quiet", "."]
@@ -1050,6 +1156,8 @@ def run_project(project: Project, root: Path, fix: bool) -> int:
         return go_project(project, fix)
     if project.kind == "python":
         return python_project(project, fix)
+    if project.kind == "rust":
+        return rust_project(project, fix)
     return java_project(project)
 
 
@@ -1061,7 +1169,9 @@ def portable(path: Path, fix: bool) -> int:
         return 2
     projects = discover(root)
     if not projects:
-        print(f"[X] {root}: no encontre package.json, go.mod, pom.xml ni pyproject.toml")
+        print(
+            f"[X] {root}: no encontre package.json, go.mod, pom.xml, pyproject.toml ni Cargo.toml"
+        )
         print("    Sin manifiesto no hay proyecto que auditar (no es 'todo limpio').")
         return 2
 
@@ -1302,7 +1412,7 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
         markdown = ["markdownlint", *md, "--config", ".markdownlint.json"]
         checks.append(("docs (markdownlint)", markdown + (["--fix"] if fix else [])))
         checks.append(("docs (enlaces)", ["python", "tools/check_links.py", *md]))
-    policy_exts = (".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".java")
+    policy_exts = (".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".java", ".rs")
     policy = [
         f for f in files if Path(f).suffix in policy_exts and not f.startswith("tools/fixtures/")
     ]
@@ -1367,6 +1477,11 @@ CONFIG_LANGS = {
     "Java-teacher/pom.xml": "java",
     "Java-teacher/config/checkstyle/checkstyle.xml": "java",
     "Java-teacher/config/pmd/ruleset.xml": "java",
+    "Rust-teacher/Cargo.toml": "rust",
+    "Rust-teacher/Cargo.lock": "rust",
+    "Rust-teacher/clippy.toml": "rust",
+    "Rust-teacher/rust-toolchain.toml": "rust",
+    "Rust-teacher/rustfmt.toml": "rust",
     # Afectan a todo el repo o al propio gate: corren las cinco carpetas.
     ".semgrep/rules.yml": "*",
     ".markdownlint.json": "*",
