@@ -1,0 +1,7 @@
+#!/bin/sh
+# Exige mensajes convencionales: "tipo(scope): resumen en imperativo".
+BIN=tools/node/node_modules/.bin/commitlint
+if [ -x "$BIN" ]; then
+  exec "$BIN" --edit "$1"
+fi
+echo "[aviso] commitlint no instalado (tools/node): se omite la revision del mensaje"

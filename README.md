@@ -298,6 +298,17 @@ herramienta**. El agente ve el problema en el mismo turno, sin esperar al commit
 - El commit sigue ejecutando la suite completa; el plugin es feedback temprano,
   no un reemplazo del hook.
 
+## Disciplina de repositorio
+
+| Práctica | Herramienta |
+|---|---|
+| Mensajes de commit convencionales | `commitlint` en `.githooks/commit-msg` |
+| Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |
+| Decisiones de arquitectura | `docs/adr/` |
+| Cómo contribuir | `CONTRIBUTING.md` |
+| Reporte de seguridad | `SECURITY.md` |
+| Tests apagados o supresiones sin motivo | detector de slop del runner |
+
 ## Notas de robustez
 
 - Cada comando tiene **timeout de 10 minutos**: un linter colgado no bloquea el

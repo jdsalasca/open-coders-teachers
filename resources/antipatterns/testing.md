@@ -42,6 +42,14 @@ funcione.
 **Arreglo:** `raise AssertionError()` en tests, excepciones reales en código.
 **Regla:** `B011` (Python).
 
+## Test apagado
+
+**Síntoma:** `.only`, `.skip`, `@Disabled`, `pytest.mark.skip`.
+**Por qué duele:** la suite dice "verde" mientras el comportamiento no se
+prueba; el agente lo deja así porque pasa.
+**Arreglo:** arreglar el test o borrarlo con un issue que lo explique.
+**Regla:** detector de slop del runner (bloqueante).
+
 ## Cobertura sin intención
 
 **Síntoma:** tests que ejecutan líneas sin afirmar nada, solo para subir el %.

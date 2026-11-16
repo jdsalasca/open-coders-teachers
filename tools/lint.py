@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -416,6 +417,73 @@ def execute(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str
     return run(cmd, lang, files)
 
 
+# Marcadores de código generado sin cuidado. "needs" es la marca de
+# justificación que debe seguir a la directiva en la misma línea.
+SLOP_RULES = (
+    (
+        (".ts", ".tsx", ".js", ".jsx"),
+        re.compile(r"\b(?:it|test|describe)\.only\s*\("),
+        "test enfocado (.only)",
+        None,
+    ),
+    (
+        (".ts", ".tsx", ".js", ".jsx"),
+        re.compile(r"\b(?:it|test|describe)\.skip\s*\("),
+        "test omitido (.skip)",
+        None,
+    ),
+    (
+        (".ts", ".tsx", ".js", ".jsx"),
+        re.compile(r"\b(?:xit|xdescribe)\s*\("),
+        "test omitido (xit/xdescribe)",
+        None,
+    ),
+    (
+        (".ts", ".tsx", ".js", ".jsx"),
+        re.compile(r"eslint-disable(?:-next-line|-line)?"),
+        "eslint-disable",
+        "--",
+    ),
+    (
+        (".py",),
+        re.compile(r"pytest\.mark\.skip\b(?!if)"),
+        "test omitido (pytest.mark.skip)",
+        None,
+    ),
+    ((".py",), re.compile(r"@unittest\.skip\b"), "test omitido (unittest.skip)", None),
+    ((".py",), re.compile(r"#\s*noqa"), "noqa", " - "),
+    ((".java",), re.compile(r"@Disabled\b"), "test deshabilitado (@Disabled)", None),
+    ((".go",), re.compile(r"//\s*nolint"), "nolint", "//"),
+)
+
+
+def slop_check(files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
+    """Busca tests apagados y supresiones sin justificar."""
+    status = 0
+    lines: list[str] = []
+    for name in files:
+        suffix = Path(name).suffix
+        rules = [
+            (pattern, label, needs) for exts, pattern, label, needs in SLOP_RULES if suffix in exts
+        ]
+        if not rules:
+            continue
+        try:
+            content = (base / name).read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for number, line in enumerate(content, 1):
+            for pattern, label, needs in rules:
+                match = pattern.search(line)
+                if not match:
+                    continue
+                if needs and needs in line[match.end() :]:
+                    continue
+                lines.append(f"  {name}:{number}: {label} sin justificar: {line.strip()}")
+                status = 1
+    return status, lines
+
+
 def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
     """Reporta archivos que exceden el maximo de lineas del lenguaje."""
     if not lang.max_file_lines:
@@ -446,7 +514,9 @@ def report(
     for cmd in fix:
         run(cmd, lang, files)
     status, size_lines = size_check(lang, files)
-    lines.extend(size_lines)
+    slop_status, slop_lines = slop_check(files)
+    status = max(status, slop_status)
+    lines.extend(size_lines + slop_lines)
     for cmd in lang.check:
         if fast and not cmd.file_exts:
             continue

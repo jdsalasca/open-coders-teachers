@@ -163,6 +163,28 @@ def test_tamano_de_archivo() -> None:
     check(bool(lines), "no reporto el archivo largo")
 
 
+def test_slop_detecta_tests_apagados() -> None:
+    """Un test enfocado no debe pasar."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        (base / "x.test.ts").write_text('it.only("corre solo", () => {});\n', encoding="utf-8")
+        code, lines = lint.slop_check(["x.test.ts"], base=base)
+    check(code == 1, "no detecto el test enfocado")
+    check(any(".only" in line for line in lines), "no reporto .only")
+
+
+def test_slop_exige_justificacion() -> None:
+    """Una supresion con motivo no es violacion."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        (base / "x.ts").write_text(
+            "// eslint-disable-next-line no-console -- lo pide la CLI\n", encoding="utf-8"
+        )
+        (base / "y.py").write_text("import os  # noqa: S603 - motivo\n", encoding="utf-8")
+        code, lines = lint.slop_check(["x.ts", "y.py"], base=base)
+    check(code == 0, f"marco supresiones justificadas: {lines}")
+
+
 def test_cada_carpeta_configurada_existe() -> None:
     """Las carpetas de LANGS existen en disco."""
     for lang in lint.LANGS:

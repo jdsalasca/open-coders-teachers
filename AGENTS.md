@@ -157,3 +157,6 @@ no lo toques a mano: corre `--fix` primero y revisa el diff.
 - Bajar límites del linter o de cobertura para que pase el código.
 - `style={{ ... }}` o archivos `.css` en React.
 - Commits con `--no-verify`.
+- Tests apagados (`.only`, `.skip`, `@Disabled`, `pytest.mark.skip`).
+- Supresiones (`noqa`, `eslint-disable`, `nolint`) sin un motivo tras ` - ` o `--`.
+- Mensajes de commit fuera de `tipo(scope): resumen` (los valida commitlint).
