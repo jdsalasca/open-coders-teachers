@@ -161,7 +161,7 @@ Reglas de dependencia:
 - **E2E**: `npm run e2e` en React (Playwright + axe) antes de tocar la vista.
 - **Politica propia**: `.semgrep/rules.yml` bloquea datos en la vista, storage fuera de capa, env filtrado y prints.
 - **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
-- **Dependencias**: `--audit` consulta Dependabot (cubre Java); no hay auditoria manual pendiente.
+- **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y Dependabot para Maven; el token de CI no lee alertas (403), se verifica en local.
 
 ## Cómo leer el reporte
 

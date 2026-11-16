@@ -218,7 +218,7 @@ python tools/lint.py --audit      # solo dependencias
 | Go | `gosec` | crypto débil, path traversal, TLS inseguro |
 | Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
 | Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
-| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **Dependabot** | CVEs conocidas (Java incluido) |
+| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **Dependabot (Maven)** | CVEs conocidas |
 
 Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
 propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron

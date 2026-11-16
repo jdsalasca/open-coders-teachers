@@ -710,20 +710,43 @@ def dependabot_alerts() -> tuple[int | None, str]:
     except (OSError, subprocess.TimeoutExpired):
         return None, "[X] falta gh (GitHub CLI) o no respondio"
     if result.returncode != 0:
-        return 1, f"[X] gh no pudo consultar alertas: {result.stderr.strip()}"
+        message = result.stderr.strip()
+        allowed = "Resource not accessible" in message or "HTTP 403" in message
+        note = (
+            "[aviso] el token actual no puede leer alertas; corre --audit local"
+            if allowed
+            else f"[X] gh no pudo consultar alertas: {message}"
+        )
+        return (0 if allowed else 1), note
     try:
         alerts = json.loads(result.stdout or "[]")
     except ValueError:
         return 1, "[X] respuesta inesperada de gh"
-    if not alerts:
+    # Node/Go/Python ya se auditan con sus herramientas; Dependabot cubre Maven.
+    maven = [
+        alert
+        for alert in alerts
+        if str(alert.get("dependency", {}).get("manifest_path", "")).endswith("pom.xml")
+    ]
+    if not maven:
         return 0, ""
     lines = []
-    for alert in alerts:
+    for alert in maven:
         package = alert.get("dependency", {}).get("package", {}).get("name", "?")
         severity = alert.get("security_advisory", {}).get("severity", "?")
         path = alert.get("dependency", {}).get("manifest_path", "")
         lines.append(f"  {package} [{severity}] {path}")
     return 1, "\n".join(lines)
+
+
+def audit_maven() -> int:
+    """Dependabot para Maven: el resto de ecosistemas tiene su scanner."""
+    print("\n== dependencias Java (Dependabot) ==")
+    code, output = dependabot_alerts()
+    if code == 0 and output.strip():
+        print(output)
+        return 0
+    return show(code, output, "sin alertas abiertas")
 
 
 def audit(langs: list[str]) -> int:
@@ -753,9 +776,7 @@ def audit(langs: list[str]) -> int:
         else:
             print("  sin vulnerabilidades conocidas")
 
-    print("\n== dependencias (Dependabot) ==")
-    code, output = dependabot_alerts()
-    return max(status, show(code, output, "sin alertas abiertas"))
+    return max(status, audit_maven())
 
 
 def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:

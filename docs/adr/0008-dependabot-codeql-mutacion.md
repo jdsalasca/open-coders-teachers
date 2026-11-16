@@ -11,10 +11,10 @@ Node 20.
 
 ## Decisión
 
-1. **Dependabot como auditor de dependencias.** Se habilitaron las alertas de
-   vulnerabilidad del repositorio y `--audit` consulta
-   `repos/{owner}/{repo}/dependabot/alerts?state=open` con `gh`. Cubre npm,
-   Maven, Go y Actions sin descargar la base NVD. Java deja de ser manual.
+1. **Dependabot cubre Maven.** Se habilitaron las alertas del repositorio y
+   `--audit` consulta `repos/{owner}/{repo}/dependabot/alerts?state=open` con
+   `gh`, filtrando `pom.xml`. Node, Go y Python se auditan con `npm audit`,
+   `govulncheck` y `pip-audit`; Dependabot solo cubre el hueco de Java.
 2. **CodeQL Java** con autobuild (bytecode 21).
 3. **Mutación en PRs**: el workflow corre Stryker y PIT cuando el PR toca
    `typescript-teacher/src`, `React-teacher/src` o `Java-teacher/src`; el
@@ -33,6 +33,11 @@ Node 20.
 ## Límites
 
 - Dependabot refleja el grafo de dependencias de GitHub, no el entorno local.
+- El `GITHUB_TOKEN` de Actions no puede leer alertas de Dependabot (403); en CI
+  se informa como aviso y la verificacion real se hace local con `--audit`.
+- `npm audit` reporta moderadas **solo de desarrollo** (qs, minimatch, katex en
+  ESLint/Stryker) sin parche disponible sin saltos mayores; el gate es
+  `--audit-level=high`.
 - La mutación por PR corre los tres proyectos, no solo el cambiado; es barato
   (Stryker ~10 s, PIT ~5 s) y evita lógica de detección.
 - Las reglas regex de slop siguen siendo heurísticas.
