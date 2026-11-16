@@ -1,12 +1,12 @@
 """Casos de uso de tareas."""
 
-from app.domain.task import Task, TaskRepository
+from app.domain.task import Task, TaskRepositoryPort
 
 
 class TaskService:
     """Orquesta el dominio recibiendo el puerto por inyeccion."""
 
-    def __init__(self, repository: TaskRepository) -> None:
+    def __init__(self, repository: TaskRepositoryPort) -> None:
         """Guarda el puerto, no una implementacion concreta."""
         self._repository = repository
 

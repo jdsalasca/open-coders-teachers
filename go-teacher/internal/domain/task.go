@@ -8,8 +8,8 @@ type Task struct {
 	Done  bool
 }
 
-// Repository es el puerto de persistencia: lo implementa la infraestructura.
-type Repository interface {
+// RepositoryPort es el puerto de persistencia: lo implementa la infraestructura.
+type RepositoryPort interface {
 	Save(task Task)
 	All() []Task
 }

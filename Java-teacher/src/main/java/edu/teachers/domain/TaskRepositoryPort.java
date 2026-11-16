@@ -3,7 +3,7 @@ package edu.teachers.domain;
 import java.util.List;
 
 /** Puerto de persistencia: lo implementa la infraestructura. */
-public interface TaskRepository {
+public interface TaskRepositoryPort {
 
   /**
    * Guarda o actualiza una tarea.

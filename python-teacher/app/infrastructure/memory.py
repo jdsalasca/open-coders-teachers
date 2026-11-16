@@ -1,9 +1,9 @@
-"""Adaptador en memoria: implementa el puerto TaskRepository."""
+"""Adaptador en memoria: implementa el puerto TaskRepositoryPort."""
 
-from app.domain.task import Task, TaskRepository
+from app.domain.task import Task, TaskRepositoryPort
 
 
-class InMemoryTaskRepository(TaskRepository):
+class InMemoryTaskRepositoryPort(TaskRepositoryPort):
     """Repositorio volatil para ejemplos y pruebas."""
 
     def __init__(self) -> None:

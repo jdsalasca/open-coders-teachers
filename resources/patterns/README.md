@@ -7,12 +7,14 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 
 | Patrón | Dónde vive | Cómo se verifica |
 |---|---|---|
-| **Ports & Adapters** (hexagonal) | `domain` define puertos; `infrastructure` los implementa | `import-linter` (Python), `depguard` (Go), ArchUnit (Java) |
-| **Repository** | `TaskRepository` es el puerto; `InMemoryTaskRepository` el adaptador | ArchUnit: toda clase `*Repository` no-interfaz vive en `infrastructure` |
+| **Ports & Adapters** (hexagonal) | `domain` define puertos `*Port`; `infrastructure` los implementa | `import-linter` (Python), `depguard` (Go), ArchUnit (Java) |
+| **Repository** | `TaskRepositoryPort` es el puerto; `InMemoryTaskRepository` el adaptador | ArchUnit: puertos terminan en `Port`; adaptadores viven en `infrastructure` y terminan en `Repository` |
 | **Composition Root** | `main.go`, `Main.java`, `main.ts`, `main.tsx` | convención: solo el root conoce todas las capas |
 | **MVC** | `model` / `view` / `controller` | `dependency-cruiser`: `view` no importa `controller`; `model` aislado |
 | **MVVM** | `model` / `viewmodel` / `view` | `dependency-cruiser`: `view` no importa `model`; `viewmodel` no importa `view` |
 | **Contract Test** | `python-teacher/tests/test_repository_contract.py` | el mismo test corre contra cada adaptador nuevo |
+| **DTO de salida** | `TaskView` en `application`; `TaskController` lo devuelve | ArchUnit: `..infrastructure.web..` no depende de `..domain..` |
+| **Singleton sin estado** | beans `@Service`/`@Component`/`@RestController` | ArchUnit (se activa con Spring): solo campos `final` |
 
 ## Reglas de diseño que se hacen cumplir
 
@@ -22,6 +24,8 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | **SRP**: una clase, una razón de cambio | `FileLength`, `ClassFanOutComplexity`, 400 líneas (TS/Python) | todas |
 | **OCP**: extender sin tocar `switch` | `exhaustive` (Go), `switch-exhaustiveness-check` (TS), `MissingSwitchDefault` (Java) | Go, TS, Java |
 | **ISP**: interfaces pequeñas | `interfacebloat` máx. 10 | Go |
+| **No exponer el dominio en la API** | `web_sin_dominio` (controllers usan DTOs) | Java |
+| **Beans singleton sin estado** | `beans_sin_estado` (solo campos finales) | Java + Spring |
 | **LSP / composición sobre herencia** | `max-classes-per-file: 1`, jerarquías planas | TS, React |
 | **DRY** | `dupl`, `jscpd`, CPD, Stylelint | todas |
 | **KISS**: sin anidamiento ni métodos largos | profundidad 3, 40 líneas, complejidad 8 | todas |
@@ -35,6 +39,7 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | **God Object** | clase con 20 métodos y 15 campos | parcial (`ClassFanOutComplexity`, `FileLength`) |
 | **Anemic Domain** | entidades sin comportamiento y lógica en servicios | manual |
 | **Leaky Abstraction** | el dominio importa `sqlalchemy`, `jakarta.persistence`, `database/sql` | automático (capas y pureza del dominio) |
+| **Singleton con estado** | un bean de Spring guarda datos de una petición | automático (solo campos finales) |
 | **Yo-Yo** | herencia de 4+ niveles | manual |
 | **Poltergeist** | clases que solo delegan | manual |
 | **Golden Hammer** | la misma solución para todo | manual |

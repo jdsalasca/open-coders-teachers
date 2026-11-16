@@ -151,6 +151,9 @@ Reglas de dependencia:
   están declarados en `package.json`.
 - **Funciones duplicadas**: `jscpd` falla con clones de 70+ tokens.
 - **Accesibilidad**: `jsx-a11y` (alt, labels, roles, tabindex).
+- **Sin APIs deprecadas**: `no-deprecated` (con tipos) y `staticcheck` en Go.
+- **DTOs en la API**: un controller nunca devuelve entidades de dominio (Java).
+- **Puertos con nombre**: interfaces de dominio terminan en `Port`; adaptadores en `Repository`.
 
 ## Cómo leer el reporte
 

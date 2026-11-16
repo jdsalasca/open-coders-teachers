@@ -2,12 +2,12 @@
 
 from app.application.service import TaskService
 from app.domain.task import Task
-from app.infrastructure.memory import InMemoryTaskRepository
+from app.infrastructure.memory import InMemoryTaskRepositoryPort
 
 
 def _service() -> TaskService:
     """Servicio con el adaptador real en memoria."""
-    return TaskService(InMemoryTaskRepository())
+    return TaskService(InMemoryTaskRepositoryPort())
 
 
 def test_add_guarda_la_tarea() -> None:
@@ -26,7 +26,7 @@ def test_add_incrementa_el_id() -> None:
 
 def test_save_reemplaza_por_id() -> None:
     """Guardar dos veces el mismo id deja una sola tarea."""
-    repository = InMemoryTaskRepository()
+    repository = InMemoryTaskRepositoryPort()
     repository.save(Task(id=1, title="uno"))
     repository.save(Task(id=1, title="dos"))
     assert repository.all() == [Task(id=1, title="dos")]

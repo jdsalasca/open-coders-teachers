@@ -158,6 +158,8 @@ todas las capas.
 | Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo |
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
+| Código deprecado | — | `no-deprecated` (tipos) | `no-deprecated` (tipos) | `staticcheck` | `-Xlint:all` |
+| Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
 
 ## Auditar un proyecto externo

@@ -1,20 +1,20 @@
 package edu.teachers.application;
 
 import edu.teachers.domain.Task;
-import edu.teachers.domain.TaskRepository;
+import edu.teachers.domain.TaskRepositoryPort;
 import java.util.List;
 
 /** Casos de uso de tareas: depende solo del dominio. */
 public class TaskService {
 
-  private final TaskRepository repository;
+  private final TaskRepositoryPort repository;
 
   /**
    * Inyecta el puerto de persistencia.
    *
    * @param repository puerto del dominio
    */
-  public TaskService(TaskRepository repository) {
+  public TaskService(TaskRepositoryPort repository) {
     this.repository = repository;
   }
 
@@ -37,5 +37,14 @@ public class TaskService {
    */
   public List<Task> list() {
     return repository.all();
+  }
+
+  /**
+   * Lista las tareas como DTO de aplicacion.
+   *
+   * @return vistas de las tareas
+   */
+  public List<TaskView> listViews() {
+    return repository.all().stream().map(TaskView::from).toList();
   }
 }

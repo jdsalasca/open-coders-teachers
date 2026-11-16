@@ -1,12 +1,12 @@
-package edu.teachers.infrastructure;
+package edu.teachers.infrastructure.persistence;
 
 import edu.teachers.domain.Task;
-import edu.teachers.domain.TaskRepository;
+import edu.teachers.domain.TaskRepositoryPort;
 import java.util.ArrayList;
 import java.util.List;
 
 /** Adaptador en memoria del puerto de tareas. */
-public class InMemoryTaskRepository implements TaskRepository {
+public class InMemoryTaskRepository implements TaskRepositoryPort {
 
   private final List<Task> tasks = new ArrayList<>();
 

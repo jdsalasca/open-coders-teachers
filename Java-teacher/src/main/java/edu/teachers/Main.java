@@ -1,8 +1,10 @@
 package edu.teachers;
 
 import edu.teachers.application.TaskService;
-import edu.teachers.domain.Task;
-import edu.teachers.infrastructure.InMemoryTaskRepository;
+import edu.teachers.application.TaskView;
+import edu.teachers.infrastructure.persistence.InMemoryTaskRepository;
+import edu.teachers.infrastructure.web.TaskController;
+import java.util.List;
 
 /** Composition root: la unica clase que conoce las tres capas. */
 public final class Main {
@@ -16,7 +18,9 @@ public final class Main {
    */
   public static void main(String[] args) {
     TaskService service = new TaskService(new InMemoryTaskRepository());
-    Task task = service.add("estudiar");
-    System.out.println(task);
+    TaskController controller = new TaskController(service);
+    service.add("estudiar");
+    List<TaskView> views = controller.list();
+    System.out.println(views);
   }
 }

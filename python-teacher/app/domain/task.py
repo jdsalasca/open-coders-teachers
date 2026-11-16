@@ -13,7 +13,7 @@ class Task:
     done: bool = False
 
 
-class TaskRepository(Protocol):
+class TaskRepositoryPort(Protocol):
     """Puerto: lo que la aplicacion necesita para guardar tareas."""
 
     def save(self, task: Task) -> None:

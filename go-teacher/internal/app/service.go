@@ -5,11 +5,11 @@ import "teachers/goteacher/internal/domain"
 
 // Service orquesta tareas sobre el puerto del dominio.
 type Service struct {
-	repo domain.Repository
+	repo domain.RepositoryPort
 }
 
 // NewService inyecta el puerto de persistencia.
-func NewService(repo domain.Repository) *Service {
+func NewService(repo domain.RepositoryPort) *Service {
 	return &Service{repo: repo}
 }
 
