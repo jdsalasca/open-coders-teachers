@@ -17,6 +17,7 @@ select = [
   "UP",  # pyupgrade
   "SIM", # simplify
   "RUF", # reglas propias de ruff
+  "S",   # bandit: seguridad (eval, subprocess, secretos)
 ]
 ignore = [
   "D100",     # docstring de modulo: no aporta en scripts de clase
@@ -42,7 +43,7 @@ max-complexity = 8
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D103", "PLR0913"]
+"tests/**" = ["D103", "PLR0913", "S101"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -57,3 +58,17 @@ warn_return_any = true
 warn_unused_ignores = true
 no_implicit_optional = true
 strict_equality = true
+
+[tool.importlinter]
+root_packages = ["app"]
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal: el dominio no conoce application ni infrastructure"
+type = "forbidden"
+source_modules = ["app.domain"]
+forbidden_modules = ["app.application", "app.infrastructure"]
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal: infrastructure -> application -> domain"
+type = "layers"
+layers = ["app.infrastructure", "app.application", "app.domain"]

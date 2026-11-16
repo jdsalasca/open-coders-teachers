@@ -8,6 +8,7 @@ considerar la tarea terminada. No hay excepciones y no se ignoran warnings.
 ```powershell
 python tools/lint.py             # revisa todo el repo
 python tools/lint.py --fix       # aplica arreglos automáticos y vuelve a revisar
+python tools/lint.py --audit     # vulnerabilidades en dependencias (requiere red)
 python tools/lint.py <carpeta>   # revisa una carpeta (ej. React-teacher)
 python tools/lint.py <archivos>  # revisa solo esos archivos
 ```
@@ -42,6 +43,28 @@ Configs donde viven las reglas:
 - `React-teacher/eslint.config.js` + `stylelint.config.js` + `knip.json`
 - `go-teacher/.golangci.yml`
 - `Java-teacher/config/checkstyle/checkstyle.xml` + `pom.xml`
+
+## Arquitectura: las capas no se rompen
+
+Cada carpeta tiene una arquitectura declarada y **el linter la verifica**. Si el
+import va hacia el lado equivocado, el commit falla.
+
+| Carpeta | Capas permitidas | Verifica |
+|---|---|---|
+| `python-teacher` | `domain` ← `application` ← `infrastructure` | `lint-imports` |
+| `go-teacher` | `internal/domain` ← `internal/app` ← `internal/adapters` | `depguard` |
+| `Java-teacher` | `domain` ← `application` ← `infrastructure` | ArchUnit |
+| `typescript-teacher` | `model` aislado; `controller` → `model` y `view`; `view` → `model` | `depcruise` |
+| `React-teacher` | `model` ← `viewmodel` ← `view` (la vista no importa el modelo) | `depcruise` |
+
+Reglas de dependencia:
+
+- El dominio **no** conoce casos de uso, adaptadores, frameworks ni bases de
+  datos. Habla con el exterior solo por puertos (interfaces/Protocols).
+- La infraestructura implementa los puertos del dominio; no llama casos de uso.
+- El composition root (`main.go`, `Main.java`, `main.ts`, `main.tsx`) es la
+  única pieza que conoce todas las capas.
+- Prohibido crear ciclos entre módulos.
 
 ## Reglas propias de React
 

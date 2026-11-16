@@ -17,6 +17,10 @@ linters:
     - lll
     - cyclop
     - dupl
+    - gosec
+    - errorlint
+    - modernize
+    - depguard
   settings:
     funlen:
       lines: 40
@@ -27,6 +31,22 @@ linters:
       max-complexity: 8
     dupl:
       threshold: 100
+    depguard:
+      rules:
+        dominio:
+          files:
+            - "**/internal/domain/**"
+          deny:
+            - pkg: teachers/goteacher/internal/app
+              desc: el dominio no conoce los casos de uso
+            - pkg: teachers/goteacher/internal/adapters
+              desc: el dominio no conoce los adaptadores
+        adaptadores:
+          files:
+            - "**/internal/adapters/**"
+          deny:
+            - pkg: teachers/goteacher/internal/app
+              desc: el adaptador implementa un puerto, no llama casos de uso
     revive:
       rules:
         - name: exported

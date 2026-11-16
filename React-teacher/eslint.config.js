@@ -47,8 +47,10 @@ export default tseslint.config(
           unnamedComponents: "arrow-function",
         },
       ],
+      "react/jsx-no-constructed-context-values": "error",
       "react/jsx-no-useless-fragment": "error",
       "react/no-array-index-key": "error",
+      "react/no-danger": "error",
       "react/no-unstable-nested-components": "error",
       "react/prop-types": "off",
       "react/self-closing-comp": "error",
@@ -56,6 +58,7 @@ export default tseslint.config(
 
       // Async con tipos (evita promesas olvidadas)
       "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports" }],
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/no-misused-promises": "error",
 

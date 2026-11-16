@@ -1,11 +1,9 @@
-@use "./styles/tokens" as tokens;
-
 .app {
   display: grid;
-  gap: tokens.$space-md;
+  gap: 16px;
   place-content: center;
   min-height: 100vh;
-  padding: tokens.$space-md;
+  padding: 32px;
 }
 
 .title {
@@ -16,4 +14,9 @@
 .lead {
   margin: 0;
   font-size: 16px;
+}
+
+.count {
+  margin: 0;
+  font-size: 24px;
 }

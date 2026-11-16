@@ -61,6 +61,7 @@ LANGS = (
             Command(["ruff", "check", "--output-format=concise"], (".py",)),
             Command(["ruff", "format", "--check"], (".py",)),
             Command(["mypy", "."]),
+            Command(["lint-imports"]),
         ),
         fix=(
             Command(["ruff", "check", "--fix"], (".py",)),
@@ -75,6 +76,7 @@ LANGS = (
             Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
             Command(["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
             Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
+            Command(["depcruise", "src", "--config", ".dependency-cruiser.js"]),
         ),
         fix=(
             Command(["eslint", "--fix"], (".ts", ".tsx", ".js", ".jsx")),
@@ -125,6 +127,7 @@ LANGS = (
         check=(
             Command(["mvn", "-q", "-B", "spotless:check"]),
             Command(["mvn", "-q", "-B", "checkstyle:check"]),
+            Command(["mvn", "-q", "-B", "test", "-Dtest=ArchitectureTest"]),
         ),
         fix=(Command(["mvn", "-q", "-B", "spotless:apply"]),),
     ),
@@ -149,7 +152,13 @@ def lang_for(rel_path: str) -> str | None:
 
 def git_files(*args: str) -> list[str]:
     """Lista de archivos que devuelve git, sin vacios."""
-    out = subprocess.run(["git", *args, "-z"], cwd=ROOT, capture_output=True, text=True, check=True)
+    out = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
+        ["git", *args, "-z"],  # noqa: S607 - git esta en el PATH
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     return [p for p in out.stdout.split("\0") if p]
 
 
@@ -171,8 +180,11 @@ def expand(files: list[str]) -> list[str]:
 def candidates(staged: bool) -> list[str]:
     """Archivos a revisar: staged o todos (incluye los no rastreados)."""
     if staged:
-        return git_files("diff", "--cached", "--name-only", "--diff-filter=ACMR")
-    return git_files("ls-files", "--cached", "--others", "--exclude-standard")
+        found = git_files("diff", "--cached", "--name-only", "--diff-filter=ACMR")
+    else:
+        found = git_files("ls-files", "--cached", "--others", "--exclude-standard")
+    # Un archivo borrado sigue en el indice hasta el commit: no se puede lintar.
+    return [f for f in found if (ROOT / f).exists()]
 
 
 def should_run(cmd: Command, files: list[str]) -> bool:
@@ -196,7 +208,7 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
     if exe is None:
         return None, f"[X] falta '{cmd.argv[0]}' (ver README)"
     extra = [Path(f).relative_to(lang.folder).as_posix() for f in matching(cmd, files)]
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
         [exe, *cmd.argv[1:], *extra],
         cwd=ROOT / lang.folder,
         capture_output=True,
@@ -247,6 +259,43 @@ def report(lang: Lang, files: list[str], fix: bool) -> int:
     return status
 
 
+AUDIT: dict[str, Command] = {
+    "typescript": Command(["npm", "audit", "--audit-level=high"]),
+    "react": Command(["npm", "audit", "--audit-level=high"]),
+    "go": Command(["govulncheck", "./..."]),
+}
+
+
+def audit(langs: list[str]) -> int:
+    """Busca vulnerabilidades conocidas en las dependencias de cada lenguaje."""
+    status = 0
+    for name in langs:
+        lang = next(lg for lg in LANGS if lg.name == name)
+        print(f"\n== vulnerabilidades: {name} ==")
+        if name == "python":
+            req = ROOT / lang.folder / "requirements.txt"
+            if not req.exists():
+                print("  sin requirements.txt: nada que auditar")
+                continue
+            code, output = run(Command(["pip-audit", "-r", "requirements.txt"]), lang, [])
+        elif name == "java":
+            print("  OWASP dependency-check no corre en el hook; usa")
+            print("  mvn org.owasp:dependency-check-maven:check")
+            continue
+        else:
+            code, output = run(AUDIT[name], lang, [])
+        if code is None:
+            print(output)
+            return 2
+        if code != 0:
+            status = 1
+            if output:
+                print(output)
+        else:
+            print("  sin vulnerabilidades conocidas")
+    return status
+
+
 def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
     """Separa por lenguaje y detecta extensiones prohibidas."""
     by_lang: dict[str, list[str]] = {}
@@ -268,6 +317,9 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
+    group.add_argument(
+        "--audit", action="store_true", help="busca vulnerabilidades en dependencias"
+    )
     args = parser.parse_args()
 
     files = expand(args.files) if args.files else candidates(args.staged)
@@ -276,6 +328,9 @@ def main() -> int:
     if not by_lang and not banned:
         print("Nada que revisar.")
         return 0
+
+    if args.audit:
+        return audit(sorted(by_lang))
 
     status = 1 if banned else 0
     if banned:
