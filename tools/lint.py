@@ -20,6 +20,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -422,9 +423,26 @@ def security(langs: list[str]) -> int:
     status = 0
 
     print("\n== secretos (gitleaks) ==")
+    report = Path(tempfile.gettempdir()) / "gitleaks-report.json"
     code, output = root_command(
-        ["gitleaks", "detect", "--source", ".", "--no-git", "--redact", "--no-banner", "-v"]
+        [
+            "gitleaks",
+            "detect",
+            "--source",
+            ".",
+            "--no-git",
+            "--redact",
+            "--no-banner",
+            "-v",
+            "--report-format",
+            "json",
+            "--report-path",
+            str(report),
+        ]
     )
+    if code not in (0, None) and report.exists():
+        output = f"{output}\n{report.read_text(encoding='utf-8', errors='replace')}"
+    report.unlink(missing_ok=True)
     status = max(status, show(code, output, "sin secretos"))
 
     print("\n== patrones inseguros (semgrep p/ci) ==")

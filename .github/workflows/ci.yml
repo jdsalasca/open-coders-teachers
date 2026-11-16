@@ -63,11 +63,12 @@ jobs:
       - name: Autochequeo del runner
         run: python tools/test_lint.py
 
+      - name: Secretos y patrones inseguros
+        run: python tools/lint.py --security
+
       - name: Lint, capas y tests
         run: python tools/lint.py
 
       - name: Vulnerabilidades en dependencias
         run: python tools/lint.py --audit
 
-      - name: Secretos y patrones inseguros
-        run: python tools/lint.py --security
