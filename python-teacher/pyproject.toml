@@ -75,12 +75,19 @@ addopts = "-q"
 
 [tool.importlinter]
 root_packages = ["app"]
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "Hexagonal: el dominio no conoce application ni infrastructure"
 type = "forbidden"
 source_modules = ["app.domain"]
 forbidden_modules = ["app.application", "app.infrastructure"]
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal: el dominio no importa frameworks"
+type = "forbidden"
+source_modules = ["app.domain"]
+forbidden_modules = ["fastapi", "flask", "django", "sqlalchemy", "requests", "httpx"]
 
 [[tool.importlinter.contracts]]
 name = "Hexagonal: infrastructure -> application -> domain"

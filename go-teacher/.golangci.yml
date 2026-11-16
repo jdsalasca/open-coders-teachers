@@ -52,6 +52,12 @@ linters:
           allow:
             - $gostd
             - teachers/goteacher/internal/domain
+        dominio-sin-sql:
+          files:
+            - "**/internal/domain/**"
+          deny:
+            - pkg: database/sql
+              desc: el dominio no accede a la base de datos
         adaptadores:
           files:
             - "**/internal/adapters/**"

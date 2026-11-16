@@ -155,7 +155,13 @@ LANGS = (
             # golangci-lint ya corre gofmt como formatter.
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
             Command(
-                ["go", "test", "./...", "-coverpkg=./internal/...", "-coverprofile=coverage.out"],
+                [
+                    "go",
+                    "test",
+                    "./...",
+                    "-coverpkg=./internal/...",
+                    "-coverprofile=coverage.out",
+                ],
                 requires="go.mod",
                 parser="go-cover",
             ),
@@ -198,8 +204,8 @@ def lang_for(rel_path: str) -> str | None:
     return None
 
 
-def git_files(*args: str) -> list[str]:
-    """Lista de archivos que devuelve git, sin vacios."""
+def git_files(*args: str) -> list[str] | None:
+    """Lista de archivos que devuelve git; None si git falla."""
     try:
         out = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
             ["git", *args, "-z"],  # noqa: S607 - git esta en el PATH
@@ -214,7 +220,7 @@ def git_files(*args: str) -> list[str]:
         subprocess.TimeoutExpired,
         FileNotFoundError,
     ):
-        return []
+        return None
     return [p for p in out.stdout.split("\0") if p]
 
 
@@ -244,15 +250,17 @@ def expand(files: list[str]) -> list[str]:
     return [f for f in out if not SKIP & set(Path(f).parts)]
 
 
-def candidates(staged: bool) -> list[str]:
-    """Archivos a revisar: staged o todos (incluye los no rastreados)."""
+def candidates(staged: bool) -> list[str] | None:
+    """Archivos a revisar: staged o todos; None si git no responde."""
     if staged:
         found = git_files("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     else:
         found = git_files("ls-files", "--cached", "--others", "--exclude-standard")
-        if not found:
+        if found == []:
             # Sin git (zip descargado) o repo vacio: recorrer el arbol.
             found = [p.relative_to(ROOT).as_posix() for p in walk_files(ROOT)]
+    if found is None:
+        return None
     # Un archivo borrado sigue en el indice hasta el commit: no se puede lintar.
     return [f for f in found if (ROOT / f).exists()]
 
@@ -408,7 +416,11 @@ def go_cover(cmd: Command, lang: Lang) -> tuple[int | None, str]:
         ),
         0.0,
     )
-    run(Command(["go", "tool", "cover", "-html=coverage.out", "-o", "coverage.html"]), lang, [])
+    run(
+        Command(["go", "tool", "cover", "-html=coverage.out", "-o", "coverage.html"]),
+        lang,
+        [],
+    )
     if total < 50.0:
         return 1, f"{report}\n[!] cobertura total {total:.1f}% < 50%"
     return 0, f"  cobertura Go: {total:.1f}%"
@@ -598,6 +610,8 @@ def security(langs: list[str]) -> int:
             "semgrep",
             "--config",
             "p/ci",
+            "--config",
+            ".semgrep/rules.yml",
             "--error",
             "--quiet",
             "--exclude",
@@ -608,6 +622,8 @@ def security(langs: list[str]) -> int:
             "coverage",
             "--exclude",
             "target",
+            "--exclude",
+            "tools/fixtures",
             ".",
         ]
     )
@@ -634,7 +650,10 @@ def security(langs: list[str]) -> int:
 
 
 MUTATION: dict[str, Command] = {
-    "java": Command(["mvn", "-q", "-B", "test-compile", "pitest:mutationCoverage"], requires="pom.xml"),
+    "java": Command(
+        ["mvn", "-q", "-B", "test-compile", "pitest:mutationCoverage"],
+        requires="pom.xml",
+    ),
     "react": Command(["stryker", "run"], requires="stryker.conf.json"),
     "typescript": Command(["stryker", "run"], requires="stryker.conf.json"),
 }
@@ -1123,32 +1142,91 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
     return status, lines
 
 
+# Un cambio de configuracion debe disparar el gate completo del proyecto.
+CONFIG_LANGS = {
+    "python-teacher/pyproject.toml": "python",
+    "typescript-teacher/package.json": "typescript",
+    "typescript-teacher/tsconfig.json": "typescript",
+    "typescript-teacher/eslint.config.js": "typescript",
+    "typescript-teacher/vitest.config.ts": "typescript",
+    "React-teacher/package.json": "react",
+    "React-teacher/tsconfig.json": "react",
+    "React-teacher/eslint.config.js": "react",
+    "React-teacher/stylelint.config.js": "react",
+    "React-teacher/knip.json": "react",
+    "React-teacher/vitest.config.ts": "react",
+    "React-teacher/stryker.conf.json": "react",
+    "React-teacher/playwright.config.ts": "react",
+    "go-teacher/.golangci.yml": "go",
+    "go-teacher/go.mod": "go",
+    "Java-teacher/pom.xml": "java",
+    "Java-teacher/config/checkstyle/checkstyle.xml": "java",
+    "Java-teacher/config/pmd/ruleset.xml": "java",
+}
+
+
+def staged_guard(files: list[str]) -> int | None:
+    """Avisa del tamano y rechaza staging parcial o git roto."""
+    changed = staged_lines()
+    if changed > 400:
+        print(f"[aviso] commit grande: {changed} lineas cambiadas. Considera partirlo.")
+    unstaged = git_files("diff", "--name-only")
+    if unstaged is None:
+        print("[X] git no respondio al comparar el indice con el arbol.")
+        return 2
+    mixed = sorted(set(files) & set(unstaged))
+    if not mixed:
+        return None
+    print("[X] archivos staged con cambios sin stagear:")
+    for name in mixed:
+        print(f"    {name}")
+    print("    El lint mira el arbol de trabajo; stagea todo o separa el cambio.")
+    return 2
+
+
+def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> None:
+    """Un cambio de configuracion dispara el gate completo de su lenguaje."""
+    for path, language in CONFIG_LANGS.items():
+        if path in files and language not in by_lang:
+            by_lang[language] = [path]
+
+
+def empty_result(args: argparse.Namespace) -> int:
+    """Sin lenguajes ni docs: explica el caso y devuelve el estado."""
+    if args.json:
+        print(
+            json.dumps(
+                {"ok": True, "status": 0, "banned": [], "languages": []},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    print("Nada que revisar.")
+    if args.files:
+        print("Si es un proyecto externo, usa: --project <ruta>")
+        return 2
+    return 0
+
+
 def repo_mode(args: argparse.Namespace) -> int:
     """Modo repo: las cinco carpetas de este proyecto."""
     files = expand(args.files) if args.files else candidates(args.staged)
+    if files is None:
+        print("[X] git no respondio: no pude listar los archivos a revisar.")
+        return 2
     if args.staged:
-        changed = staged_lines()
-        if changed > 400:
-            print(f"[aviso] commit grande: {changed} lineas cambiadas. Considera partirlo.")
+        guard = staged_guard(files)
+        if guard is not None:
+            return guard
     by_lang, banned = classify(files)
+    add_config_langs(files, by_lang)
     mode = special_mode(args, by_lang)
     if mode is not None:
         return mode
     has_docs = any(f.endswith(".md") for f in files)
     if not by_lang and not banned and not has_docs:
-        if args.json:
-            print(
-                json.dumps(
-                    {"ok": True, "status": 0, "banned": [], "languages": []},
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            )
-        else:
-            print("Nada que revisar.")
-            if args.files:
-                print("Si es un proyecto externo, usa: --project <ruta>")
-        return 2 if args.files else 0
+        return empty_result(args)
     return lint_all(args, by_lang, banned, files)
 
 

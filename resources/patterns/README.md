@@ -30,6 +30,10 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | **DRY** | `dupl`, `jscpd`, CPD, Stylelint | todas |
 | **KISS**: sin anidamiento ni métodos largos | profundidad 3, 40 líneas, complejidad 8 | todas |
 
+Las métricas de tamaño, complejidad y exhaustividad son **señales**, no pruebas
+de SRP, OCP o LSP: un método de 40 líneas puede violar SRP igual. Lo que sí se
+demuestra son las dependencias prohibidas y los ciclos.
+
 ## Antipatrones de patrón
 
 | Antipatrón | Síntoma | Estado |
