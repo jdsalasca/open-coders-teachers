@@ -3,7 +3,11 @@
 uso:
   python tools/lint.py             # todo el repo
   python tools/lint.py --fix       # arregla y vuelve a revisar
+  python tools/lint.py --fix --unsafe   # incluye arreglos que cambian comportamiento
   python tools/lint.py --staged    # solo lo que esta en el indice (hook)
+  python tools/lint.py --audit     # vulnerabilidades en dependencias
+  python tools/lint.py --security  # secretos, patrones inseguros y dependencias
+  python tools/lint.py --skip "motivo"  # permite el proximo commit sin linters
   python tools/lint.py a.py b.ts   # archivos concretos
 
 Sale 0 si todo pasa, 1 si hay problemas, 2 si falta una herramienta.
@@ -12,14 +16,19 @@ Sale 0 si todo pasa, 1 si hay problemas, 2 si falta una herramienta.
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCAL_BIN = "node_modules/.bin"
+SKIP_FILE = ROOT / ".git" / "lint-skip"
+SKIP_LOG = ROOT / ".git" / "lint-skip.log"
+SKIP_TTL = 600  # segundos: un skip viejo no vale
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -53,6 +62,7 @@ class Lang:
     exts: tuple[str, ...]
     check: tuple[Command, ...]
     fix: tuple[Command, ...]
+    fix_unsafe: tuple[Command, ...] = ()
     banned: tuple[str, ...] = ()
 
 
@@ -80,6 +90,10 @@ LANGS = (
             Command(["ruff", "check", "--fix"], (".py",)),
             Command(["ruff", "format"], (".py",)),
         ),
+        fix_unsafe=(
+            Command(["ruff", "check", "--fix", "--unsafe-fixes"], (".py",)),
+            Command(["ruff", "format"], (".py",)),
+        ),
     ),
     Lang(
         name="typescript",
@@ -87,9 +101,7 @@ LANGS = (
         exts=(".ts", ".tsx", ".js", ".jsx"),
         check=(
             Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
-            Command(
-                ["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")
-            ),
+            Command(["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
             Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
             Command(["depcruise", "src", "--config", ".dependency-cruiser.js"]),
             Command(["vitest", "run", "--coverage"], requires="vitest.config.ts"),
@@ -97,9 +109,7 @@ LANGS = (
         ),
         fix=(
             Command(["eslint", "--fix"], (".ts", ".tsx", ".js", ".jsx")),
-            Command(
-                ["prettier", "--write"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")
-            ),
+            Command(["prettier", "--write"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
         ),
     ),
     Lang(
@@ -144,6 +154,7 @@ LANGS = (
         ),
         fix=(
             Command(["gofmt", "-w"], (".go",)),
+            Command(["golangci-lint", "fmt"], requires="go.mod"),
             Command(["golangci-lint", "run", "--fix"]),
         ),
     ),
@@ -209,9 +220,7 @@ def expand(files: list[str]) -> list[str]:
     for f in files:
         path = ROOT / f
         if path.is_dir():
-            out.extend(
-                x.relative_to(ROOT).as_posix() for x in path.rglob("*") if x.is_file()
-            )
+            out.extend(x.relative_to(ROOT).as_posix() for x in path.rglob("*") if x.is_file())
         else:
             out.append(f)
     return [f for f in out if not SKIP & set(Path(f).parts)]
@@ -259,6 +268,12 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
         errors="replace",
     )
     prefix = str(ROOT / lang.folder)
+    output = clean(proc.stdout + proc.stderr)
+    return proc.returncode, output.replace(prefix + "\\", "").replace(prefix + "/", "")
+
+
+def clean(text: str) -> str:
+    """Quita el ruido de Maven y las lineas vacias del reporte."""
     dropped = (
         "WARNING:",
         "Re-run Maven",
@@ -268,15 +283,82 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
         "Help 1]",
     )
     kept = []
-    for raw in (proc.stdout + proc.stderr).splitlines():
+    for raw in text.splitlines():
         line = raw.removeprefix("[ERROR] ")
         if not line.strip() or line.strip().startswith(dropped):
             continue
         if "maven.apache.org" in line:
             continue
         kept.append(line)
-    output = "\n".join(kept).strip()
-    return proc.returncode, output.replace(prefix + "\\", "").replace(prefix + "/", "")
+    return "\n".join(kept).strip()
+
+
+def root_command(argv: list[str]) -> tuple[int | None, str]:
+    """Corre una herramienta desde la raiz del repo (secretos, semgrep)."""
+    exe = shutil.which(argv[0])
+    if exe is None:
+        return None, f"[X] falta '{argv[0]}' (ver README)"
+    proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
+        [exe, *argv[1:]],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return proc.returncode, clean(proc.stdout + proc.stderr)
+
+
+def show(code: int | None, output: str, ok: str) -> int:
+    """Traduce el resultado de una herramienta a codigo de estado."""
+    if code is None:
+        print(output)
+        return 2
+    if code != 0:
+        print(output)
+        return 1
+    print(f"  {ok}")
+    return 0
+
+
+def skip_warning(reason: str, origin: str) -> None:
+    """Aviso no bloqueante cuando se omite el pre-commit a proposito."""
+    print(f"\n[AVISO] Pre-commit omitido por {origin}.")
+    print(f"  Motivo declarado: {reason}")
+    print("  Esto NO es una aprobacion.")
+    print("  Pide confirmacion del skip al humano, dile lo que vas a permitir")
+    print("  y el porque antes de hacerlo.")
+
+
+def write_skip(reason: str) -> int:
+    """Deja un permiso de un solo uso para el proximo commit."""
+    if not (ROOT / ".git").is_dir():
+        print("[X] No es un repositorio git.")
+        return 2
+    SKIP_FILE.write_text(json.dumps({"reason": reason, "created": time.time()}), encoding="utf-8")
+    skip_warning(reason, "--skip")
+    print("\n  El proximo `git commit` no ejecuta linters (un solo uso, 10 minutos).")
+    return 0
+
+
+def consume_skip() -> bool:
+    """Consume el permiso si existe y no caduco. True = commit permitido."""
+    if not SKIP_FILE.exists():
+        return False
+    try:
+        data = json.loads(SKIP_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    SKIP_FILE.unlink(missing_ok=True)
+    if time.time() - float(data.get("created", 0)) > SKIP_TTL:
+        print("\n[AVISO] El skip caduco; se ejecutan los linters igual.")
+        return False
+    reason = str(data.get("reason", "sin motivo declarado"))
+    with SKIP_LOG.open("a", encoding="utf-8") as log:
+        log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}\t{reason}\n")
+    skip_warning(reason, "--skip")
+    print("\n  Commit permitido sin linters. Queda en .git/lint-skip.log")
+    return True
 
 
 def go_cover(cmd: Command, lang: Lang) -> tuple[int | None, str]:
@@ -307,12 +389,11 @@ def execute(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str
     return run(cmd, lang, files)
 
 
-def report(lang: Lang, files: list[str], fix: bool) -> int:
+def report(lang: Lang, files: list[str], fix: tuple[Command, ...] = ()) -> int:
     """Corre el linter. 0 limpio, 1 problemas, 2 herramienta ausente."""
     print(f"\n== {lang.name} ({len(files)} archivo(s)) ==")
-    if fix:
-        for cmd in lang.fix:
-            run(cmd, lang, files)
+    for cmd in fix:
+        run(cmd, lang, files)
     status = 0
     for cmd in lang.check:
         if not should_run(cmd, lang, files):
@@ -336,6 +417,57 @@ AUDIT: dict[str, Command] = {
 }
 
 
+def security(langs: list[str]) -> int:
+    """Secretos, patrones inseguros y dependencias vulnerables."""
+    status = 0
+
+    print("\n== secretos (gitleaks) ==")
+    code, output = root_command(
+        ["gitleaks", "detect", "--source", ".", "--no-git", "--redact", "--no-banner"]
+    )
+    status = max(status, show(code, output, "sin secretos"))
+
+    print("\n== patrones inseguros (semgrep p/ci) ==")
+    code, output = root_command(
+        [
+            "semgrep",
+            "--config",
+            "p/ci",
+            "--error",
+            "--quiet",
+            "--exclude",
+            "node_modules",
+            "--exclude",
+            "dist",
+            "--exclude",
+            "coverage",
+            "--exclude",
+            "target",
+            ".",
+        ]
+    )
+    status = max(status, show(code, output, "sin hallazgos"))
+
+    for name in langs:
+        lang = next(lg for lg in LANGS if lg.name == name)
+        if name == "go":
+            print("\n== gosec (Go) ==")
+            cmd = Command(
+                [
+                    "golangci-lint",
+                    "run",
+                    "--default=none",
+                    "--enable=gosec",
+                    "--output.text.print-issued-lines=false",
+                ]
+            )
+            status = max(status, show(*run(cmd, lang, []), "sin hallazgos"))
+        elif name == "java":
+            print("\n== java: semgrep p/ci + IllegalCatch (sin spotbugs: no lee bytecode 25)")
+
+    return max(status, audit(langs))
+
+
 def audit(langs: list[str]) -> int:
     """Busca vulnerabilidades conocidas en las dependencias de cada lenguaje."""
     status = 0
@@ -347,9 +479,7 @@ def audit(langs: list[str]) -> int:
             if not req.exists():
                 print("  sin requirements.txt: nada que auditar")
                 continue
-            code, output = run(
-                Command(["pip-audit", "-r", "requirements.txt"]), lang, []
-            )
+            code, output = run(Command(["pip-audit", "-r", "requirements.txt"]), lang, [])
         elif name == "java":
             print("  OWASP dependency-check no corre en el hook; usa")
             print("  mvn org.owasp:dependency-check-maven:check")
@@ -382,40 +512,46 @@ def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
     return by_lang, banned
 
 
-def main() -> int:
-    """Punto de entrada: corre los linters y resume el resultado."""
+def parse_args() -> argparse.Namespace:
+    """Lee las banderas de la linea de comandos."""
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("files", nargs="*", help="archivos concretos (por defecto todo)")
     parser.add_argument(
-        "files", nargs="*", help="archivos concretos (por defecto todo)"
+        "--unsafe",
+        action="store_true",
+        help="con --fix: incluye arreglos que pueden cambiar comportamiento",
     )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--staged", action="store_true", help="solo lo que esta en stage"
-    )
+    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
     group.add_argument(
         "--audit", action="store_true", help="busca vulnerabilidades en dependencias"
     )
-    args = parser.parse_args()
+    group.add_argument(
+        "--security", action="store_true", help="secretos, patrones inseguros y dependencias"
+    )
+    group.add_argument(
+        "--skip",
+        nargs="?",
+        const="sin motivo declarado",
+        metavar="MOTIVO",
+        help="permite el proximo commit sin linters (de un solo uso)",
+    )
+    return parser.parse_args()
 
-    files = expand(args.files) if args.files else candidates(args.staged)
-    by_lang, banned = classify(files)
 
-    if not by_lang and not banned:
-        print("Nada que revisar.")
-        return 0
-
-    if args.audit:
-        return audit(sorted(by_lang))
-
+def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: list[str]) -> int:
+    """Corre los linters de cada lenguaje y resume el resultado."""
     status = 1 if banned else 0
     if banned:
         print("\n== estructura ==")
         print("\n".join(banned))
 
+    fixers = args.fix or args.unsafe
     for lang in LANGS:
         if lang.name in by_lang:
-            status = max(status, report(lang, by_lang[lang.name], args.fix))
+            commands = lang.fix_unsafe if args.unsafe else lang.fix
+            status = max(status, report(lang, by_lang[lang.name], commands if fixers else ()))
 
     if status == 2:
         print("\nFalta una herramienta. Instalala y reintenta (ver README).")
@@ -425,6 +561,28 @@ def main() -> int:
         return 1
     print("\nTodo limpio.")
     return 0
+
+
+def main() -> int:
+    """Punto de entrada: decide el modo y delega."""
+    args = parse_args()
+
+    if args.skip is not None:
+        return write_skip(args.skip)
+    if args.staged and consume_skip():
+        return 0
+
+    files = expand(args.files) if args.files else candidates(args.staged)
+    by_lang, banned = classify(files)
+    if not by_lang and not banned:
+        print("Nada que revisar.")
+        return 0
+
+    if args.audit:
+        return audit(sorted(by_lang))
+    if args.security:
+        return security(sorted(by_lang))
+    return lint_all(args, by_lang, banned)
 
 
 if __name__ == "__main__":

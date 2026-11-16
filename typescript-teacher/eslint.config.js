@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import jsdoc from "eslint-plugin-jsdoc";
+import security from "eslint-plugin-security";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 
@@ -12,13 +13,15 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
-    plugins: { jsdoc, "simple-import-sort": simpleImportSort },
+    plugins: { jsdoc, security, "simple-import-sort": simpleImportSort },
     rules: {
       complexity: ["error", 8],
       "max-depth": ["error", 3],
       "max-lines-per-function": ["error", { max: 40, skipBlankLines: true, skipComments: true }],
       "max-params": ["error", 4],
       "no-console": "off",
+      ...security.configs.recommended.rules,
+      "security/detect-object-injection": "off",
       "simple-import-sort/exports": "error",
       "simple-import-sort/imports": "error",
       "@typescript-eslint/await-thenable": "error",

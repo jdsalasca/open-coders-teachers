@@ -51,6 +51,9 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --fix` | aplica arreglos automáticos y vuelve a revisar |
 | `python tools/lint.py --staged` | solo lo que está en el índice (lo usa el hook) |
 | `python tools/lint.py --audit` | vulnerabilidades conocidas en dependencias |
+| `python tools/lint.py --security` | secretos, patrones inseguros y dependencias |
+| `python tools/lint.py --skip "motivo"` | permite el próximo commit sin linters (un solo uso) |
+| `python tools/lint.py --fix --unsafe` | arreglos que pueden cambiar comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
 
@@ -151,6 +154,40 @@ todas las capas.
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
+
+## Seguridad
+
+```powershell
+python tools/lint.py --security   # gitleaks + semgrep + gosec + auditoría de deps
+python tools/lint.py --audit      # solo dependencias
+```
+
+| Capa | Herramienta | Qué busca |
+|---|---|---|
+| Secretos | `gitleaks` | claves, tokens y credenciales filtradas |
+| Patrones inseguros | `semgrep --config p/ci` | inyección, deserialización, supply-chain en CI |
+| Go | `gosec` | crypto débil, path traversal, TLS inseguro |
+| Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
+| Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
+| Dependencias | `npm audit`, `govulncheck`, `pip-audit` | CVEs conocidas |
+
+Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
+propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron
+fijando los SHA y descargando el binario antes de instalarlo.
+
+## Skip de emergencia
+
+Si un agente necesita saltarse el hook, **primero pide permiso al humano** y
+explica qué reglas va a permitir y por qué:
+
+```powershell
+python tools/lint.py --skip "motivo concreto"
+git commit -m "..."    # pasa una vez, con aviso no bloqueante
+```
+
+El permiso caduca en 10 minutos, es de un solo uso y queda en
+`.git/lint-skip.log`. El aviso recuerda explícitamente que hay que pedir
+confirmación humana antes de hacerlo.
 
 ## Antipatrones
 

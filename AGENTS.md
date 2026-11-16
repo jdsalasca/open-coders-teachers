@@ -8,7 +8,10 @@ considerar la tarea terminada. No hay excepciones y no se ignoran warnings.
 ```powershell
 python tools/lint.py             # revisa todo el repo
 python tools/lint.py --fix       # aplica arreglos automáticos y vuelve a revisar
+python tools/lint.py --fix --unsafe  # incluye arreglos que cambian comportamiento
 python tools/lint.py --audit     # vulnerabilidades en dependencias (requiere red)
+python tools/lint.py --security  # secretos, patrones inseguros y dependencias
+python tools/lint.py --skip "motivo"  # permite el próximo commit sin linters
 python tools/lint.py <carpeta>   # revisa una carpeta (ej. React-teacher)
 python tools/lint.py <archivos>  # revisa solo esos archivos
 ```
@@ -16,6 +19,26 @@ python tools/lint.py <archivos>  # revisa solo esos archivos
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
 que está en stage: **un commit con violaciones se rechaza** y devuelve el
 reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push.
+
+## Skip de emergencia (solo con permiso humano)
+
+Si un commit es urgente y el linter está bloqueando por algo que no puedes
+arreglar en ese momento:
+
+1. **Pide confirmación al humano antes de hacerlo.** Explícale qué reglas vas a
+   permitir, qué archivos entran y por qué no puedes corregirlos ahora.
+2. Solo con su aprobación explícita:
+
+```powershell
+python tools/lint.py --skip "motivo concreto del skip"
+git commit -m "..."        # el hook muestra el aviso y deja pasar ESTE commit
+```
+
+El permiso es de **un solo uso**, caduca en 10 minutos y queda registrado en
+`.git/lint-skip.log`. El aviso que imprime el hook es no bloqueante y dice:
+*"Pide confirmación del skip al humano, dile lo que vas a permitir y el porqué
+antes de hacerlo."* No es una autorización retroactiva: si el agente lo usó sin
+preguntar, el commit se revisa y se corrige igual.
 
 ## TDD: primero el test
 
