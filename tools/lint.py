@@ -657,6 +657,12 @@ def go_project(project: Project, fix: bool) -> int:
     return show(*exec_external(argv, project.folder), "sin hallazgos")
 
 
+def java_project(project: Project) -> int:
+    """Semgrep (p/java) como baseline de seguridad: no requiere Maven."""
+    argv = ["semgrep", "--config", "p/java", "--error", "--quiet", "."]
+    return show(*exec_external(argv, project.folder), "sin hallazgos")
+
+
 def python_project(project: Project, fix: bool) -> int:
     """Ruff con el baseline portable."""
     files = relative(project.files, project.folder)
@@ -675,8 +681,7 @@ def run_project(project: Project, root: Path, fix: bool) -> int:
         return go_project(project, fix)
     if project.kind == "python":
         return python_project(project, fix)
-    print("  [X] Java detectado: sin baseline portable, corre mvn en el proyecto.")
-    return 2
+    return java_project(project)
 
 
 def portable(path: Path, fix: bool) -> int:

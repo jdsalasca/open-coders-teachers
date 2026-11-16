@@ -172,7 +172,7 @@ el nombre de las carpetas:
 | `package.json` | ESLint + Stylelint + dependency-cruiser (ciclos) |
 | `go.mod` | golangci-lint (sin reglas de capas) |
 | `pyproject.toml` | ruff |
-| `pom.xml` | avisa que no hay baseline portable |
+| `pom.xml` | Semgrep `p/java` (seguridad; no arquitectura) |
 
 Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y
 salía con 0: solo conocía sus cinco carpetas. Ahora, si encuentra archivos pero
@@ -185,8 +185,8 @@ duplicados de SCSS y ciclos entre módulos. Los tests quedan exentos de los
 límites de tamaño.
 
 Límites conocidos: no ejecuta `tsc` ni los tests del proyecto externo (necesita
-sus dependencias), y Java solo se advierte. Un resultado `2` significa "no pude
-verificar", nunca "está limpio".
+sus dependencias). Java se revisa con Semgrep: seguridad sí, arquitectura y
+estilo no. Un resultado `2` significa "no pude verificar", nunca "está limpio".
 
 ## Seguridad
 
