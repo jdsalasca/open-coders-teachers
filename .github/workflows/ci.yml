@@ -23,7 +23,7 @@ jobs:
           python-version: "3.13"
 
       - name: Herramientas Python
-        run: pip install ruff mypy import-linter pytest pytest-cov pip-audit semgrep
+        run: pip install ruff mypy import-linter pytest pytest-cov hypothesis pip-audit semgrep
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -53,6 +53,12 @@ jobs:
 
       - name: Presupuesto de bundle (React)
         run: npm run size --prefix React-teacher
+
+      - name: E2E y accesibilidad (React)
+        run: |
+          cd React-teacher
+          npx playwright install --with-deps chromium
+          npm run e2e
 
       - name: Escaneres y govulncheck
         run: |

@@ -3,7 +3,7 @@
 from app.domain.task import Task, TaskRepositoryPort
 
 
-class InMemoryTaskRepositoryPort(TaskRepositoryPort):
+class InMemoryTaskRepository(TaskRepositoryPort):
     """Repositorio volatil para ejemplos y pruebas."""
 
     def __init__(self) -> None:

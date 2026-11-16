@@ -157,6 +157,8 @@ Reglas de dependencia:
 - **Docs**: markdownlint y enlaces locales se validan en cada commit.
 - **Nombres**: `ls-lint` (py/go snake_case, java/tsx PascalCase).
 - **Java**: PMD caza metodos/campos privados sin usar (`UnusedPrivate*`).
+- **Property tests**: una propiedad por funcion pura (Hypothesis, fast-check, quick, jqwik).
+- **E2E**: `npm run e2e` en React (Playwright + axe) antes de tocar la vista.
 
 ## Cómo leer el reporte
 

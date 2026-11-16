@@ -15,3 +15,7 @@ coverage.out
 
 .coverage
 .opencode/lint-plugin.log
+playwright-report/
+test-results/
+blob-report/
+Java-teacher/.jqwik-database

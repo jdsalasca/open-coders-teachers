@@ -290,7 +290,7 @@ sepa dónde mirar.
 
 | Herramienta | Instalación |
 |---|---|
-| Python 3.13 + `ruff`, `mypy`, `import-linter`, `pip-audit` | `uv tool install ruff mypy import-linter pip-audit` |
+| Python 3.13 + `ruff`, `mypy`, `import-linter`, `pytest`, `hypothesis` | `uv tool install ruff mypy import-linter pip-audit` / `pip install pytest pytest-cov hypothesis` |
 | Node 24+ | `winget install OpenJS.NodeJS.LTS` |
 | Go 1.27 + `golangci-lint` + `govulncheck` | `winget install GoLang.Go` / `winget install GolangCI.golangci-lint` / `go install golang.org/x/vuln/cmd/govulncheck@latest` |
 | Java 25 + Maven | `winget install EclipseAdoptium.Temurin.25.JDK` / `winget install Apache.Maven` |
@@ -313,6 +313,19 @@ herramienta**. El agente ve el problema en el mismo turno, sin esperar al commit
   Stylelint) y omite tests, tipos, capas y cobertura: Python ~0.2 s, React ~5 s.
 - El commit sigue ejecutando la suite completa; el plugin es feedback temprano,
   no un reemplazo del hook.
+
+## Property tests y E2E
+
+- **Property-based tests** en los cinco lenguajes: Hypothesis (Python),
+  fast-check (TS/React), `testing/quick` (Go) y jqwik (Java). No prueban un caso:
+  prueban una propiedad para cientos de entradas.
+- **E2E con accesibilidad real**: Playwright + axe-core sobre la app renderizada.
+  Un `alt` faltante o un contraste bajo que el linter estático no ve, sí lo ve
+  axe.
+
+```powershell
+cd React-teacher; npm run e2e      # requiere npx playwright install chromium
+```
 
 ## Mutation testing
 
@@ -339,6 +352,8 @@ está configurado; quedan documentados como pendientes.
 |---|---|
 | Mensajes de commit convencionales | `commitlint` en `.githooks/commit-msg` |
 | Mutantes sobrevivientes | Stryker, semanal |
+| Property tests | Hypothesis, fast-check, testing/quick, jqwik |
+| Accesibilidad renderizada | Playwright + axe-core |
 | Enlaces y tablas rotas | `markdownlint` + `check_links.py` |
 | Nombres fuera de convención | `ls-lint` |
 | Supply-chain del CI | CodeQL (JS/TS y Python) |

@@ -100,6 +100,8 @@ catálogo de antipatrones para la revisión humana.
 | Tests rápidos y aislados | runners nativos | 5 carpetas | automático |
 | Refactorizar con la red verde | hook corre tests en cada commit | 5 carpetas | automático |
 | Tests que detectan cambios | Stryker (mutación, mínimo 80%) | TS, React | automático (semanal) |
+| Propiedades sobre ejemplos | Hypothesis, fast-check, quick, jqwik | 5 lenguajes | automático |
+| Accesibilidad renderizada | Playwright + axe-core | React | automático (CI) |
 | Test que realmente afirma | `B011` (`assert False`), revisión | Python | parcial |
 
 ## Lo que ningún linter ve

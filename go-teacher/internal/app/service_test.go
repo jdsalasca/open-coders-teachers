@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"testing"
+	"testing/quick"
 
 	"teachers/goteacher/internal/app"
 	"teachers/goteacher/internal/domain"
@@ -30,6 +31,16 @@ func TestAddGuardaLaTarea(t *testing.T) {
 	}
 	if len(service.List()) != 1 {
 		t.Fatalf("quiero 1 tarea, hay %d", len(service.List()))
+	}
+}
+
+func TestAddConservaTitulo(t *testing.T) {
+	f := func(title string) bool {
+		service := app.NewService(&fakeRepo{})
+		return service.Add(title).Title == title
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Fatal(err)
 	}
 }
 

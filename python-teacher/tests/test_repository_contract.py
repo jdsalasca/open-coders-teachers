@@ -1,7 +1,7 @@
 """Contrato del puerto: todo adaptador debe cumplirlo."""
 
 from app.domain.task import Task, TaskRepositoryPort
-from app.infrastructure.memory import InMemoryTaskRepositoryPort
+from app.infrastructure.memory import InMemoryTaskRepository
 
 
 def verificar_contrato(repository: TaskRepositoryPort) -> None:
@@ -17,4 +17,4 @@ def verificar_contrato(repository: TaskRepositoryPort) -> None:
 
 def test_memoria_cumple_el_contrato() -> None:
     """El adaptador en memoria respeta el puerto."""
-    verificar_contrato(InMemoryTaskRepositoryPort())
+    verificar_contrato(InMemoryTaskRepository())
