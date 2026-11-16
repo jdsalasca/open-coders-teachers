@@ -181,7 +181,7 @@ el nombre de las carpetas:
 | `package.json` | ESLint + Stylelint + dependency-cruiser (ciclos) |
 | `go.mod` | golangci-lint (sin reglas de capas) |
 | `pyproject.toml` | ruff |
-| `pom.xml` | Semgrep `p/java` (seguridad; no arquitectura) |
+| `pom.xml` | Semgrep `p/java` + CodeQL Java (autobuild) |
 
 Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y
 salía con 0: solo conocía sus cinco carpetas. Ahora, si encuentra archivos pero
@@ -218,7 +218,7 @@ python tools/lint.py --audit      # solo dependencias
 | Go | `gosec` | crypto débil, path traversal, TLS inseguro |
 | Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
 | Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
-| Dependencias | `npm audit`, `govulncheck`, `pip-audit` | CVEs conocidas |
+| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **Dependabot** | CVEs conocidas (Java incluido) |
 
 Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
 propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron
@@ -350,7 +350,7 @@ python tools/lint.py --mutation          # ambos
 cd React-teacher; npm run mutation       # uno solo
 ```
 
-Java usa PIT con bytecode 21 (JDK 25). Corre semanalmente en `.github/workflows/mutation.yml` y rompe si el puntaje
+Java usa PIT con bytecode 21 (JDK 25). Corre en PRs que tocan `src/` y semanalmente en `.github/workflows/mutation.yml` y rompe si el puntaje
 baja de 80%. Python (`mutmut`) no soporta Windows nativo y Java (PIT) todavía no
 está configurado; quedan documentados como pendientes.
 
@@ -364,7 +364,7 @@ está configurado; quedan documentados como pendientes.
 | Accesibilidad renderizada | Playwright + axe-core |
 | Enlaces y tablas rotas | `markdownlint` + `check_links.py` |
 | Nombres fuera de convención | `ls-lint` |
-| Supply-chain del CI | CodeQL (JS/TS y Python) |
+| Supply-chain del CI | CodeQL (JS/TS, Python, Go y Java) |
 | Bundle inflado | `size-limit` en React (120 kB) |
 | Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |
 | Decisiones de arquitectura | `docs/adr/` + gate `check_adr.py` |

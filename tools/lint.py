@@ -678,6 +678,54 @@ def mutation(langs: list[str]) -> int:
     return status
 
 
+def repo_slug() -> str | None:
+    """owner/repo del remoto de GitHub, si existe."""
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],  # noqa: S607 - git en el PATH
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    match = re.search(r"github\.com[:/]([^/]+/[^/]+?)(?:\.git)?$", result.stdout.strip())
+    return match.group(1) if match else None
+
+
+def dependabot_alerts() -> tuple[int | None, str]:
+    """Alertas abiertas de Dependabot (cubre todos los ecosistemas, Java incluido)."""
+    slug = repo_slug()
+    if slug is None:
+        return None, "[X] no encontre un remoto de GitHub para consultar alertas"
+    try:
+        result = subprocess.run(  # noqa: S603 - argumentos fijos
+            ["gh", "api", f"repos/{slug}/dependabot/alerts?state=open&per_page=100"],  # noqa: S607 - gh en el PATH
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None, "[X] falta gh (GitHub CLI) o no respondio"
+    if result.returncode != 0:
+        return 1, f"[X] gh no pudo consultar alertas: {result.stderr.strip()}"
+    try:
+        alerts = json.loads(result.stdout or "[]")
+    except ValueError:
+        return 1, "[X] respuesta inesperada de gh"
+    if not alerts:
+        return 0, ""
+    lines = []
+    for alert in alerts:
+        package = alert.get("dependency", {}).get("package", {}).get("name", "?")
+        severity = alert.get("security_advisory", {}).get("severity", "?")
+        path = alert.get("dependency", {}).get("manifest_path", "")
+        lines.append(f"  {package} [{severity}] {path}")
+    return 1, "\n".join(lines)
+
+
 def audit(langs: list[str]) -> int:
     """Busca vulnerabilidades conocidas en las dependencias de cada lenguaje."""
     status = 0
@@ -691,8 +739,7 @@ def audit(langs: list[str]) -> int:
                 continue
             code, output = run(Command(["pip-audit", "-r", "requirements.txt"]), lang, [])
         elif name == "java":
-            print("  OWASP dependency-check no corre en el hook; usa")
-            print("  mvn org.owasp:dependency-check-maven:check")
+            print("  cubierto por Dependabot (ver abajo)")
             continue
         else:
             code, output = run(AUDIT[name], lang, [])
@@ -705,7 +752,10 @@ def audit(langs: list[str]) -> int:
                 print(output)
         else:
             print("  sin vulnerabilidades conocidas")
-    return status
+
+    print("\n== dependencias (Dependabot) ==")
+    code, output = dependabot_alerts()
+    return max(status, show(code, output, "sin alertas abiertas"))
 
 
 def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
