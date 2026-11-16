@@ -1,6 +1,7 @@
 package edu.teachers.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -16,22 +17,13 @@ public abstract class TaskRepositoryContractTest {
   protected abstract TaskRepositoryPort repository();
 
   @Test
-  void guardaYLista() {
+  void creaIdsUnicos() {
     TaskRepositoryPort repo = repository();
-    Task task = new Task(1, "uno", false);
 
-    repo.save(task);
+    Task first = repo.create("uno");
+    Task second = repo.create("dos");
 
-    assertEquals(List.of(task), repo.all());
-  }
-
-  @Test
-  void reemplazaPorId() {
-    TaskRepositoryPort repo = repository();
-    repo.save(new Task(1, "uno", false));
-
-    repo.save(new Task(1, "dos", true));
-
-    assertEquals(List.of(new Task(1, "dos", true)), repo.all());
+    assertNotEquals(first.id(), second.id());
+    assertEquals(List.of(first, second), repo.all());
   }
 }

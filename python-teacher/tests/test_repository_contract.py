@@ -1,17 +1,16 @@
 """Contrato del puerto: todo adaptador debe cumplirlo."""
 
-from app.domain.task import Task, TaskRepositoryPort
+from app.domain.task import TaskRepositoryPort
 from app.infrastructure.memory import InMemoryTaskRepository
 
 
 def verificar_contrato(repository: TaskRepositoryPort) -> None:
     """Comportamiento minimo que cualquier adaptador debe respetar."""
-    repository.save(Task(id=1, title="uno"))
-    assert repository.all() == [Task(id=1, title="uno")]
+    first = repository.create("uno")
+    second = repository.create("dos")
 
-    repository.save(Task(id=1, title="dos"))
-    assert repository.all() == [Task(id=1, title="dos")]
-
+    assert first.id != second.id
+    assert [task.id for task in repository.all()] == [first.id, second.id]
     assert repository.all() is not repository.all()
 
 

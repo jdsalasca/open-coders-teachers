@@ -1,5 +1,7 @@
 """Pruebas del caso de uso y del adaptador en memoria."""
 
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from app.application.service import TaskService
@@ -19,17 +21,6 @@ def test_add_guarda_la_tarea() -> None:
     assert service.list_all() == [task]
 
 
-def test_add_usa_max_mas_uno() -> None:
-    """Con ids dispersos no colisiona: 1 y 3 dan 4."""
-    repository = InMemoryTaskRepository()
-    repository.save(Task(id=1, title="uno"))
-    repository.save(Task(id=3, title="tres"))
-
-    task = TaskService(repository).add("cuatro")
-
-    assert task.id == 4
-
-
 def test_add_rechaza_titulo_vacio() -> None:
     """Un titulo en blanco es un error de dominio."""
     with pytest.raises(ValueError, match="titulo"):
@@ -42,9 +33,9 @@ def test_task_rechaza_id_invalido() -> None:
         Task(id=0, title="uno")
 
 
-def test_save_reemplaza_por_id() -> None:
-    """Guardar dos veces el mismo id deja una sola tarea."""
-    repository = InMemoryTaskRepository()
-    repository.save(Task(id=1, title="uno"))
-    repository.save(Task(id=1, title="dos"))
-    assert repository.all() == [Task(id=1, title="dos")]
+def test_ids_unicos_en_concurrente() -> None:
+    """Cincuenta creaciones en paralelo no repiten id."""
+    service = _service()
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        tasks = list(pool.map(lambda index: service.add(f"t{index}"), range(50)))
+    assert len({task.id for task in tasks}) == 50

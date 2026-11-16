@@ -1,20 +1,26 @@
 """Adaptador en memoria: implementa el puerto TaskRepositoryPort."""
 
+import threading
+
 from app.domain.task import Task, TaskRepositoryPort
 
 
 class InMemoryTaskRepository(TaskRepositoryPort):
-    """Repositorio volatil para ejemplos y pruebas."""
+    """Repositorio volatil, seguro entre hilos."""
 
     def __init__(self) -> None:
         """Arranca sin tareas."""
         self._tasks: list[Task] = []
+        self._lock = threading.Lock()
 
-    def save(self, task: Task) -> None:
-        """Reemplaza por id o agrega al final."""
-        self._tasks = [item for item in self._tasks if item.id != task.id]
-        self._tasks.append(task)
+    def create(self, title: str) -> Task:
+        """Asigna un id unico y guarda la tarea."""
+        with self._lock:
+            task = Task(id=len(self._tasks) + 1, title=title)
+            self._tasks.append(task)
+            return task
 
     def all(self) -> list[Task]:
         """Devuelve una copia en orden de insercion."""
-        return list(self._tasks)
+        with self._lock:
+            return list(self._tasks)

@@ -2,6 +2,7 @@ package edu.teachers.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import edu.teachers.domain.Task;
@@ -24,15 +25,16 @@ class TaskServiceTest {
   }
 
   @Test
-  void usaMaxMasUnoConIdsDispersos() {
-    InMemoryTaskRepository repository = new InMemoryTaskRepository();
-    repository.save(new Task(1, "uno", false));
-    repository.save(new Task(3, "tres", false));
-    TaskService service = new TaskService(repository);
+  void creaIdsUnicos() {
+    TaskService service = new TaskService(new InMemoryTaskRepository());
 
-    Task task = service.add("cuatro");
+    Task first = service.add("uno");
+    Task second = service.add("dos");
+    Task third = service.add("tres");
 
-    assertEquals(4, task.id());
+    assertNotEquals(first.id(), second.id());
+    assertNotEquals(second.id(), third.id());
+    assertEquals(3, service.list().size());
   }
 
   @Test

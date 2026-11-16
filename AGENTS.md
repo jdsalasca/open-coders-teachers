@@ -163,8 +163,8 @@ Reglas de dependencia:
 - **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
 - **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y Dependabot para Maven.
 - **Null-safety**: `Objects.requireNonNull` (Java), errores (Go), Pydantic (Python), `no-unsafe-*` (TS).
-- **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python; el dominio mantiene invariantes.
-- **IDs**: `max(id)+1` en los ejemplos; en producción los asigna la base de datos.
+- **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python, Zod en TypeScript/React; el dominio mantiene invariantes.
+- **IDs**: los asigna el repositorio (`AtomicInteger`, lock o mutex) y nunca el caso de uso; en producción los asigna la base de datos.
 
 ## Cómo leer el reporte
 

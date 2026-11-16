@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -10,11 +11,12 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	service := app.NewService(&memory.Repository{})
-	if _, err := service.Add("estudiar"); err != nil {
+	if _, err := service.Add(ctx, "estudiar"); err != nil {
 		log.Fatal(err)
 	}
-	tasks, err := service.List()
+	tasks, err := service.List(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

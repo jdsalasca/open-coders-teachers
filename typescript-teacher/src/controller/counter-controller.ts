@@ -1,4 +1,5 @@
-import { type CounterState, increment, initialCounter } from "../model/counter.js";
+import { type CounterState, increment } from "../model/counter.js";
+import { parseCounter } from "../model/counter-schema.js";
 import type { CounterView } from "../view/counter-view.js";
 
 /** Controlador: conecta el modelo con la vista. */
@@ -10,10 +11,14 @@ export interface CounterController {
  * Crea el controlador del contador.
  *
  * @param view - Vista ya montada.
+ * @param initial - estado inicial sin validar.
  * @returns Controlador listo para arrancar.
  */
-export function createCounterController(view: CounterView): CounterController {
-  let state: CounterState = initialCounter();
+export function createCounterController(
+  view: CounterView,
+  initial: unknown = { value: 0 },
+): CounterController {
+  let state: CounterState = parseCounter(initial);
 
   return {
     start(): void {

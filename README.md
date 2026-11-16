@@ -163,8 +163,8 @@ todas las capas.
 | Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
 | Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
 | Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) |
-| Validación de entrada | Pydantic + invariantes | `unknown`/`no-unsafe-*` | `no-unsafe-*` | errores + título | Bean Validation + `Objects.requireNonNull` |
-| IDs únicos | `max+1` + test | — | — | `max+1` + test | `max+1` + test |
+| Validación de entrada | Pydantic + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | errores + título | Bean Validation + `Objects.requireNonNull` |
+| IDs únicos | repositorio + lock + test | - | - | repositorio + mutex + test | repositorio + `AtomicInteger` + test |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
 
 ## Auditar un proyecto externo
@@ -382,7 +382,7 @@ está configurado; quedan documentados como pendientes.
 | Java | `Objects.requireNonNull`, invariantes en records, Jakarta Bean Validation en el controller con el validador invocado y testeado |
 | Go | puerto con `error`, título validado, errores propagados, sin `panic` |
 | Python | invariantes en el dominio + Pydantic en la frontera + `requirements.txt` auditado |
-| TS/React | `no-unsafe-*`, sin `as` (`consistent-type-assertions: never`), `unknown` en fronteras |
+| TS/React | `no-unsafe-*`, sin `as` (`consistent-type-assertions: never`), `unknown` en fronteras y validación con Zod |
 
 ## Notas de robustez
 

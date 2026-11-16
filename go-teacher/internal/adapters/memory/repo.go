@@ -1,27 +1,43 @@
 // Package memory implementa el puerto de tareas en memoria.
 package memory
 
-import "teachers/goteacher/internal/domain"
+import (
+	"context"
+	"sync"
 
-// Repository guarda tareas en un slice.
+	"teachers/goteacher/internal/domain"
+)
+
+// Repository guarda tareas en un slice protegido por mutex.
 type Repository struct {
+	mu    sync.Mutex
 	tasks []domain.Task
 }
 
-// Save reemplaza por ID o agrega al final.
-func (r *Repository) Save(task domain.Task) error {
-	for index, item := range r.tasks {
-		if item.ID == task.ID {
-			r.tasks[index] = task
-			return nil
-		}
+// Add asigna un id unico y guarda la tarea de forma concurrente.
+func (r *Repository) Add(ctx context.Context, title string) (domain.Task, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.Task{}, err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	task, err := domain.NewTask(len(r.tasks)+1, title)
+	if err != nil {
+		return domain.Task{}, err
 	}
 	r.tasks = append(r.tasks, task)
-	return nil
+	return task, nil
 }
 
 // All devuelve una copia de las tareas.
-func (r *Repository) All() ([]domain.Task, error) {
+func (r *Repository) All(ctx context.Context) ([]domain.Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	out := make([]domain.Task, len(r.tasks))
 	copy(out, r.tasks)
 	return out, nil

@@ -20,16 +20,13 @@ public class TaskService {
   }
 
   /**
-   * Crea una tarea con id unico y la guarda.
+   * Crea una tarea; el repositorio asigna el id.
    *
    * @param title titulo de la tarea
    * @return tarea creada
    */
   public Task add(String title) {
-    int nextId = repository.all().stream().mapToInt(Task::id).max().orElse(0) + 1;
-    Task task = new Task(nextId, title, false);
-    repository.save(task);
-    return task;
+    return repository.create(title);
   }
 
   /**

@@ -1,6 +1,6 @@
 # ADR-0009 — Null-safety, validación en fronteras e IDs únicos
 
-- **Estado:** aceptada
+- **Estado:** reemplazada por ADR-0010 (IDs, `context` y Zod)
 - **Fecha:** 2026-11-16
 
 ## Contexto

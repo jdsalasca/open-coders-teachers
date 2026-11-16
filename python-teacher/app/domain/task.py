@@ -21,10 +21,10 @@ class Task:
 
 
 class TaskRepositoryPort(Protocol):
-    """Puerto: lo que la aplicacion necesita para guardar tareas."""
+    """Puerto: el repositorio asigna el id y lista tareas."""
 
-    def save(self, task: Task) -> None:
-        """Guarda o actualiza una tarea."""
+    def create(self, title: str) -> Task:
+        """Crea una tarea con id unico."""
 
     def all(self) -> list[Task]:
         """Devuelve todas las tareas."""

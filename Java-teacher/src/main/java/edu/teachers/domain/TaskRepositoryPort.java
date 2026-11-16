@@ -2,15 +2,16 @@ package edu.teachers.domain;
 
 import java.util.List;
 
-/** Puerto de persistencia: lo implementa la infraestructura. */
+/** Puerto de persistencia: la infraestructura asigna el id. */
 public interface TaskRepositoryPort {
 
   /**
-   * Guarda o actualiza una tarea.
+   * Crea una tarea con id unico.
    *
-   * @param task tarea a guardar
+   * @param title titulo de la tarea
+   * @return tarea creada
    */
-  void save(Task task);
+  Task create(String title);
 
   /**
    * Devuelve todas las tareas.
