@@ -558,8 +558,20 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def dirty_count() -> int:
+    """Cuantos archivos tienen cambios sin commitear."""
+    proc = subprocess.run(
+        ["git", "status", "--porcelain"],  # noqa: S607 - git esta en el PATH
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return len([line for line in proc.stdout.splitlines() if line.strip()])
+
+
 def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: list[str]) -> int:
     """Corre los linters de cada lenguaje y resume el resultado."""
+    before = dirty_count() if (args.fix or args.unsafe) else 0
     status = 1 if banned else 0
     if banned:
         print("\n== estructura ==")
@@ -571,6 +583,8 @@ def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: li
             commands = lang.fix_unsafe if args.unsafe else lang.fix
             status = max(status, report(lang, by_lang[lang.name], commands if fixers else ()))
 
+    if args.fix or args.unsafe:
+        print(f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s).")
     if status == 2:
         print("\nFalta una herramienta. Instalala y reintenta (ver README).")
         return 2
