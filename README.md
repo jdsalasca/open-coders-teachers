@@ -111,6 +111,10 @@ main.go:54:1: File is not properly formatted (gofmt)
 Problemas de lint. Arreglo automatico: python tools/lint.py --fix
 ```
 
+## Vista del proyecto React
+
+![React teacher](docs/react-teacher.png)
+
 ## Reglas de React (SCSS)
 
 - Estilos **solo** en `.scss` modules: un `.css` en `React-teacher` es error.
