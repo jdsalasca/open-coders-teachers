@@ -13,6 +13,7 @@ python tools/lint.py --audit     # vulnerabilidades en dependencias (requiere re
 python tools/lint.py --security  # secretos, patrones inseguros y dependencias
 python tools/lint.py --project "ruta"  # audita un proyecto externo
 python tools/lint.py --json      # resumen estructurado
+python tools/lint.py --mutation  # mutation testing (Stryker)
 python tools/lint.py --fast <archivo>  # un archivo, sin tests ni capas
 python tools/lint.py --skip "motivo"  # permite el próximo commit sin linters
 python tools/lint.py <carpeta>   # revisa una carpeta (ej. React-teacher)

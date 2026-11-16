@@ -10,7 +10,9 @@
     "dup": "jscpd src",
     "fix": "eslint . --fix && stylelint \"**/*.scss\" --fix && prettier --write .",
     "lint": "eslint . --format=unix",
+    "mutation": "stryker run",
     "preview": "vite preview",
+    "size": "vite build && size-limit",
     "styles": "stylelint \"**/*.scss\"",
     "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
@@ -22,6 +24,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@size-limit/file": "^14.3.0",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",
@@ -42,11 +47,18 @@
     "jsdom": "^31.0.1",
     "knip": "^6.45.1",
     "prettier": "^3.10.1",
+    "size-limit": "^14.3.0",
     "stylelint": "^18.0.0",
     "stylelint-config-standard-scss": "^18.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
-  }
+  },
+  "size-limit": [
+    {
+      "path": "dist/assets/*.js",
+      "limit": "120 kB"
+    }
+  ]
 }

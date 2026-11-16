@@ -49,6 +49,9 @@ jobs:
           npm ci --no-fund --no-audit --prefix React-teacher
           npm ci --no-fund --no-audit --prefix tools/node
 
+      - name: Presupuesto de bundle (React)
+        run: npm run size --prefix React-teacher
+
       - name: Escaneres y govulncheck
         run: |
           # Los binarios se instalan desde $RUNNER_TEMP: si se descomprimen en el

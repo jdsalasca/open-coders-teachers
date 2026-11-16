@@ -99,6 +99,7 @@ catálogo de antipatrones para la revisión humana.
 | Un test antes del código | cobertura mínima por carpeta | 5 carpetas | automático (piso) |
 | Tests rápidos y aislados | runners nativos | 5 carpetas | automático |
 | Refactorizar con la red verde | hook corre tests en cada commit | 5 carpetas | automático |
+| Tests que detectan cambios | Stryker (mutación, mínimo 80%) | TS, React | automático (semanal) |
 | Test que realmente afirma | `B011` (`assert False`), revisión | Python | parcial |
 
 ## Lo que ningún linter ve

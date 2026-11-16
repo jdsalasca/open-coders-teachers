@@ -452,6 +452,12 @@ SLOP_RULES = (
     ),
     ((".py",), re.compile(r"@unittest\.skip\b"), "test omitido (unittest.skip)", None),
     ((".py",), re.compile(r"#\s*noqa"), "noqa", " - "),
+    (
+        (".tsx",),
+        re.compile(r"#[0-9a-fA-F]{3,8}\b"),
+        "color hex en TSX (usa tokens SCSS)",
+        None,
+    ),
     ((".java",), re.compile(r"@Disabled\b"), "test deshabilitado (@Disabled)", None),
     ((".go",), re.compile(r"//\s*nolint"), "nolint", "//"),
 )
@@ -607,6 +613,31 @@ def security(langs: list[str]) -> int:
             print("\n== java: semgrep p/ci + IllegalCatch (sin spotbugs: no lee bytecode 25)")
 
     return max(status, audit(langs))
+
+
+MUTATION: dict[str, Command] = {
+    "react": Command(["stryker", "run"], requires="stryker.conf.json"),
+    "typescript": Command(["stryker", "run"], requires="stryker.conf.json"),
+}
+
+
+def mutation(langs: list[str]) -> int:
+    """Mutation testing: mide si los tests detectan cambios en el codigo."""
+    status = 0
+    ran = 0
+    for name in langs:
+        cmd = MUTATION.get(name)
+        if cmd is None:
+            continue
+        lang = next(lg for lg in LANGS if lg.name == name)
+        ran += 1
+        print(f"\n== mutacion: {name} ==")
+        status = max(status, show(*run(cmd, lang, []), "mutantes cazados"))
+    if not ran:
+        print("Sin mutation testing configurado para el lote.")
+        print("Configurados: react y typescript (stryker.conf.json).")
+        return 2
+    return status
 
 
 def audit(langs: list[str]) -> int:
@@ -868,6 +899,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="secretos, patrones inseguros y dependencias",
     )
+    group.add_argument("--mutation", action="store_true", help="mutation testing (Stryker)")
     parser.add_argument(
         "--project",
         metavar="RUTA",
@@ -989,15 +1021,54 @@ def external_mode(args: argparse.Namespace) -> int | None:
     return 2
 
 
+def staged_lines() -> int:
+    """Lineas cambiadas en el indice (suma de altas y bajas)."""
+    try:
+        out = subprocess.run(
+            ["git", "diff", "--cached", "--numstat"],  # noqa: S607 - git en el PATH
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
+        return 0
+    total = 0
+    for line in out.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+            total += int(parts[0]) + int(parts[1])
+    return total
+
+
+def special_mode(args: argparse.Namespace, by_lang: dict[str, list[str]]) -> int | None:
+    """Modos globales que no dependen del lote de archivos."""
+    if not (args.audit or args.security or args.mutation):
+        return None
+    langs = sorted(by_lang) or [lang.name for lang in LANGS]
+    if args.audit:
+        return audit(langs)
+    if args.security:
+        return security(langs)
+    return mutation(langs)
+
+
 def repo_mode(args: argparse.Namespace) -> int:
     """Modo repo: las cinco carpetas de este proyecto."""
     files = expand(args.files) if args.files else candidates(args.staged)
+    if args.staged:
+        changed = staged_lines()
+        if changed > 400:
+            print(f"[aviso] commit grande: {changed} lineas cambiadas. Considera partirlo.")
     by_lang, banned = classify(files)
-    everything = [lang.name for lang in LANGS]
-    if args.audit:
-        return audit(sorted(by_lang) or everything)
-    if args.security:
-        return security(sorted(by_lang) or everything)
+    mode = special_mode(args, by_lang)
+    if mode is not None:
+        return mode
     if not by_lang and not banned:
         if args.json:
             print(
@@ -1021,9 +1092,13 @@ def validate(args: argparse.Namespace) -> str | None:
         return "--unsafe solo tiene sentido junto a --fix"
     if args.project and (args.audit or args.security):
         return "--project no se combina con --audit ni --security"
-    if args.fast and (args.audit or args.security or args.project or args.skip is not None):
+    if args.fast and (
+        args.audit or args.security or args.mutation or args.project or args.skip is not None
+    ):
         return "--fast solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
-    if args.json and (args.audit or args.security or args.project or args.skip is not None):
+    if args.json and (
+        args.audit or args.security or args.mutation or args.project or args.skip is not None
+    ):
         return "--json solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
     return None
 

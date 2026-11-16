@@ -57,6 +57,7 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
 | `python tools/lint.py --fast <archivo>` | solo herramientas de archivo (sin tests ni capas) |
 | `python tools/lint.py --json` | salida estructurada para agentes y scripts |
+| `python tools/lint.py --mutation` | mutation testing (Stryker, TS y React) |
 | `python tools/lint.py --unsafe` | con `--fix`: arreglos que cambian comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
@@ -298,11 +299,33 @@ herramienta**. El agente ve el problema en el mismo turno, sin esperar al commit
 - El commit sigue ejecutando la suite completa; el plugin es feedback temprano,
   no un reemplazo del hook.
 
+## Mutation testing
+
+La cobertura se puede engañar; los mutantes no. Stryker cambia el código a
+propósito y comprueba si los tests lo detectan.
+
+| Carpeta | Mutantes | Puntaje |
+|---|---|---|
+| `typescript-teacher` | 11 | **100%** |
+| `React-teacher` | 10 | **90%** |
+
+```powershell
+python tools/lint.py --mutation          # ambos
+cd React-teacher; npm run mutation       # uno solo
+```
+
+Corre semanalmente en `.github/workflows/mutation.yml` y rompe si el puntaje
+baja de 80%. Python (`mutmut`) no soporta Windows nativo y Java (PIT) todavía no
+está configurado; quedan documentados como pendientes.
+
 ## Disciplina de repositorio
 
 | Práctica | Herramienta |
 |---|---|
 | Mensajes de commit convencionales | `commitlint` en `.githooks/commit-msg` |
+| Mutantes sobrevivientes | Stryker, semanal |
+| Supply-chain del CI | CodeQL (JS/TS y Python) |
+| Bundle inflado | `size-limit` en React (120 kB) |
 | Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |
 | Decisiones de arquitectura | `docs/adr/` |
 | Cómo contribuir | `CONTRIBUTING.md` |

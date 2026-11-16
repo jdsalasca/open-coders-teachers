@@ -1,0 +1,33 @@
+name: mutation
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stryker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            typescript-teacher/package-lock.json
+            React-teacher/package-lock.json
+
+      - name: Dependencias
+        run: |
+          npm ci --no-fund --no-audit --prefix typescript-teacher
+          npm ci --no-fund --no-audit --prefix React-teacher
+
+      - name: Mutantes TypeScript
+        run: npm run mutation --prefix typescript-teacher
+
+      - name: Mutantes React
+        run: npm run mutation --prefix React-teacher

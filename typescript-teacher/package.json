@@ -6,11 +6,14 @@
     "dup": "jscpd src",
     "fix": "eslint . --fix && prettier --write .",
     "lint": "eslint . --format=unix",
+    "mutation": "stryker run",
     "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
     "dependency-cruiser": "^18.7.2",
