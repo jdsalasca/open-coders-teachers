@@ -3,6 +3,7 @@ import jsdoc from "eslint-plugin-jsdoc";
 import security from "eslint-plugin-security";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import reactRefresh from "eslint-plugin-react-refresh";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
@@ -19,6 +20,7 @@ export default tseslint.config(
     plugins: {
       jsdoc,
       security,
+      "jsx-a11y": jsxA11y,
       react,
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
@@ -30,6 +32,7 @@ export default tseslint.config(
       ...react.configs["jsx-runtime"].rules,
       ...reactHooks.configs.recommended.rules,
       ...security.configs.recommended.rules,
+      ...jsxA11y.flatConfigs.recommended.rules,
       "security/detect-object-injection": "off",
 
       // React
@@ -64,6 +67,8 @@ export default tseslint.config(
       "@typescript-eslint/await-thenable": "error",
       "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports" }],
       "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/only-throw-error": "error",
+      "@typescript-eslint/require-await": "error",
       "@typescript-eslint/no-misused-promises": "error",
 
       // Base compartida con typescript-teacher

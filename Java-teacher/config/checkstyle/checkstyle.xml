@@ -18,6 +18,7 @@
     <module name="UnusedImports"/>
     <module name="RedundantImport"/>
     <module name="AvoidStarImport"/>
+    <module name="IllegalImport"/>
 
     <!-- variables y parametros -->
     <module name="UnusedLocalVariable"/>

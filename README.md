@@ -55,6 +55,7 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --skip "motivo"` | permite el próximo commit sin linters (un solo uso) |
 | `python tools/lint.py --fix --unsafe` | arreglos que pueden cambiar comportamiento |
 | `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
+| `python tools/lint.py --unsafe` | con `--fix`: arreglos que cambian comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
 
@@ -282,6 +283,16 @@ sepa dónde mirar.
 2. Agrega un `Lang(...)` en `tools/lint.py` con sus comandos `check` y `fix`.
 3. Escribe su `AGENTS.md` con los límites y la arquitectura.
 4. `python tools/test_lint.py` y `python tools/lint.py`.
+
+## Notas de robustez
+
+- Cada comando tiene **timeout de 10 minutos**: un linter colgado no bloquea el
+  commit para siempre.
+- Si el repo no tiene `.git` (zip descargado), el runner recorre el árbol en
+  lugar de fallar.
+- El hook usa `python3` si existe y cae a `python`.
+- CI corre en **Linux y Windows**: los bugs de rutas y encoding aparecen en el
+  sistema donde se escribe el código.
 
 ## Notas
 

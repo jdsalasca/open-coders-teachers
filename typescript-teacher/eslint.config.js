@@ -51,6 +51,8 @@ export default tseslint.config(
         { selector: "objectLiteralProperty", format: null },
       ],
       "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/only-throw-error": "error",
+      "@typescript-eslint/require-await": "error",
       "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",

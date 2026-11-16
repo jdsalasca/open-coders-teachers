@@ -31,6 +31,7 @@ LOCAL_BIN = "node_modules/.bin"
 SKIP_FILE = ROOT / ".git" / "lint-skip"
 SKIP_LOG = ROOT / ".git" / "lint-skip.log"
 SKIP_TTL = 600  # segundos: un skip viejo no vale
+TIMEOUT = 600  # segundos por comando; un linter colgado no bloquea el commit
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -66,6 +67,7 @@ class Lang:
     fix: tuple[Command, ...]
     fix_unsafe: tuple[Command, ...] = ()
     banned: tuple[str, ...] = ()
+    max_file_lines: int = 0
 
 
 LANGS = (
@@ -73,6 +75,7 @@ LANGS = (
         name="python",
         folder="python-teacher",
         exts=(".py",),
+        max_file_lines=400,
         check=(
             Command(["ruff", "check", "--output-format=concise"], (".py",)),
             Command(["ruff", "format", "--check"], (".py",)),
@@ -145,6 +148,7 @@ LANGS = (
         name="go",
         folder="go-teacher",
         exts=(".go",),
+        max_file_lines=500,
         check=(
             # golangci-lint ya corre gofmt como formatter.
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
@@ -192,13 +196,17 @@ def lang_for(rel_path: str) -> str | None:
 
 def git_files(*args: str) -> list[str]:
     """Lista de archivos que devuelve git, sin vacios."""
-    out = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
-        ["git", *args, "-z"],  # noqa: S607 - git esta en el PATH
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        out = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
+            ["git", *args, "-z"],  # noqa: S607 - git esta en el PATH
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return []
     return [p for p in out.stdout.split("\0") if p]
 
 
@@ -234,6 +242,9 @@ def candidates(staged: bool) -> list[str]:
         found = git_files("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     else:
         found = git_files("ls-files", "--cached", "--others", "--exclude-standard")
+        if not found:
+            # Sin git (zip descargado) o repo vacio: recorrer el arbol.
+            found = [p.relative_to(ROOT).as_posix() for p in walk_files(ROOT)]
     # Un archivo borrado sigue en el indice hasta el commit: no se puede lintar.
     return [f for f in found if (ROOT / f).exists()]
 
@@ -261,14 +272,18 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
     if exe is None:
         return None, f"[X] falta '{cmd.argv[0]}' (ver README)"
     extra = [Path(f).relative_to(lang.folder).as_posix() for f in matching(cmd, files)]
-    proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
-        [exe, *cmd.argv[1:], *extra],
-        cwd=ROOT / lang.folder,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
+            [exe, *cmd.argv[1:], *extra],
+            cwd=ROOT / lang.folder,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, f"[X] '{cmd.argv[0]}' excedio {TIMEOUT}s"
     prefix = str(ROOT / lang.folder)
     output = clean(proc.stdout + proc.stderr)
     return proc.returncode, output.replace(prefix + "\\", "").replace(prefix + "/", "")
@@ -300,14 +315,18 @@ def root_command(argv: list[str]) -> tuple[int | None, str]:
     exe = shutil.which(argv[0])
     if exe is None:
         return None, f"[X] falta '{argv[0]}' (ver README)"
-    proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
-        [exe, *argv[1:]],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
+            [exe, *argv[1:]],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, f"[X] '{argv[0]}' excedio {TIMEOUT}s"
     output = clean(proc.stdout + proc.stderr)
     return proc.returncode, output
 
@@ -392,12 +411,30 @@ def execute(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str
     return run(cmd, lang, files)
 
 
+def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> int:
+    """Reporta archivos que exceden el maximo de lineas del lenguaje."""
+    if not lang.max_file_lines:
+        return 0
+    status = 0
+    for name in files:
+        if Path(name).suffix not in lang.exts:
+            continue
+        try:
+            total = sum(1 for _ in (base / name).open(encoding="utf-8", errors="replace"))
+        except OSError:
+            continue
+        if total > lang.max_file_lines:
+            print(f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})")
+            status = 1
+    return status
+
+
 def report(lang: Lang, files: list[str], fix: tuple[Command, ...] = ()) -> int:
     """Corre el linter. 0 limpio, 1 problemas, 2 herramienta ausente."""
     print(f"\n== {lang.name} ({len(files)} archivo(s)) ==")
     for cmd in fix:
         run(cmd, lang, files)
-    status = 0
+    status = size_check(lang, files)
     for cmd in lang.check:
         if not should_run(cmd, lang, files):
             continue
@@ -592,14 +629,18 @@ def exec_external(argv: list[str], cwd: Path) -> tuple[int | None, str]:
     exe = portable_bin(argv[0])
     if exe is None:
         return None, f"[X] falta '{argv[0]}' (instala tools/node: npm install)"
-    proc = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
-        [exe, *argv[1:]],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        proc = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
+            [exe, *argv[1:]],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, f"[X] '{argv[0]}' excedio {TIMEOUT}s"
     output = clean(proc.stdout + proc.stderr)
     return proc.returncode, output.replace(str(cwd) + os.sep, "").replace(str(cwd) + "/", "")
 
@@ -805,6 +846,17 @@ def external_target(files: list[str]) -> Path | None:
     return candidate
 
 
+def external_mode(args: argparse.Namespace) -> int | None:
+    """Corre el modo portable si la ruta apunta fuera del repo."""
+    target = external_target(args.files)
+    if target is None:
+        return None
+    if len(args.files) == 1 and target.is_dir():
+        return portable(target, args.fix or args.unsafe)
+    print("[X] ruta fuera del repo: usa --project <carpeta>")
+    return 2
+
+
 def repo_mode(args: argparse.Namespace) -> int:
     """Modo repo: las cinco carpetas de este proyecto."""
     files = expand(args.files) if args.files else candidates(args.staged)
@@ -823,22 +875,31 @@ def repo_mode(args: argparse.Namespace) -> int:
     return lint_all(args, by_lang, banned)
 
 
+def validate(args: argparse.Namespace) -> str | None:
+    """Errores de combinacion de banderas, o None si todo esta bien."""
+    if args.unsafe and not args.fix:
+        return "--unsafe solo tiene sentido junto a --fix"
+    if args.project and (args.audit or args.security):
+        return "--project no se combina con --audit ni --security"
+    return None
+
+
 def main() -> int:
     """Punto de entrada: decide el modo y delega."""
     args = parse_args()
-
+    error = validate(args)
+    if error:
+        print(f"[X] {error}")
+        return 2
     if args.skip is not None:
         return write_skip(args.skip)
     if args.staged and consume_skip():
         return 0
     if args.project:
         return portable(Path(args.project), args.fix or args.unsafe)
-    target = external_target(args.files)
-    if target is not None:
-        if len(args.files) == 1 and target.is_dir():
-            return portable(target, args.fix or args.unsafe)
-        print("[X] ruta fuera del repo: usa --project <carpeta>")
-        return 2
+    external = external_mode(args)
+    if external is not None:
+        return external
     return repo_mode(args)
 
 

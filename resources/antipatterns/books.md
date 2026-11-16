@@ -73,6 +73,16 @@ catálogo de antipatrones para la revisión humana.
 | Puertos y adaptadores | contratos de capas + composición en `main` | Python, Go, Java | automático (estructura) |
 | Lógica fuera de la vista | `vista-sin-modelo`, `modelo-aislado` | React, TS | automático |
 
+## Accesibilidad (WCAG 2.2, no es un libro pero es estándar)
+
+| Principio | Regla determinista | Dónde | Estado |
+|---|---|---|---|
+| Texto alternativo en imágenes | `jsx-a11y/alt-text` | React | automático |
+| Todo control tiene etiqueta | `jsx-a11y/label-has-associated-control`, `anchor-is-valid` | React | automático |
+| Roles y ARIA válidos | `jsx-a11y/role-*`, `aria-*` | React | automático |
+| Navegación por teclado | `jsx-a11y/no-noninteractive-tabindex`, `click-events-have-key-events` | React | automático |
+| Contraste | `scripts/check-design-contrast` (manual) | — | manual |
+
 ## The Pragmatic Programmer — Hunt & Thomas
 
 | Principio | Regla determinista | Dónde | Estado |

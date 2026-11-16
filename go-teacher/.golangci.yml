@@ -21,6 +21,7 @@ linters:
     - errorlint
     - modernize
     - depguard
+    - bodyclose
     - containedctx
     - errname
     - forcetypeassert

@@ -87,7 +87,8 @@ Nombres de archivo: `test_*.py`, `*.test.ts`, `*.test.tsx`, `*_test.go`,
 | Sin reasignar parámetros | — | no-param-reassign | no-param-reassign | — | ParameterAssignment |
 | Sin `init`/globales | — | — | — | gochecknoinits, gochecknoglobals | StaticVariableName |
 | Duplicación | — | jscpd | jscpd + stylelint | dupl | — |
-| Archivo/Clase grande | — | — | — | interfacebloat | FileLength, ClassFanOutComplexity |
+| Accesibilidad | — | — | `jsx-a11y` | — | — |
+| Archivo/Clase grande | 400 líneas | 400 | 400 | 500 | FileLength 500, ClassFanOutComplexity |
 | Dependencias | — | — | knip | — | — |
 
 Configs donde viven las reglas:
@@ -133,6 +134,7 @@ Reglas de dependencia:
 - **Dependencias**: `knip` falla con dependencias sin usar o imports que no
   están declarados en `package.json`.
 - **Funciones duplicadas**: `jscpd` falla con clones de 70+ tokens.
+- **Accesibilidad**: `jsx-a11y` (alt, labels, roles, tabindex).
 
 ## Cómo leer el reporte
 

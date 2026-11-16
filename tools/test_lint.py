@@ -1,8 +1,10 @@
-"""Autochequeo del runner: deteccion, modo portable y carpetas."""
+"""Autochequeo del runner: deteccion, portable, skip y canarios por lenguaje."""
 
 import contextlib
 import io
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -14,6 +16,18 @@ def check(condition: bool, message: str = "") -> None:
     """Falla el autochequeo si la condicion no se cumple."""
     if not condition:
         raise AssertionError(message)
+
+
+def run(argv: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Corre una herramienta y devuelve el resultado completo."""
+    return subprocess.run(
+        argv,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
 
 
 def test_detecta_cada_lenguaje() -> None:
@@ -41,7 +55,9 @@ def test_ignora_extension_y_carpeta_equivocadas() -> None:
 
 def test_clasifica_css_prohibido() -> None:
     """Un .css en React-teacher se reporta como prohibido."""
-    by_lang, banned = lint.classify(["React-teacher/src/App.css", "React-teacher/src/App.tsx"])
+    by_lang, banned = lint.classify(
+        ["React-teacher/src/App.css", "React-teacher/src/App.tsx"]
+    )
     check(list(by_lang) == ["react"])
     check(len(banned) == 1)
 
@@ -50,7 +66,13 @@ def test_expand_ignora_generados() -> None:
     """Una carpeta se expande sin entrar en node_modules ni dist."""
     files = lint.expand(["React-teacher"])
     check(bool(files))
-    check(not [f for f in files if "node_modules" in f or f.startswith("React-teacher/dist")])
+    check(
+        not [
+            f
+            for f in files
+            if "node_modules" in f or f.startswith("React-teacher/dist")
+        ]
+    )
 
 
 def test_descubre_proyecto_por_manifiesto() -> None:
@@ -72,6 +94,81 @@ def test_portable_encuentra_hallazgos() -> None:
     check(code == 1, f"esperaba hallazgos (1), obtuve {code}")
     check("max-params" in salida, "no reporto demasiados parametros")
     check("no-unused-vars" in salida, "no reporto variable sin usar")
+
+
+def test_canario_python() -> None:
+    """La config de ruff de python-teacher sigue cazando violaciones."""
+    fixture = lint.ROOT / "tools" / "fixtures" / "bad-py" / "bad.py"
+    config = lint.ROOT / "python-teacher" / "pyproject.toml"
+    proc = run(
+        [
+            "ruff",
+            "check",
+            "--config",
+            str(config),
+            "--output-format=concise",
+            str(fixture),
+        ]
+    )
+    salida = proc.stdout + proc.stderr
+    check(proc.returncode != 0, "ruff no detecto el fixture malo")
+    check("PLR0913" in salida, "no reporto demasiados parametros")
+    check("F401" in salida, "no reporto import sin usar")
+
+
+def test_canario_go() -> None:
+    """La config portable de Go sigue cazando violaciones."""
+    fixture = lint.ROOT / "tools" / "fixtures" / "bad-go"
+    config = lint.ROOT / "tools" / "go" / ".golangci.yml"
+    proc = run(
+        [
+            "golangci-lint",
+            "run",
+            "--config",
+            str(config),
+            "--output.text.print-issued-lines=false",
+        ],
+        cwd=fixture,
+    )
+    salida = proc.stdout + proc.stderr
+    check(proc.returncode != 0, "golangci-lint no detecto el fixture malo")
+    check("argument-limit" in salida, "no reporto demasiados parametros")
+
+
+def test_skip_de_un_solo_uso() -> None:
+    """El skip avisa, se consume una vez y queda en el log."""
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        lint.write_skip("prueba de skip")
+        check(lint.SKIP_FILE.exists(), "no se creo el marcador")
+        usado = lint.consume_skip()
+    check(usado, "el skip debia permitir el commit")
+    check(not lint.SKIP_FILE.exists(), "el marcador no se consumio")
+    check("Pide confirmacion" in buffer.getvalue(), "falto el aviso al humano")
+
+
+def test_skip_caducado() -> None:
+    """Un skip viejo no permite el commit."""
+    original = lint.SKIP_TTL
+    try:
+        lint.SKIP_TTL = 0
+        with contextlib.redirect_stdout(io.StringIO()):
+            lint.write_skip("viejo")
+            usado = lint.consume_skip()
+    finally:
+        lint.SKIP_TTL = original
+    check(not usado, "un skip caducado no debe pasar")
+
+
+def test_tamano_de_archivo() -> None:
+    """Un archivo que excede el maximo se reporta."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        (base / "big.py").write_text("x\n" * 10, encoding="utf-8")
+        lang = lint.Lang("x", "python-teacher", (".py",), (), (), max_file_lines=5)
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = lint.size_check(lang, ["big.py"], base=base)
+    check(code == 1, "no detecto el archivo largo")
 
 
 def test_cada_carpeta_configurada_existe() -> None:
