@@ -12,6 +12,13 @@ class Task:
     title: str
     done: bool = False
 
+    def __post_init__(self) -> None:
+        """Valida las invariantes del dominio."""
+        if self.id < 1:
+            raise ValueError("el id debe ser positivo")
+        if not self.title.strip():
+            raise ValueError("el titulo no puede estar vacio")
+
 
 class TaskRepositoryPort(Protocol):
     """Puerto: lo que la aplicacion necesita para guardar tareas."""

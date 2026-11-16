@@ -2,6 +2,7 @@ package edu.teachers.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import edu.teachers.domain.Task;
 import edu.teachers.infrastructure.persistence.InMemoryTaskRepository;
@@ -23,12 +24,27 @@ class TaskServiceTest {
   }
 
   @Test
-  void agregarIncrementaElId() {
+  void usaMaxMasUnoConIdsDispersos() {
+    InMemoryTaskRepository repository = new InMemoryTaskRepository();
+    repository.save(new Task(1, "uno", false));
+    repository.save(new Task(3, "tres", false));
+    TaskService service = new TaskService(repository);
+
+    Task task = service.add("cuatro");
+
+    assertEquals(4, task.id());
+  }
+
+  @Test
+  void rechazaTituloVacio() {
     TaskService service = new TaskService(new InMemoryTaskRepository());
 
-    service.add("uno");
+    assertThrows(IllegalArgumentException.class, () -> service.add("   "));
+  }
 
-    assertEquals(2, service.add("dos").id());
+  @Test
+  void rechazaRepositorioNulo() {
+    assertThrows(NullPointerException.class, () -> new TaskService(null));
   }
 
   @Test

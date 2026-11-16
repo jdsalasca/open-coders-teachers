@@ -14,11 +14,21 @@ func TestRepositoryCumpleContrato(t *testing.T) {
 
 func TestAllDevuelveCopia(t *testing.T) {
 	repo := &memory.Repository{}
-	repo.Save(domain.Task{ID: 1, Title: "uno"})
+	if err := repo.Save(domain.Task{ID: 1, Title: "uno"}); err != nil {
+		t.Fatal(err)
+	}
 
-	repo.All()[0].Title = "mutado"
+	tasks, err := repo.All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tasks[0].Title = "mutado"
 
-	if repo.All()[0].Title != "uno" {
+	again, err := repo.All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again[0].Title != "uno" {
 		t.Fatal("All debe devolver una copia")
 	}
 }

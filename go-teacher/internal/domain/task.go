@@ -10,6 +10,6 @@ type Task struct {
 
 // RepositoryPort es el puerto de persistencia: lo implementa la infraestructura.
 type RepositoryPort interface {
-	Save(task Task)
-	All() []Task
+	Save(task Task) error
+	All() ([]Task, error)
 }

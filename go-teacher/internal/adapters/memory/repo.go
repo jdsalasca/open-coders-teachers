@@ -9,19 +9,20 @@ type Repository struct {
 }
 
 // Save reemplaza por ID o agrega al final.
-func (r *Repository) Save(task domain.Task) {
+func (r *Repository) Save(task domain.Task) error {
 	for index, item := range r.tasks {
 		if item.ID == task.ID {
 			r.tasks[index] = task
-			return
+			return nil
 		}
 	}
 	r.tasks = append(r.tasks, task)
+	return nil
 }
 
 // All devuelve una copia de las tareas.
-func (r *Repository) All() []domain.Task {
+func (r *Repository) All() ([]domain.Task, error) {
 	out := make([]domain.Task, len(r.tasks))
 	copy(out, r.tasks)
-	return out
+	return out, nil
 }

@@ -163,6 +163,8 @@ todas las capas.
 | Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
 | Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
 | Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) |
+| Validación de entrada | Pydantic + invariantes | `unknown`/`no-unsafe-*` | `no-unsafe-*` | errores + título | Bean Validation + `Objects.requireNonNull` |
+| IDs únicos | `max+1` + test | — | — | `max+1` + test | `max+1` + test |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
 
 ## Auditar un proyecto externo
@@ -372,6 +374,15 @@ está configurado; quedan documentados como pendientes.
 | Cómo contribuir | `CONTRIBUTING.md` |
 | Reporte de seguridad | `SECURITY.md` |
 | Tests apagados o supresiones sin motivo | detector de slop del runner |
+
+## Null-safety y validación
+
+| Lenguaje | Qué se exige |
+|---|---|
+| Java | `Objects.requireNonNull`, invariantes en records, Jakarta Bean Validation en el controller con el validador invocado y testeado |
+| Go | puerto con `error`, título validado, errores propagados, sin `panic` |
+| Python | invariantes en el dominio + Pydantic en la frontera + `requirements.txt` auditado |
+| TS/React | `no-unsafe-*`, sin `as` (`consistent-type-assertions: never`), `unknown` en fronteras |
 
 ## Notas de robustez
 

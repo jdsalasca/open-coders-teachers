@@ -8,7 +8,7 @@ from app.domain.task import Task
 from app.infrastructure.memory import InMemoryTaskRepository
 
 
-@given(st.text(max_size=40))
+@given(st.text(min_size=1, max_size=40).filter(lambda value: value.strip() != ""))
 def test_add_conserva_el_titulo(title: str) -> None:
     """La tarea guardada conserva el titulo recibido."""
     service = TaskService(InMemoryTaskRepository())

@@ -81,6 +81,9 @@ linters:
         - name: unexported-return
   exclusions:
     rules:
+      - linters:
+          - gochecknoglobals
+        text: "^Err[A-Z]"
       - path: _test\.go
         linters:
           - funlen

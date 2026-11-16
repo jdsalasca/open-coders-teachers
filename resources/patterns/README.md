@@ -14,6 +14,7 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | **MVVM** | `model` / `viewmodel` / `view` | `dependency-cruiser`: `view` no importa `model`; `viewmodel` no importa `view` |
 | **Contract Test** | Python (`tests/test_repository_contract.py`), Go (`internal/testutil`), Java (`TaskRepositoryContractTest`) | el mismo test corre contra cada adaptador nuevo |
 | **DTO de salida** | `TaskView` en `application`; `TaskController` lo devuelve | ArchUnit: `..infrastructure.web..` no depende de `..domain..` |
+| **DTO de entrada validado** | `CreateTaskRequest` con Bean Validation; `CreateTaskRequest` Pydantic en Python | el controller invoca el validador; tests de payload inválido |
 | **Singleton sin estado** | beans `@Service`/`@Component`/`@RestController` | ArchUnit (se activa con Spring): solo campos `final` |
 
 ## Reglas de diseño que se hacen cumplir

@@ -1,5 +1,7 @@
 """Pruebas del caso de uso y del adaptador en memoria."""
 
+import pytest
+
 from app.application.service import TaskService
 from app.domain.task import Task
 from app.infrastructure.memory import InMemoryTaskRepository
@@ -17,11 +19,27 @@ def test_add_guarda_la_tarea() -> None:
     assert service.list_all() == [task]
 
 
-def test_add_incrementa_el_id() -> None:
-    """El segundo id es 2."""
-    service = _service()
-    service.add("uno")
-    assert service.add("dos").id == 2
+def test_add_usa_max_mas_uno() -> None:
+    """Con ids dispersos no colisiona: 1 y 3 dan 4."""
+    repository = InMemoryTaskRepository()
+    repository.save(Task(id=1, title="uno"))
+    repository.save(Task(id=3, title="tres"))
+
+    task = TaskService(repository).add("cuatro")
+
+    assert task.id == 4
+
+
+def test_add_rechaza_titulo_vacio() -> None:
+    """Un titulo en blanco es un error de dominio."""
+    with pytest.raises(ValueError, match="titulo"):
+        _service().add("   ")
+
+
+def test_task_rechaza_id_invalido() -> None:
+    """El id debe ser positivo."""
+    with pytest.raises(ValueError, match="id"):
+        Task(id=0, title="uno")
 
 
 def test_save_reemplaza_por_id() -> None:

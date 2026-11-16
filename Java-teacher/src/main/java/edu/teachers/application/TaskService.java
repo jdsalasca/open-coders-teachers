@@ -3,6 +3,7 @@ package edu.teachers.application;
 import edu.teachers.domain.Task;
 import edu.teachers.domain.TaskRepositoryPort;
 import java.util.List;
+import java.util.Objects;
 
 /** Casos de uso de tareas: depende solo del dominio. */
 public class TaskService {
@@ -12,20 +13,21 @@ public class TaskService {
   /**
    * Inyecta el puerto de persistencia.
    *
-   * @param repository puerto del dominio
+   * @param repository puerto del dominio, obligatorio
    */
   public TaskService(TaskRepositoryPort repository) {
-    this.repository = repository;
+    this.repository = Objects.requireNonNull(repository, "repository");
   }
 
   /**
-   * Crea una tarea nueva y la guarda.
+   * Crea una tarea con id unico y la guarda.
    *
    * @param title titulo de la tarea
    * @return tarea creada
    */
   public Task add(String title) {
-    Task task = new Task(repository.all().size() + 1, title, false);
+    int nextId = repository.all().stream().mapToInt(Task::id).max().orElse(0) + 1;
+    Task task = new Task(nextId, title, false);
     repository.save(task);
     return task;
   }

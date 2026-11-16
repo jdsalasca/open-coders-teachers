@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"teachers/goteacher/internal/adapters/memory"
 	"teachers/goteacher/internal/app"
@@ -10,6 +11,12 @@ import (
 
 func main() {
 	service := app.NewService(&memory.Repository{})
-	service.Add("estudiar")
-	fmt.Println(service.List())
+	if _, err := service.Add("estudiar"); err != nil {
+		log.Fatal(err)
+	}
+	tasks, err := service.List()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(tasks)
 }

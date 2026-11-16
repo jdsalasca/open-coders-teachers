@@ -27,7 +27,7 @@ jobs:
           python-version: "3.13"
 
       - name: Herramientas Python
-        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 pip-audit==2.10.1 semgrep==1.179.0
+        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 pydantic==2.11.7 pip-audit==2.10.1 semgrep==1.179.0
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -136,7 +136,7 @@ jobs:
           python-version: "3.13"
 
       - name: Herramientas Python
-        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15
+        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 pydantic==2.11.7 semgrep==1.179.0
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:

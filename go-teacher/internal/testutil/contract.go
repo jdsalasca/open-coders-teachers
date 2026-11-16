@@ -11,15 +11,30 @@ import (
 func RepositoryContract(t *testing.T, repo domain.RepositoryPort) {
 	t.Helper()
 
-	repo.Save(domain.Task{ID: 1, Title: "uno"})
-	all := repo.All()
-	if len(all) != 1 || all[0].Title != "uno" {
-		t.Fatalf("guardar no funciono: %+v", all)
+	save := func(task domain.Task) {
+		t.Helper()
+		if err := repo.Save(task); err != nil {
+			t.Fatalf("guardar fallo: %v", err)
+		}
+	}
+	all := func() []domain.Task {
+		t.Helper()
+		tasks, err := repo.All()
+		if err != nil {
+			t.Fatalf("listar fallo: %v", err)
+		}
+		return tasks
 	}
 
-	repo.Save(domain.Task{ID: 1, Title: "dos"})
-	all = repo.All()
-	if len(all) != 1 || all[0].Title != "dos" {
-		t.Fatalf("no reemplazo por id: %+v", all)
+	save(domain.Task{ID: 1, Title: "uno"})
+	assertSingle(t, all(), "uno")
+	save(domain.Task{ID: 1, Title: "dos"})
+	assertSingle(t, all(), "dos")
+}
+
+func assertSingle(t *testing.T, tasks []domain.Task, title string) {
+	t.Helper()
+	if len(tasks) != 1 || tasks[0].Title != title {
+		t.Fatalf("quiero una tarea %q, hay %+v", title, tasks)
 	}
 }

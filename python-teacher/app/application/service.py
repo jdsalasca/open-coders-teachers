@@ -11,8 +11,10 @@ class TaskService:
         self._repository = repository
 
     def add(self, title: str) -> Task:
-        """Crea una tarea nueva y la persiste."""
-        task = Task(id=len(self._repository.all()) + 1, title=title)
+        """Crea una tarea con id unico y la persiste."""
+        existing = self._repository.all()
+        next_id = max((task.id for task in existing), default=0) + 1
+        task = Task(id=next_id, title=title)
         self._repository.save(task)
         return task
 

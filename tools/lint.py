@@ -1211,6 +1211,17 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
         markdown = ["markdownlint", *md, "--config", ".markdownlint.json"]
         checks.append(("docs (markdownlint)", markdown + (["--fix"] if fix else [])))
         checks.append(("docs (enlaces)", ["python", "tools/check_links.py", *md]))
+    policy_exts = (".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".java")
+    policy = [
+        f for f in files if Path(f).suffix in policy_exts and not f.startswith("tools/fixtures/")
+    ]
+    if policy:
+        checks.append(
+            (
+                "politica (semgrep)",
+                ["semgrep", "--config", ".semgrep/rules.yml", "--error", "--quiet", *policy],
+            )
+        )
     checks.append(("nombres (ls-lint)", ["ls-lint"]))
 
     for label, argv in checks:
