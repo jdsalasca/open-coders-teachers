@@ -24,15 +24,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # JS/TS y Python no necesitan build. Java y Go requieren autobuild:
-        # se agregan cuando haya codigo de aplicacion que analizar.
-        language: [javascript-typescript, python]
+        # JS/TS y Python no necesitan build; Go usa autobuild.
+        include:
+          - language: javascript-typescript
+            build-mode: ${{ matrix.build-mode }}
+          - language: python
+            build-mode: ${{ matrix.build-mode }}
+          - language: go
+            build-mode: autobuild
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: github/codeql-action/init@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
       - uses: github/codeql-action/analyze@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
         with:
           category: "/language:${{ matrix.language }}"

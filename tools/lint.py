@@ -87,6 +87,7 @@ LANGS = (
                     "pytest",
                     "--cov=app",
                     "--cov-report=term-missing",
+                    "--cov-report=xml",
                     "--cov-fail-under=60",
                 ],
                 requires="tests",
@@ -407,6 +408,7 @@ def go_cover(cmd: Command, lang: Lang) -> tuple[int | None, str]:
         ),
         0.0,
     )
+    run(Command(["go", "tool", "cover", "-html=coverage.out", "-o", "coverage.html"]), lang, [])
     if total < 50.0:
         return 1, f"{report}\n[!] cobertura total {total:.1f}% < 50%"
     return 0, f"  cobertura Go: {total:.1f}%"
@@ -632,6 +634,7 @@ def security(langs: list[str]) -> int:
 
 
 MUTATION: dict[str, Command] = {
+    "java": Command(["mvn", "-q", "-B", "pitest:mutationCoverage"], requires="pom.xml"),
     "react": Command(["stryker", "run"], requires="stryker.conf.json"),
     "typescript": Command(["stryker", "run"], requires="stryker.conf.json"),
 }

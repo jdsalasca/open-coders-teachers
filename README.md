@@ -57,7 +57,7 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
 | `python tools/lint.py --fast <archivo>` | solo herramientas de archivo (sin tests ni capas) |
 | `python tools/lint.py --json` | salida estructurada para agentes y scripts |
-| `python tools/lint.py --mutation` | mutation testing (Stryker, TS y React) |
+| `python tools/lint.py --mutation` | mutation testing (Stryker TS/React, PIT Java) |
 | `python tools/lint.py --unsafe` | con `--fix`: arreglos que cambian comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
@@ -197,6 +197,13 @@ Límites conocidos: no ejecuta `tsc` ni los tests del proyecto externo (necesita
 sus dependencias). Java se revisa con Semgrep: seguridad sí, arquitectura y
 estilo no. Un resultado `2` significa "no pude verificar", nunca "está limpio".
 
+## Política propia (Semgrep)
+
+`.semgrep/rules.yml` convierte convenciones del repo en bloqueo: la vista no
+llama `fetch`/`axios`, `localStorage` no sale de su capa, `process.env` solo en
+el composition root, `System.out` solo en `Main`, y `print`/`fmt.Print` solo en
+entrypoints. Se ejecuta con `--security` y en CI.
+
 ## Seguridad
 
 ```powershell
@@ -293,7 +300,7 @@ sepa dónde mirar.
 | Python 3.13 + `ruff`, `mypy`, `import-linter`, `pytest`, `hypothesis` | `uv tool install ruff mypy import-linter pip-audit` / `pip install pytest pytest-cov hypothesis` |
 | Node 24+ | `winget install OpenJS.NodeJS.LTS` |
 | Go 1.27 + `golangci-lint` + `govulncheck` | `winget install GoLang.Go` / `winget install GolangCI.golangci-lint` / `go install golang.org/x/vuln/cmd/govulncheck@latest` |
-| Java 25 + Maven | `winget install EclipseAdoptium.Temurin.25.JDK` / `winget install Apache.Maven` |
+| JDK 25 + Maven (bytecode 21) | `winget install EclipseAdoptium.Temurin.25.JDK` / `winget install Apache.Maven` |
 
 ## Añadir un lenguaje
 
@@ -336,13 +343,14 @@ propósito y comprueba si los tests lo detectan.
 |---|---|---|
 | `typescript-teacher` | 11 | **100%** |
 | `React-teacher` | 10 | **90%** |
+| `Java-teacher` | 10 | **80%** |
 
 ```powershell
 python tools/lint.py --mutation          # ambos
 cd React-teacher; npm run mutation       # uno solo
 ```
 
-Corre semanalmente en `.github/workflows/mutation.yml` y rompe si el puntaje
+Java usa PIT con bytecode 21 (JDK 25). Corre semanalmente en `.github/workflows/mutation.yml` y rompe si el puntaje
 baja de 80%. Python (`mutmut`) no soporta Windows nativo y Java (PIT) todavía no
 está configurado; quedan documentados como pendientes.
 

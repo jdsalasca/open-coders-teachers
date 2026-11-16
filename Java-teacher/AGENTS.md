@@ -1,6 +1,6 @@
 # Java-teacher
 
-Java 25 + Maven. Linters: **Checkstyle**, **Spotless**, **ArchUnit**, `-Xlint:all`.
+JDK 25 + Maven (bytecode 21). Linters: **Checkstyle**, **Spotless**, **ArchUnit**, `-Xlint:all`.
 
 ```powershell
 python tools/lint.py --fix Java-teacher   # desde la raiz

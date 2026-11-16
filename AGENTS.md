@@ -159,6 +159,8 @@ Reglas de dependencia:
 - **Java**: PMD caza metodos/campos privados sin usar (`UnusedPrivate*`).
 - **Property tests**: una propiedad por funcion pura (Hypothesis, fast-check, quick, jqwik).
 - **E2E**: `npm run e2e` en React (Playwright + axe) antes de tocar la vista.
+- **Politica propia**: `.semgrep/rules.yml` bloquea datos en la vista, storage fuera de capa, env filtrado y prints.
+- **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
 
 ## Cómo leer el reporte
 

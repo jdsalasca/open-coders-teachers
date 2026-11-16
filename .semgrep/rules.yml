@@ -1,0 +1,82 @@
+rules:
+  - id: react-view-sin-datos
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      La vista no accede a datos: fetch/axios van en el viewmodel o en un
+      servicio del modelo.
+    paths:
+      include:
+        - "React-teacher/src/view/**"
+    pattern-either:
+      - pattern: fetch(...)
+      - pattern: axios.$METHOD(...)
+
+  - id: storage-fuera-de-su-capa
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      localStorage/sessionStorage es infraestructura: no va en la vista ni en
+      el viewmodel.
+    paths:
+      include:
+        - "React-teacher/src/view/**"
+        - "React-teacher/src/viewmodel/**"
+    pattern-either:
+      - pattern: localStorage.$METHOD(...)
+      - pattern: sessionStorage.$METHOD(...)
+
+  - id: env-solo-en-composition-root
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      process.env solo se lee en el composition root; el resto recibe la
+      configuracion como dependencia.
+    paths:
+      include:
+        - "React-teacher/src/view/**"
+        - "React-teacher/src/viewmodel/**"
+        - "React-teacher/src/model/**"
+        - "typescript-teacher/src/view/**"
+        - "typescript-teacher/src/controller/**"
+        - "typescript-teacher/src/model/**"
+    pattern: process.env.$KEY
+
+  - id: java-system-out
+    languages: [java]
+    severity: ERROR
+    message: >-
+      System.out solo en el composition root (Main). Usa un logger o devuelve
+      el dato.
+    paths:
+      exclude:
+        - "Java-teacher/src/main/java/edu/teachers/Main.java"
+    pattern-either:
+      - pattern: System.out.println(...)
+      - pattern: System.out.print(...)
+      - pattern: System.out.printf(...)
+
+  - id: python-print
+    languages: [python]
+    severity: ERROR
+    message: >-
+      print() solo en scripts de entrada o CLI; el codigo de libreria no
+      imprime.
+    paths:
+      exclude:
+        - "tools/**"
+        - "python-teacher/tests/**"
+    pattern: print(...)
+
+  - id: go-print
+    languages: [go]
+    severity: ERROR
+    message: >-
+      fmt.Print solo en cmd/ (composition root); el resto no imprime.
+    paths:
+      exclude:
+        - "go-teacher/cmd/**"
+    pattern-either:
+      - pattern: fmt.Print(...)
+      - pattern: fmt.Println(...)
+      - pattern: fmt.Printf(...)
