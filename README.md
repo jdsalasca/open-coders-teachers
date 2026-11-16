@@ -226,6 +226,16 @@ El permiso caduca en 10 minutos, es de un solo uso y queda en
 `.git/lint-skip.log`. El aviso recuerda explícitamente que hay que pedir
 confirmación humana antes de hacerlo.
 
+## Patrones de diseño
+
+[`resources/patterns/`](resources/patterns/README.md) mapea cada patrón que el
+repo enseña (Ports & Adapters, Repository, Composition Root, MVC, MVVM, Contract
+Test) a la regla que impide implementarlo mal, y lista los antipatrones que solo
+ve un humano.
+
+Un cambio en una config de arquitectura exige un ADR: `tools/check_adr.py` lo
+verifica en cada PR.
+
 ## Cobertura de los libros
 
 Cada principio de los libros canónicos está mapeado a una regla determinista o
@@ -327,7 +337,8 @@ está configurado; quedan documentados como pendientes.
 | Supply-chain del CI | CodeQL (JS/TS y Python) |
 | Bundle inflado | `size-limit` en React (120 kB) |
 | Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |
-| Decisiones de arquitectura | `docs/adr/` |
+| Decisiones de arquitectura | `docs/adr/` + gate `check_adr.py` |
+| Patrones y su verificación | `resources/patterns/` |
 | Cómo contribuir | `CONTRIBUTING.md` |
 | Reporte de seguridad | `SECURITY.md` |
 | Tests apagados o supresiones sin motivo | detector de slop del runner |

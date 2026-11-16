@@ -17,6 +17,7 @@ linters:
     - lll
     - cyclop
     - dupl
+    - exhaustive
     - gosec
     - errorlint
     - modernize
@@ -48,11 +49,9 @@ linters:
         dominio:
           files:
             - "**/internal/domain/**"
-          deny:
-            - pkg: teachers/goteacher/internal/app
-              desc: el dominio no conoce los casos de uso
-            - pkg: teachers/goteacher/internal/adapters
-              desc: el dominio no conoce los adaptadores
+          allow:
+            - $gostd
+            - teachers/goteacher/internal/domain
         adaptadores:
           files:
             - "**/internal/adapters/**"

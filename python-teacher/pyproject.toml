@@ -19,8 +19,10 @@ select = [
   "RUF", # reglas propias de ruff
   "S",   # bandit: seguridad (eval, subprocess, secretos)
   "PT",  # estilo de pytest en tests
-  "A",   # no sombrear builtins (id, list, type...)
-  "RET", # salidas innecesarias: else tras return, asignar y retornar
+  "A",    # no sombrear builtins (id, list, type...)
+  "RET",  # salidas innecesarias: else tras return, asignar y retornar
+  "PERF", # rendimiento: listas por comprension, concatenacion en bucle
+  "C4",   # comprehensions innecesarias
 ]
 ignore = [
   "D100",     # docstring de modulo: no aporta en scripts de clase

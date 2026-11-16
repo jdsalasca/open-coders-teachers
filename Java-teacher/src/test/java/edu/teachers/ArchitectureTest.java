@@ -1,5 +1,6 @@
 package edu.teachers;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
@@ -28,6 +29,25 @@ class ArchitectureTest {
           .resideInAPackage("..application..")
           .should()
           .dependOnClassesThat()
+          .resideInAPackage("..infrastructure..");
+
+  @ArchTest
+  static final ArchRule dominio_solo_jdk_y_dominio =
+      noClasses()
+          .that()
+          .resideInAPackage("..domain..")
+          .should()
+          .dependOnClassesThat()
+          .resideOutsideOfPackages("java..", "..domain..");
+
+  @ArchTest
+  static final ArchRule repositorios_en_infraestructura =
+      classes()
+          .that()
+          .haveSimpleNameEndingWith("Repository")
+          .and()
+          .areNotInterfaces()
+          .should()
           .resideInAPackage("..infrastructure..");
 
   @ArchTest

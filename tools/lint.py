@@ -453,6 +453,20 @@ SLOP_RULES = (
     ((".py",), re.compile(r"@unittest\.skip\b"), "test omitido (unittest.skip)", None),
     ((".py",), re.compile(r"#\s*noqa"), "noqa", " - "),
     (
+        (".ts", ".tsx", ".js", ".jsx"),
+        re.compile(
+            r"^\s*//\s*(?:const|let|var|function|class|if|for|while|return|import|export)\b"
+        ),
+        "codigo comentado",
+        None,
+    ),
+    (
+        (".py",),
+        re.compile(r"^\s*#\s*(?:def|class|import|from|return|if|for|while)\b"),
+        "codigo comentado",
+        None,
+    ),
+    (
         (".tsx",),
         re.compile(r"#[0-9a-fA-F]{3,8}\b"),
         "color hex en TSX (usa tokens SCSS)",

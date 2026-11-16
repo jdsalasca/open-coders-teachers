@@ -30,6 +30,13 @@ El plugin `.opencode/plugins/lint-on-edit.ts` corre `--fast` sobre el archivo qu
 acabas de escribir y pega el reporte en el resultado de la herramienta. Si el
 reporte aparece, corrígelo antes de seguir; el commit volverá a verificar todo.
 
+## Patrones y ADR
+
+Los patrones que usa el repo están en `resources/patterns/README.md`. Si cambias
+una config de arquitectura (`eslint.config.js`, `.golangci.yml`,
+`checkstyle.xml`, `.dependency-cruiser.js`, `stryker.conf.json`,
+`pyproject.toml`, `pom.xml`), agrega un ADR en `docs/adr/` o el PR falla.
+
 ## Proyectos externos
 
 `--project <ruta>` detecta proyectos por `package.json`, `go.mod`,
