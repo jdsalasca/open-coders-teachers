@@ -5,9 +5,9 @@ on:
     - cron: "0 7 * * 1"
   pull_request:
     paths:
-      - "typescript-teacher/src/**"
-      - "React-teacher/src/**"
-      - "Java-teacher/src/**"
+      - "typescript-teacher/**"
+      - "React-teacher/**"
+      - "Java-teacher/**"
   workflow_dispatch:
 
 permissions:

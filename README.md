@@ -154,7 +154,7 @@ todas las capas.
 | Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador |
 | Dependencias muertas | — | — | `knip` | — | — |
 | Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` |
-| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | OWASP (manual) |
+| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | Dependabot / dependency-review |
 | Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo |
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |

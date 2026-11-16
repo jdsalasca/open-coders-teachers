@@ -44,4 +44,5 @@ hallazgos. Varios eran reales y uno dejaba reglas declaradas sin ejecutar.
 
 - Un commit con staging parcial falla con instrucciones claras.
 - Cambiar una config ejecuta el gate completo del proyecto (más lento, correcto).
-- El CI es reproducible: mismas versiones y binarios verificados.
+- Linux instala versiones fijas y verifica checksums; Windows y las
+  transitivas de pip siguen pendientes.

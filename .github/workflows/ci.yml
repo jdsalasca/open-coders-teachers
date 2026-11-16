@@ -49,6 +49,13 @@ jobs:
           java-version: "25"
           cache: maven
 
+      - name: Dependencias vulnerables (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: never
+
       - name: Dependencias Node
         run: |
           npm ci --no-fund --no-audit --prefix typescript-teacher
@@ -98,6 +105,7 @@ jobs:
       - name: Secretos y patrones inseguros
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LINT_SKIP_DEPENDABOT: "1"
         run: python tools/lint.py --security
 
       - name: Lint, capas y tests
@@ -149,6 +157,13 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
+
+      - name: Dependencias vulnerables (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: never
 
       - name: Dependencias Node
         run: |

@@ -582,7 +582,7 @@ def security(langs: list[str]) -> int:
     status = 0
 
     print("\n== secretos (gitleaks) ==")
-    report = Path(tempfile.gettempdir()) / "gitleaks-report.json"
+    report = Path(tempfile.gettempdir()) / f"gitleaks-{os.getpid()}.json"
     code, output = root_command(
         [
             "gitleaks",
@@ -694,33 +694,45 @@ def repo_slug() -> str | None:
     return match.group(1) if match else None
 
 
+def parse_alerts(raw: str) -> list[dict] | None:
+    """Aplana las paginas de gh --slurp; None si la respuesta no es JSON."""
+    try:
+        pages = json.loads(raw or "[]")
+    except ValueError:
+        return None
+    if pages and isinstance(pages[0], list):
+        return [alert for page in pages for alert in page]
+    return pages
+
+
 def dependabot_alerts() -> tuple[int | None, str]:
-    """Alertas abiertas de Dependabot (cubre todos los ecosistemas, Java incluido)."""
+    """Alertas abiertas de Maven via Dependabot, con paginacion."""
     slug = repo_slug()
     if slug is None:
-        return None, "[X] no encontre un remoto de GitHub para consultar alertas"
+        return 2, "[X] no encontre un remoto de GitHub para consultar alertas"
     try:
         result = subprocess.run(  # noqa: S603 - argumentos fijos
-            ["gh", "api", f"repos/{slug}/dependabot/alerts?state=open&per_page=100"],  # noqa: S607 - gh en el PATH
+            [  # noqa: S607 - gh en el PATH
+                "gh",
+                "api",
+                "--paginate",
+                "--slurp",
+                f"repos/{slug}/dependabot/alerts?state=open&per_page=100",
+            ],
             cwd=ROOT,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=180,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None, "[X] falta gh (GitHub CLI) o no respondio"
     if result.returncode != 0:
         message = result.stderr.strip()
-        allowed = "Resource not accessible" in message or "HTTP 403" in message
-        note = (
-            "[aviso] el token actual no puede leer alertas; corre --audit local"
-            if allowed
-            else f"[X] gh no pudo consultar alertas: {message}"
-        )
-        return (0 if allowed else 1), note
-    try:
-        alerts = json.loads(result.stdout or "[]")
-    except ValueError:
+        if "Resource not accessible" in message or "HTTP 403" in message:
+            return 2, "[X] el token no puede leer alertas: verificacion incompleta"
+        return 1, f"[X] gh no pudo consultar alertas: {message}"
+    alerts = parse_alerts(result.stdout)
+    if alerts is None:
         return 1, "[X] respuesta inesperada de gh"
     # Node/Go/Python ya se auditan con sus herramientas; Dependabot cubre Maven.
     maven = [
@@ -728,20 +740,23 @@ def dependabot_alerts() -> tuple[int | None, str]:
         for alert in alerts
         if str(alert.get("dependency", {}).get("manifest_path", "")).endswith("pom.xml")
     ]
-    if not maven:
-        return 0, ""
-    lines = []
-    for alert in maven:
-        package = alert.get("dependency", {}).get("package", {}).get("name", "?")
-        severity = alert.get("security_advisory", {}).get("severity", "?")
-        path = alert.get("dependency", {}).get("manifest_path", "")
-        lines.append(f"  {package} [{severity}] {path}")
-    return 1, "\n".join(lines)
+    lines = [
+        "  {} [{}] {}".format(
+            alert.get("dependency", {}).get("package", {}).get("name", "?"),
+            alert.get("security_advisory", {}).get("severity", "?"),
+            alert.get("dependency", {}).get("manifest_path", ""),
+        )
+        for alert in maven
+    ]
+    return (1, "\n".join(lines)) if lines else (0, "")
 
 
 def audit_maven() -> int:
     """Dependabot para Maven: el resto de ecosistemas tiene su scanner."""
     print("\n== dependencias Java (Dependabot) ==")
+    if os.environ.get("LINT_SKIP_DEPENDABOT") == "1":
+        print("  omitido en CI: lo cubre dependency-review en PRs")
+        return 0
     code, output = dependabot_alerts()
     if code == 0 and output.strip():
         print(output)
@@ -1228,6 +1243,11 @@ CONFIG_LANGS = {
     "React-teacher/vitest.config.ts": "react",
     "React-teacher/stryker.conf.json": "react",
     "React-teacher/playwright.config.ts": "react",
+    "typescript-teacher/package-lock.json": "typescript",
+    "typescript-teacher/.dependency-cruiser.js": "typescript",
+    "React-teacher/package-lock.json": "react",
+    "React-teacher/.dependency-cruiser.js": "react",
+    "React-teacher/.prettierrc.json": "react",
     "go-teacher/.golangci.yml": "go",
     "go-teacher/go.mod": "go",
     "Java-teacher/pom.xml": "java",
@@ -1257,9 +1277,17 @@ def staged_guard(files: list[str]) -> int | None:
 
 def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> None:
     """Un cambio de configuracion dispara el gate completo de su lenguaje."""
-    for path, language in CONFIG_LANGS.items():
-        if path in files and language not in by_lang:
-            by_lang[language] = [path]
+    changed = [path for path in files if path in CONFIG_LANGS]
+    if not changed:
+        return
+    everything = candidates(False) or []
+    for path in changed:
+        language = CONFIG_LANGS[path]
+        if language in by_lang:
+            continue
+        folder = next(lang.folder for lang in LANGS if lang.name == language)
+        project = [f for f in everything if f.startswith(folder + "/")]
+        by_lang[language] = project or [path]
 
 
 def empty_result(args: argparse.Namespace) -> int:

@@ -23,10 +23,10 @@ Node 20.
 
 ## Consecuencias
 
-- Un PR con una dependencia vulnerable falla en `--security` (Dependabot).
+- Un PR con una dependencia vulnerable falla en `dependency-review`; en local, `--audit` consulta Dependabot.
 - Un PR que toca código mutado por debajo del 80% falla.
-- El CI depende de `GH_TOKEN` para consultar alertas; el job declara
-  `security-events: read`.
+- El token de Actions no puede leer alertas (403); el CI omite Dependabot y usa
+  `dependency-review` en PRs. En local `--audit` devuelve 2 si no puede verificar.
 - CodeQL Java puede fallar si el autobuild no soporta el JDK; en ese caso se
   quita del matrix sin afectar al resto.
 

@@ -130,26 +130,36 @@ def test_canario_go() -> None:
 
 def test_skip_de_un_solo_uso() -> None:
     """El skip avisa, se consume una vez y queda en el log."""
-    buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer):
-        lint.write_skip("prueba de skip")
-        check(lint.SKIP_FILE.exists(), "no se creo el marcador")
-        usado = lint.consume_skip()
-    check(usado, "el skip debia permitir el commit")
-    check(not lint.SKIP_FILE.exists(), "el marcador no se consumio")
-    check("Pide confirmacion" in buffer.getvalue(), "falto el aviso al humano")
+    original = (lint.SKIP_FILE, lint.SKIP_LOG)
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            lint.SKIP_FILE = Path(tmp) / "skip"
+            lint.SKIP_LOG = Path(tmp) / "log"
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                lint.write_skip("prueba de skip")
+                check(lint.SKIP_FILE.exists(), "no se creo el marcador")
+                usado = lint.consume_skip()
+            check(usado, "el skip debia permitir el commit")
+            check(not lint.SKIP_FILE.exists(), "el marcador no se consumio")
+            check("Pide confirmacion" in buffer.getvalue(), "falto el aviso al humano")
+    finally:
+        lint.SKIP_FILE, lint.SKIP_LOG = original
 
 
 def test_skip_caducado() -> None:
     """Un skip viejo no permite el commit."""
-    original = lint.SKIP_TTL
+    original = (lint.SKIP_FILE, lint.SKIP_LOG, lint.SKIP_TTL)
     try:
-        lint.SKIP_TTL = 0
-        with contextlib.redirect_stdout(io.StringIO()):
-            lint.write_skip("viejo")
-            usado = lint.consume_skip()
+        with tempfile.TemporaryDirectory() as tmp:
+            lint.SKIP_FILE = Path(tmp) / "skip"
+            lint.SKIP_LOG = Path(tmp) / "log"
+            lint.SKIP_TTL = 0
+            with contextlib.redirect_stdout(io.StringIO()):
+                lint.write_skip("viejo")
+                usado = lint.consume_skip()
     finally:
-        lint.SKIP_TTL = original
+        lint.SKIP_FILE, lint.SKIP_LOG, lint.SKIP_TTL = original
     check(not usado, "un skip caducado no debe pasar")
 
 

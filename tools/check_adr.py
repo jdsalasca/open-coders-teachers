@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 
@@ -30,8 +31,10 @@ def changed_files(base: str) -> list[tuple[str, str]] | None:
     entries: list[tuple[str, str]] = []
     for line in result.stdout.splitlines():
         parts = line.split("\t")
-        if len(parts) >= 2:
-            entries.append((parts[0].strip(), parts[1].strip()))
+        if len(parts) < 2:
+            continue
+        status = parts[0].strip()
+        entries.extend((status, path.strip()) for path in parts[1:])
     return entries
 
 
@@ -44,7 +47,9 @@ def main() -> int:
         return 2
     architecture = [path for _, path in entries if any(path.endswith(name) for name in ARCH_FILES)]
     adr = [
-        path for status, path in entries if path.startswith("docs/adr/") and status.startswith("A")
+        path
+        for status, path in entries
+        if re.match(r"docs/adr/\d{4}-.+\.md$", path) and status.startswith("A")
     ]
 
     if architecture and not adr:
