@@ -74,7 +74,9 @@ jobs:
 
       - name: ADR para cambios de arquitectura
         if: github.event_name == 'pull_request'
-        run: python tools/check_adr.py origin/${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python tools/check_adr.py "origin/$BASE_REF"
 
       - name: Secretos y patrones inseguros
         run: python tools/lint.py --security
