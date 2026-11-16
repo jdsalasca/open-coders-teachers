@@ -49,14 +49,16 @@ jobs:
 
       - name: Escaneres y govulncheck
         run: |
-          curl -sSfL -o golangci-lint.tar.gz \
+          # Los binarios se instalan desde $RUNNER_TEMP: si se descomprimen en el
+          # repo, gitleaks escanea su propio README (falsos positivos).
+          curl -sSfL -o "$RUNNER_TEMP/golangci.tar.gz" \
             https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz
-          tar -xzf golangci-lint.tar.gz
-          sudo install golangci-lint-2.15.0-linux-amd64/golangci-lint /usr/local/bin/golangci-lint
-          curl -sSfL -o gitleaks.tar.gz \
+          tar -xzf "$RUNNER_TEMP/golangci.tar.gz" -C "$RUNNER_TEMP"
+          sudo install "$RUNNER_TEMP/golangci-lint-2.15.0-linux-amd64/golangci-lint" /usr/local/bin/golangci-lint
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tar.gz" \
             https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
-          tar -xzf gitleaks.tar.gz
-          sudo install gitleaks /usr/local/bin/gitleaks
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP"
+          sudo install "$RUNNER_TEMP/gitleaks" /usr/local/bin/gitleaks
           go install golang.org/x/vuln/cmd/govulncheck@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
@@ -71,4 +73,3 @@ jobs:
 
       - name: Vulnerabilidades en dependencias
         run: python tools/lint.py --audit
-
