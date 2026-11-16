@@ -35,6 +35,16 @@
     <module name="NeedBraces"/>
     <module name="LeftCurly"/>
     <module name="RightCurly"/>
+    <module name="ModifierOrder"/>
+    <module name="VisibilityModifier"/>
+    <module name="EmptyBlock"/>
+    <module name="OneStatementPerLine"/>
+    <module name="MultipleVariableDeclarations"/>
+    <module name="ArrayTypeStyle"/>
+    <module name="UpperEll"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+    <module name="EqualsAvoidNull"/>
 
     <!-- nombres -->
     <module name="TypeName"/>

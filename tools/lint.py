@@ -25,32 +25,31 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
-# Cada comando: (argv, acepta lista de archivos). Los que compilan por paquete
-# (golangci-lint, mvn) corren sobre el modulo completo.
+# file_exts vacio: el comando corre sobre el modulo completo (golangci-lint,
+# mvn). Con file_exts solo recibe archivos de esas extensiones.
 @dataclass(frozen=True)
 class Command:
-    """Un comando del linter.
+    """Un comando del linter y las extensiones que le corresponden.
 
-    takes_files: si acepta rutas de archivo como argumentos.
-    needs: extensiones que deben existir en el lote para ejecutarlo.
+    file_exts: se le pasan los archivos del lote con esas extensiones.
+    needs: solo se ejecuta si el lote trae alguna de esas extensiones.
     """
 
     argv: list[str]
-    takes_files: bool = False
-    # Solo se ejecuta si hay archivos con estas extensiones en el lote (tsc
-    # falla con TS18003 cuando el proyecto no tiene ni un .ts).
+    file_exts: tuple[str, ...] = ()
     needs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class Lang:
-    """Lenguaje, carpeta del repo y comandos de revision/arreglo."""
+    """Lenguaje, carpeta del repo, comandos y extensiones prohibidas."""
 
     name: str
     folder: str
     exts: tuple[str, ...]
     check: tuple[Command, ...]
     fix: tuple[Command, ...]
+    banned: tuple[str, ...] = ()
 
 
 LANGS = (
@@ -59,12 +58,13 @@ LANGS = (
         folder="python-teacher",
         exts=(".py",),
         check=(
-            Command(["ruff", "check", "--output-format=concise"], True),
-            Command(["ruff", "format", "--check"], True),
+            Command(["ruff", "check", "--output-format=concise"], (".py",)),
+            Command(["ruff", "format", "--check"], (".py",)),
+            Command(["mypy", "."]),
         ),
         fix=(
-            Command(["ruff", "check", "--fix"], True),
-            Command(["ruff", "format"], True),
+            Command(["ruff", "check", "--fix"], (".py",)),
+            Command(["ruff", "format"], (".py",)),
         ),
     ),
     Lang(
@@ -72,13 +72,37 @@ LANGS = (
         folder="typescript-teacher",
         exts=(".ts", ".tsx", ".js", ".jsx"),
         check=(
-            Command(["eslint", "--format=unix"], True),
-            Command(["prettier", "--check"], True),
-            Command(["tsc", "--noEmit"], False, (".ts", ".tsx")),
+            Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
+            Command(["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
+            Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
         ),
         fix=(
-            Command(["eslint", "--fix"], True),
-            Command(["prettier", "--write"], True),
+            Command(["eslint", "--fix"], (".ts", ".tsx", ".js", ".jsx")),
+            Command(["prettier", "--write"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
+        ),
+    ),
+    Lang(
+        name="react",
+        folder="React-teacher",
+        exts=(".ts", ".tsx", ".js", ".jsx", ".scss"),
+        banned=(".css",),
+        check=(
+            Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
+            Command(["stylelint"], (".scss",)),
+            Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
+            Command(["knip", "--no-config-hints"]),
+            Command(
+                ["prettier", "--check"],
+                (".ts", ".tsx", ".js", ".jsx", ".scss", ".json", ".html"),
+            ),
+        ),
+        fix=(
+            Command(["eslint", "--fix"], (".ts", ".tsx", ".js", ".jsx")),
+            Command(["stylelint", "--fix"], (".scss",)),
+            Command(
+                ["prettier", "--write"],
+                (".ts", ".tsx", ".js", ".jsx", ".scss", ".json", ".html"),
+            ),
         ),
     ),
     Lang(
@@ -90,7 +114,7 @@ LANGS = (
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
         ),
         fix=(
-            Command(["gofmt", "-w"], True),
+            Command(["gofmt", "-w"], (".go",)),
             Command(["golangci-lint", "run", "--fix"]),
         ),
     ),
@@ -107,14 +131,19 @@ LANGS = (
 )
 
 
-def lang_for(rel_path: str) -> str | None:
-    """Devuelve el lenguaje segun la carpeta y la extension del archivo."""
+def lang_by_folder(rel_path: str) -> Lang | None:
+    """Lenguaje cuya carpeta contiene el archivo."""
     parts = Path(rel_path).parts
     if not parts:
         return None
-    for lang in LANGS:
-        if parts[0] == lang.folder and Path(rel_path).suffix in lang.exts:
-            return lang.name
+    return next((lang for lang in LANGS if parts[0] == lang.folder), None)
+
+
+def lang_for(rel_path: str) -> str | None:
+    """Devuelve el lenguaje segun la carpeta y la extension del archivo."""
+    lang = lang_by_folder(rel_path)
+    if lang and Path(rel_path).suffix in lang.exts:
+        return lang.name
     return None
 
 
@@ -124,6 +153,21 @@ def git_files(*args: str) -> list[str]:
     return [p for p in out.stdout.split("\0") if p]
 
 
+SKIP = {"node_modules", ".git", "dist", "target", ".venv", "__pycache__", ".mypy_cache"}
+
+
+def expand(files: list[str]) -> list[str]:
+    """Convierte carpetas en sus archivos y descarta directorios generados."""
+    out: list[str] = []
+    for f in files:
+        path = ROOT / f
+        if path.is_dir():
+            out.extend(x.relative_to(ROOT).as_posix() for x in path.rglob("*") if x.is_file())
+        else:
+            out.append(f)
+    return [f for f in out if not SKIP & set(Path(f).parts)]
+
+
 def candidates(staged: bool) -> list[str]:
     """Archivos a revisar: staged o todos (incluye los no rastreados)."""
     if staged:
@@ -131,13 +175,27 @@ def candidates(staged: bool) -> list[str]:
     return git_files("ls-files", "--cached", "--others", "--exclude-standard")
 
 
-def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int, str]:
-    """Ejecuta un comando en la carpeta del lenguaje y filtra ruido."""
+def should_run(cmd: Command, files: list[str]) -> bool:
+    """False si el lote no trae archivos que este comando sepa revisar."""
+    gate = cmd.needs or cmd.file_exts
+    return not gate or any(Path(f).suffix in gate for f in files)
+
+
+def matching(cmd: Command, files: list[str]) -> list[str]:
+    """Archivos del lote que le corresponden a este comando."""
+    return [f for f in files if Path(f).suffix in cmd.file_exts]
+
+
+def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
+    """Ejecuta un comando en la carpeta del lenguaje y filtra ruido.
+
+    Devuelve None como codigo si la herramienta no esta instalada.
+    """
     local_bin = ROOT / lang.folder / LOCAL_BIN
     exe = shutil.which(cmd.argv[0], path=str(local_bin)) or shutil.which(cmd.argv[0])
     if exe is None:
-        return 2, f"[X] falta '{cmd.argv[0]}' (ver README)"
-    extra = [Path(f).relative_to(lang.folder).as_posix() for f in files] if cmd.takes_files else []
+        return None, f"[X] falta '{cmd.argv[0]}' (ver README)"
+    extra = [Path(f).relative_to(lang.folder).as_posix() for f in matching(cmd, files)]
     proc = subprocess.run(
         [exe, *cmd.argv[1:], *extra],
         cwd=ROOT / lang.folder,
@@ -167,26 +225,40 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int, str]:
     return proc.returncode, output.replace(prefix + "\\", "").replace(prefix + "/", "")
 
 
-def report(lang: Lang, files: list[str], fix: bool) -> bool:
-    """Corre el linter. Devuelve True si el lenguaje quedo limpio."""
+def report(lang: Lang, files: list[str], fix: bool) -> int:
+    """Corre el linter. 0 limpio, 1 problemas, 2 herramienta ausente."""
     print(f"\n== {lang.name} ({len(files)} archivo(s)) ==")
     if fix:
         for cmd in lang.fix:
             run(cmd, lang, files)
-    ok = True
+    status = 0
     for cmd in lang.check:
-        if cmd.needs and not any(Path(f).suffix in cmd.needs for f in files):
+        if not should_run(cmd, files):
             continue
         code, output = run(cmd, lang, files)
-        if code == 2:
+        if code is None:
             print(output)
-            return False
+            return 2
         if code != 0:
-            ok = False
+            status = 1
             if output:
                 print(output)
-    print("  ok" if ok else "  con problemas")
-    return ok
+    print("  ok" if status == 0 else "  con problemas")
+    return status
+
+
+def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
+    """Separa por lenguaje y detecta extensiones prohibidas."""
+    by_lang: dict[str, list[str]] = {}
+    banned: list[str] = []
+    for f in files:
+        lang = lang_by_folder(f)
+        suffix = Path(f).suffix
+        if lang and suffix in lang.banned:
+            banned.append(f"  {f}: extension prohibida, usa SCSS (.scss)")
+        elif lang and suffix in lang.exts:
+            by_lang.setdefault(lang.name, []).append(f)
+    return by_lang, banned
 
 
 def main() -> int:
@@ -198,23 +270,26 @@ def main() -> int:
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
     args = parser.parse_args()
 
-    files = args.files or candidates(args.staged)
-    by_lang: dict[str, list[str]] = {}
-    for f in files:
-        name = lang_for(f)
-        if name:
-            by_lang.setdefault(name, []).append(f)
+    files = expand(args.files) if args.files else candidates(args.staged)
+    by_lang, banned = classify(files)
 
-    if not by_lang:
+    if not by_lang and not banned:
         print("Nada que revisar.")
         return 0
 
-    clean = True
+    status = 1 if banned else 0
+    if banned:
+        print("\n== estructura ==")
+        print("\n".join(banned))
+
     for lang in LANGS:
         if lang.name in by_lang:
-            clean &= report(lang, by_lang[lang.name], args.fix)
+            status = max(status, report(lang, by_lang[lang.name], args.fix))
 
-    if not clean:
+    if status == 2:
+        print("\nFalta una herramienta. Instalala y reintenta (ver README).")
+        return 2
+    if status == 1:
         print("\nProblemas de lint. Arreglo automatico: python tools/lint.py --fix")
         return 1
     print("\nTodo limpio.")

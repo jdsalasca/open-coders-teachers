@@ -8,7 +8,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
     plugins: { jsdoc, "simple-import-sort": simpleImportSort },
     rules: {
       complexity: ["error", 8],
@@ -18,16 +21,21 @@ export default tseslint.config(
       "no-console": "off",
       "simple-import-sort/exports": "error",
       "simple-import-sort/imports": "error",
+      "@typescript-eslint/await-thenable": "error",
       "@typescript-eslint/explicit-function-return-type": ["error", { allowExpressions: true }],
       "@typescript-eslint/member-ordering": "error",
       "@typescript-eslint/naming-convention": [
         "error",
         { selector: "default", format: ["camelCase"], leadingUnderscore: "allow" },
         { selector: "variable", format: ["camelCase", "UPPER_CASE"] },
+        { selector: "function", format: ["camelCase", "PascalCase"] },
+        { selector: "import", format: ["camelCase", "PascalCase"] },
         { selector: "typeLike", format: ["PascalCase"] },
         { selector: "enumMember", format: ["UPPER_CASE", "PascalCase"] },
         { selector: "objectLiteralProperty", format: null },
       ],
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { args: "all", argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
@@ -36,14 +44,10 @@ export default tseslint.config(
         "error",
         {
           publicOnly: true,
-          require: {
-            ClassDeclaration: true,
-            FunctionDeclaration: true,
-            MethodDefinition: true,
-          },
+          require: { ClassDeclaration: true, FunctionDeclaration: true, MethodDefinition: true },
         },
       ],
-      "jsdoc/require-param": "error",
+      "jsdoc/require-param": ["error", { checkDestructured: false }],
       "jsdoc/require-returns": "error",
     },
   },

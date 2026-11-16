@@ -1,0 +1,11 @@
+@use "tokens" as tokens;
+
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: tokens.$color-ink;
+  background: tokens.$color-paper;
+}
+
+body {
+  margin: 0;
+}

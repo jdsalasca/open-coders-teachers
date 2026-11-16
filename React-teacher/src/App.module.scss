@@ -1,0 +1,19 @@
+@use "./styles/tokens" as tokens;
+
+.app {
+  display: grid;
+  gap: tokens.$space-md;
+  place-content: center;
+  min-height: 100vh;
+  padding: tokens.$space-md;
+}
+
+.title {
+  margin: 0;
+  font-size: 32px;
+}
+
+.lead {
+  margin: 0;
+  font-size: 16px;
+}

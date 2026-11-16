@@ -6,9 +6,10 @@ considerar la tarea terminada. No hay excepciones y no se ignoran warnings.
 ## Comando
 
 ```powershell
-python tools/lint.py            # revisa todo el repo
-python tools/lint.py --fix      # aplica arreglos automáticos y vuelve a revisar
-python tools/lint.py <archivos> # revisa solo esos archivos
+python tools/lint.py             # revisa todo el repo
+python tools/lint.py --fix       # aplica arreglos automáticos y vuelve a revisar
+python tools/lint.py <carpeta>   # revisa una carpeta (ej. React-teacher)
+python tools/lint.py <archivos>  # revisa solo esos archivos
 ```
 
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
@@ -17,26 +18,41 @@ reporte.
 
 ## Límites duros por lenguaje
 
-| Regla | Python | TypeScript | Go | Java |
-|---|---|---|---|---|
-| Línea máxima | 100 | 100 | 100 | 100 |
-| Parámetros por función | 4 | 4 | 4 | 4 |
-| Líneas por función | 40 | 40 | 40 | 40 |
-| Complejidad ciclomática | 8 | 8 | 8 | 8 |
-| Doc obligatoria en API pública | sí | sí | sí | sí |
-| Imports sin usar | error | error | error | error |
-| Variables/parámetros sin usar | error | error | error | error |
-| Indentación | ruff format | prettier | gofmt | spotless |
-| Orden de imports | ruff (I) | simple-import-sort | gofmt/goimports | checkstyle |
-| Orden de miembros en clase | — | member-ordering | — | DeclarationOrder |
-| Nombres | ruff (N) | naming-convention | revive | checkstyle |
+| Regla | Python | TypeScript | React | Go | Java |
+|---|---|---|---|---|---|
+| Línea máxima | 100 | 100 | 100 | 100 | formatter |
+| Parámetros por función | 4 | 4 | 4 | 4 | 4 |
+| Líneas por función | 40 stmts | 40 | 40 | 40 | 40 |
+| Complejidad ciclomática | 8 | 8 | 8 | 8 | 8 |
+| Doc obligatoria en API pública | sí | sí | sí | sí | sí |
+| Imports sin usar | error | error | error | error | error |
+| Variables/parámetros sin usar | error | error | error | error | error |
+| Tipos | mypy | tsc | tsc | compilador | compilador |
+| Indentación | ruff format | prettier | prettier | gofmt | spotless |
+| Orden de imports | ruff (I) | simple-import-sort | simple-import-sort | gofmt | google-java-format |
+| Orden de miembros en clase | — | member-ordering | member-ordering | — | DeclarationOrder |
+| Nombres | ruff (N) | naming-convention | naming-convention | revive | checkstyle |
+| Duplicación | — | — | stylelint | dupl | — |
+| Dependencias | — | — | knip | — | — |
 
 Configs donde viven las reglas:
 
-- `python-teacher/pyproject.toml` (ruff)
-- `typescript-teacher/eslint.config.js` + `.prettierrc.json`
+- `python-teacher/pyproject.toml` (ruff + mypy)
+- `typescript-teacher/eslint.config.js` + `tsconfig.json`
+- `React-teacher/eslint.config.js` + `stylelint.config.js` + `knip.json`
 - `go-teacher/.golangci.yml`
 - `Java-teacher/config/checkstyle/checkstyle.xml` + `pom.xml`
+
+## Reglas propias de React
+
+- **Estilos solo en `.scss`.** Un archivo `.css` en `React-teacher` es error.
+  El estilo inline (`style={{ ... }}`) también.
+- **Sin duplicados**: `declaration-block-no-duplicate-properties`,
+  `no-duplicate-selectors`, `shorthand-property-no-redundant-values`.
+- **`@use`, nunca `@import`** en SCSS.
+- **Tokens**: colores, espacios y radios salen de `src/styles/_tokens.scss`.
+- **Dependencias**: `knip` falla con dependencias sin usar o imports que no
+  están declarados en `package.json`.
 
 ## Cómo leer el reporte
 
@@ -49,4 +65,5 @@ no lo toques a mano: corre `--fix` primero y revisa el diff.
 - `# noqa`, `// eslint-disable`, `//nolint`, `@SuppressWarnings` sin justificar
   por escrito en el mismo archivo el motivo técnico.
 - Bajar límites del linter para que pase el código.
+- `style={{ ... }}` o archivos `.css` en React.
 - Commits con `--no-verify`.
