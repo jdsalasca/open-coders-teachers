@@ -1,0 +1,21 @@
+{
+  "name": "typescript-teacher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint . --format=unix",
+    "fix": "eslint . --fix && prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "eslint-formatter-unix": "^9.0.1",
+    "eslint-plugin-jsdoc": "^65.4.8",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "prettier": "^3.10.1",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.72.2"
+  }
+}

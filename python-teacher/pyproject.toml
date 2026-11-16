@@ -1,0 +1,51 @@
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle: formato e indentacion
+  "W",   # pycodestyle: warnings
+  "F",   # pyflakes: imports/variables sin usar
+  "I",   # isort: orden de imports
+  "N",   # pep8-naming
+  "D",   # pydocstyle: documentacion
+  "ARG", # argumentos sin usar
+  "PLR", # pylint refactor: tamano, parametros, complejidad
+  "C90", # mccabe
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+  "RUF", # reglas propias de ruff
+]
+ignore = [
+  "D100",     # docstring de modulo: no aporta en scripts de clase
+  "D203",     # conflicto con D211
+  "D213",     # conflicto con D212
+  "PLR2004",  # numeros magicos: normal en ejemplos didacticos
+  "RUF001",   # caracteres unicode ambiguos (tildes en espanol)
+  "RUF002",
+  "RUF003",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 4
+max-positional-args = 4
+max-branches = 10
+max-returns = 6
+max-statements = 40
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D103", "PLR0913"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true

@@ -1,0 +1,49 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - unparam
+    - revive
+    - funlen
+    - gocritic
+    - misspell
+    - nakedret
+    - lll
+    - cyclop
+  settings:
+    funlen:
+      lines: 40
+      statements: 40
+    lll:
+      line-length: 100
+    cyclop:
+      max-complexity: 8
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: argument-limit
+          arguments: [4]
+        - name: cognitive-complexity
+          arguments: [8]
+        - name: unused-parameter
+        - name: early-return
+        - name: comment-spacings
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
+          - lll
+          - cyclop
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt

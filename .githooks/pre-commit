@@ -1,0 +1,3 @@
+#!/bin/sh
+# Rechaza el commit si lo staged no pasa los linters del lenguaje.
+exec python tools/lint.py --staged
