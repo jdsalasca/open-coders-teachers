@@ -43,4 +43,4 @@ jobs:
           cache: maven
       - name: Mutantes Java (PIT)
         working-directory: Java-teacher
-        run: mvn -q -B pitest:mutationCoverage
+        run: mvn -q -B test-compile pitest:mutationCoverage

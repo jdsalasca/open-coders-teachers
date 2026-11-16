@@ -634,7 +634,7 @@ def security(langs: list[str]) -> int:
 
 
 MUTATION: dict[str, Command] = {
-    "java": Command(["mvn", "-q", "-B", "pitest:mutationCoverage"], requires="pom.xml"),
+    "java": Command(["mvn", "-q", "-B", "test-compile", "pitest:mutationCoverage"], requires="pom.xml"),
     "react": Command(["stryker", "run"], requires="stryker.conf.json"),
     "typescript": Command(["stryker", "run"], requires="stryker.conf.json"),
 }
