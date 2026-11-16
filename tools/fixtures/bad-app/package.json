@@ -1,0 +1,5 @@
+{
+  "name": "bad-app",
+  "private": true,
+  "type": "module"
+}

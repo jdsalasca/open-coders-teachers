@@ -1,5 +1,7 @@
-"""Autochequeo del runner: deteccion de lenguaje, clasificacion y carpetas."""
+"""Autochequeo del runner: deteccion, modo portable y carpetas."""
 
+import contextlib
+import io
 import sys
 from pathlib import Path
 
@@ -49,6 +51,27 @@ def test_expand_ignora_generados() -> None:
     files = lint.expand(["React-teacher"])
     check(bool(files))
     check(not [f for f in files if "node_modules" in f or f.startswith("React-teacher/dist")])
+
+
+def test_descubre_proyecto_por_manifiesto() -> None:
+    """Un package.json delimita un proyecto node."""
+    fixture = lint.ROOT / "tools" / "fixtures" / "bad-app"
+    projects = lint.discover(fixture)
+    check(len(projects) == 1, f"esperaba 1 proyecto, hay {len(projects)}")
+    check(projects[0].kind == "node")
+    check(any(f.endswith("bad.ts") for f in projects[0].files))
+
+
+def test_portable_encuentra_hallazgos() -> None:
+    """El baseline portable no puede devolver cero sobre el fixture malo."""
+    fixture = lint.ROOT / "tools" / "fixtures" / "bad-app"
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        code = lint.portable(fixture, False)
+    salida = buffer.getvalue()
+    check(code == 1, f"esperaba hallazgos (1), obtuve {code}")
+    check("max-params" in salida, "no reporto demasiados parametros")
+    check("no-unused-vars" in salida, "no reporto variable sin usar")
 
 
 def test_cada_carpeta_configurada_existe() -> None:

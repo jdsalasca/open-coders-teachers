@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -307,7 +308,8 @@ def root_command(argv: list[str]) -> tuple[int | None, str]:
         encoding="utf-8",
         errors="replace",
     )
-    return proc.returncode, clean(proc.stdout + proc.stderr)
+    output = clean(proc.stdout + proc.stderr)
+    return proc.returncode, output
 
 
 def show(code: int | None, output: str, ok: str) -> int:
@@ -530,6 +532,182 @@ def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
     return by_lang, banned
 
 
+PROJECTS = (
+    ("node", "package.json"),
+    ("go", "go.mod"),
+    ("java", "pom.xml"),
+    ("python", "pyproject.toml"),
+)
+TOOLS = ROOT / "tools"
+NODE_EXTS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+
+
+@dataclass(frozen=True)
+class Project:
+    """Proyecto externo detectado por su manifiesto."""
+
+    kind: str
+    folder: Path
+    files: list[str]
+
+
+def walk_files(root: Path):
+    """Recorre root sin entrar en directorios generados."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP]
+        for name in filenames:
+            yield Path(dirpath) / name
+
+
+def owner_of(path: Path, root: Path) -> tuple[str, Path] | None:
+    """Manifiesto mas cercano que contiene el archivo."""
+    current = path.parent
+    while True:
+        for kind, manifest in PROJECTS:
+            if (current / manifest).is_file():
+                return kind, current
+        if current == root:
+            return None
+        current = current.parent
+
+
+def discover(root: Path) -> list[Project]:
+    """Agrupa los archivos por proyecto (manifiesto mas cercano)."""
+    groups: dict[tuple[str, Path], list[str]] = {}
+    for path in walk_files(root):
+        found = owner_of(path, root)
+        if found:
+            groups.setdefault(found, []).append(path.as_posix())
+    return [Project(kind, folder, sorted(files)) for (kind, folder), files in groups.items()]
+
+
+def portable_bin(name: str) -> str | None:
+    """Binario del baseline portable (tools/node) o del PATH."""
+    local = TOOLS / "node" / "node_modules" / ".bin"
+    return shutil.which(name, path=str(local)) or shutil.which(name)
+
+
+def exec_external(argv: list[str], cwd: Path) -> tuple[int | None, str]:
+    """Ejecuta una herramienta externa en la carpeta del proyecto."""
+    exe = portable_bin(argv[0])
+    if exe is None:
+        return None, f"[X] falta '{argv[0]}' (instala tools/node: npm install)"
+    proc = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
+        [exe, *argv[1:]],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    output = clean(proc.stdout + proc.stderr)
+    return proc.returncode, output.replace(str(cwd) + os.sep, "").replace(str(cwd) + "/", "")
+
+
+def relative(files: list[str], folder: Path) -> list[str]:
+    """Rutas relativas al proyecto para pasarlas como argumentos."""
+    return [Path(f).relative_to(folder).as_posix() for f in files]
+
+
+def node_project(project: Project, fix: bool) -> int:
+    """ESLint + Stylelint + dependency-cruiser con el baseline portable."""
+    status = 0
+    files = project.files
+    code = [f for f in files if Path(f).suffix in NODE_EXTS]
+    styles = [f for f in files if Path(f).suffix == ".scss"]
+    root = TOOLS / "node"
+
+    if code:
+        argv = [
+            "eslint",
+            "--no-config-lookup",
+            "--config",
+            str(root / "eslint.config.js"),
+            *(["--fix"] if fix else []),
+            *relative(code, project.folder),
+        ]
+        status = max(status, show(*exec_external(argv, project.folder), "sin hallazgos"))
+
+    if styles:
+        argv = [
+            "stylelint",
+            "--config",
+            str(root / "stylelint.config.js"),
+            *(["--fix"] if fix else []),
+            *relative(styles, project.folder),
+        ]
+        status = max(status, show(*exec_external(argv, project.folder), "sin hallazgos"))
+
+    if (project.folder / "src").is_dir():
+        argv = [
+            "depcruise",
+            "src",
+            "--config",
+            str(root / "depcruise.cjs"),
+        ]
+        status = max(status, show(*exec_external(argv, project.folder), "sin ciclos"))
+    return status
+
+
+def go_project(project: Project, fix: bool) -> int:
+    """golangci-lint con el baseline portable (sin reglas de capas)."""
+    argv = ["golangci-lint", "run", "--config", str(TOOLS / "go" / ".golangci.yml")]
+    if fix:
+        argv.append("--fix")
+    return show(*exec_external(argv, project.folder), "sin hallazgos")
+
+
+def python_project(project: Project, fix: bool) -> int:
+    """Ruff con el baseline portable."""
+    files = relative(project.files, project.folder)
+    argv = ["ruff", "check", "--config", str(TOOLS / "python" / "ruff.toml")]
+    argv += ["--fix"] if fix else ["--output-format=concise"]
+    return show(*exec_external(argv + files, project.folder), "sin hallazgos")
+
+
+def run_project(project: Project, root: Path, fix: bool) -> int:
+    """Corre el baseline que corresponde al tipo de proyecto."""
+    rel = project.folder.relative_to(root).as_posix() or "."
+    print(f"\n== {project.kind}: {rel} ({len(project.files)} archivo(s)) ==")
+    if project.kind == "node":
+        return node_project(project, fix)
+    if project.kind == "go":
+        return go_project(project, fix)
+    if project.kind == "python":
+        return python_project(project, fix)
+    print("  [X] Java detectado: sin baseline portable, corre mvn en el proyecto.")
+    return 2
+
+
+def portable(path: Path, fix: bool) -> int:
+    """Audita un proyecto externo completo."""
+    root = path.resolve()
+    if not root.is_dir():
+        print(f"[X] no existe la carpeta {root}")
+        return 2
+    projects = discover(root)
+    if not projects:
+        print(f"[X] {root}: no encontre package.json, go.mod, pom.xml ni pyproject.toml")
+        print("    Sin manifiesto no hay proyecto que auditar (no es 'todo limpio').")
+        return 2
+
+    total = sum(len(project.files) for project in projects)
+    print(f"Proyectos detectados: {len(projects)} | archivos: {total}")
+    results = [run_project(project, root, fix) for project in projects]
+    unverified = results.count(2)
+
+    if 1 in results:
+        if unverified:
+            print(f"\n{unverified} proyecto(s) sin baseline portable (ver arriba).")
+        print("\nHallazgos. Arreglo automatico: --project <ruta> --fix")
+        return 1
+    if unverified:
+        print(f"\nSin hallazgos, pero {unverified} proyecto(s) no se pudieron verificar.")
+        return 2
+    print("\nTodo limpio.")
+    return 0
+
+
 def parse_args() -> argparse.Namespace:
     """Lee las banderas de la linea de comandos."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -546,7 +724,14 @@ def parse_args() -> argparse.Namespace:
         "--audit", action="store_true", help="busca vulnerabilidades en dependencias"
     )
     group.add_argument(
-        "--security", action="store_true", help="secretos, patrones inseguros y dependencias"
+        "--security",
+        action="store_true",
+        help="secretos, patrones inseguros y dependencias",
+    )
+    parser.add_argument(
+        "--project",
+        metavar="RUTA",
+        help="audita un proyecto externo detectado por manifiesto",
     )
     group.add_argument(
         "--skip",
@@ -595,6 +780,44 @@ def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: li
     return 0
 
 
+def is_inside(path: Path) -> bool:
+    """True si la ruta esta dentro de este repo."""
+    try:
+        path.resolve().relative_to(ROOT)
+        return True
+    except ValueError:
+        return False
+
+
+def external_target(files: list[str]) -> Path | None:
+    """Ruta externa unica, si el usuario apunto a otro proyecto."""
+    if not files:
+        return None
+    first = Path(files[0])
+    candidate = first.resolve() if first.is_absolute() else (ROOT / first).resolve()
+    if is_inside(candidate):
+        return None
+    return candidate
+
+
+def repo_mode(args: argparse.Namespace) -> int:
+    """Modo repo: las cinco carpetas de este proyecto."""
+    files = expand(args.files) if args.files else candidates(args.staged)
+    by_lang, banned = classify(files)
+    everything = [lang.name for lang in LANGS]
+    if args.audit:
+        return audit(sorted(by_lang) or everything)
+    if args.security:
+        return security(sorted(by_lang) or everything)
+    if not by_lang and not banned:
+        print("Nada que revisar.")
+        if args.files:
+            print("Si es un proyecto externo, usa: --project <ruta>")
+            return 2
+        return 0
+    return lint_all(args, by_lang, banned)
+
+
 def main() -> int:
     """Punto de entrada: decide el modo y delega."""
     args = parse_args()
@@ -603,18 +826,15 @@ def main() -> int:
         return write_skip(args.skip)
     if args.staged and consume_skip():
         return 0
-
-    files = expand(args.files) if args.files else candidates(args.staged)
-    by_lang, banned = classify(files)
-    if not by_lang and not banned:
-        print("Nada que revisar.")
-        return 0
-
-    if args.audit:
-        return audit(sorted(by_lang))
-    if args.security:
-        return security(sorted(by_lang))
-    return lint_all(args, by_lang, banned)
+    if args.project:
+        return portable(Path(args.project), args.fix or args.unsafe)
+    target = external_target(args.files)
+    if target is not None:
+        if len(args.files) == 1 and target.is_dir():
+            return portable(target, args.fix or args.unsafe)
+        print("[X] ruta fuera del repo: usa --project <carpeta>")
+        return 2
+    return repo_mode(args)
 
 
 if __name__ == "__main__":

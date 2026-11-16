@@ -14,7 +14,7 @@ if ($missing) {
 git config core.hooksPath .githooks
 Write-Host "Hook activo: .githooks/pre-commit"
 
-foreach ($folder in "typescript-teacher", "React-teacher") {
+foreach ($folder in "typescript-teacher", "React-teacher", "tools/node") {
     Push-Location $folder
     npm install --no-fund --no-audit
     Pop-Location

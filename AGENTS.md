@@ -11,6 +11,7 @@ python tools/lint.py --fix       # aplica arreglos automáticos y vuelve a revis
 python tools/lint.py --fix --unsafe  # incluye arreglos que cambian comportamiento
 python tools/lint.py --audit     # vulnerabilidades en dependencias (requiere red)
 python tools/lint.py --security  # secretos, patrones inseguros y dependencias
+python tools/lint.py --project "ruta"  # audita un proyecto externo
 python tools/lint.py --skip "motivo"  # permite el próximo commit sin linters
 python tools/lint.py <carpeta>   # revisa una carpeta (ej. React-teacher)
 python tools/lint.py <archivos>  # revisa solo esos archivos
@@ -19,6 +20,12 @@ python tools/lint.py <archivos>  # revisa solo esos archivos
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
 que está en stage: **un commit con violaciones se rechaza** y devuelve el
 reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push.
+
+## Proyectos externos
+
+`--project <ruta>` detecta proyectos por `package.json`, `go.mod`,
+`pyproject.toml` o `pom.xml` y aplica el baseline portable. Si el reporte dice
+que un proyecto no se pudo verificar, **no lo reportes como limpio**: dilo.
 
 ## Skip de emergencia (solo con permiso humano)
 

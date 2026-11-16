@@ -1,0 +1,54 @@
+version: "2"
+
+# Baseline portable: sin reglas de capas (cada proyecto declara las suyas).
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - unparam
+    - revive
+    - funlen
+    - gocritic
+    - misspell
+    - nakedret
+    - lll
+    - cyclop
+    - dupl
+    - gosec
+    - errorlint
+    - modernize
+  settings:
+    funlen:
+      lines: 40
+      statements: 40
+    lll:
+      line-length: 100
+    cyclop:
+      max-complexity: 8
+    dupl:
+      threshold: 100
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: argument-limit
+          arguments: [4]
+        - name: cognitive-complexity
+          arguments: [8]
+        - name: unused-parameter
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
+          - lll
+          - cyclop
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt

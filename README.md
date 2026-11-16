@@ -54,6 +54,7 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --security` | secretos, patrones inseguros y dependencias |
 | `python tools/lint.py --skip "motivo"` | permite el próximo commit sin linters (un solo uso) |
 | `python tools/lint.py --fix --unsafe` | arreglos que pueden cambiar comportamiento |
+| `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
 
@@ -154,6 +155,38 @@ todas las capas.
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
+
+## Auditar un proyecto externo
+
+```powershell
+python tools/lint.py --project C:\ruta\al\proyecto
+python tools/lint.py --project C:\ruta\al\proyecto --fix
+```
+
+También detecta la ruta externa si se la pasas directo (`python tools/lint.py
+C:\ruta`). El modo portable **descubre proyectos por manifiesto**, sin importar
+el nombre de las carpetas:
+
+| Manifiesto | Baseline |
+|---|---|
+| `package.json` | ESLint + Stylelint + dependency-cruiser (ciclos) |
+| `go.mod` | golangci-lint (sin reglas de capas) |
+| `pyproject.toml` | ruff |
+| `pom.xml` | avisa que no hay baseline portable |
+
+Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y
+salía con 0: solo conocía sus cinco carpetas. Ahora, si encuentra archivos pero
+ningún manifiesto, **falla con código 2** en vez de fingir que está limpio.
+
+El baseline portable aplica reglas de calidad, no opiniones de estilo:
+`no-unused-vars`, `no-explicit-any`, `max-params: 4`, `max-lines-per-function:
+40`, `complexity: 8`, `max-depth: 3`, reglas de React, `eslint-plugin-security`,
+duplicados de SCSS y ciclos entre módulos. Los tests quedan exentos de los
+límites de tamaño.
+
+Límites conocidos: no ejecuta `tsc` ni los tests del proyecto externo (necesita
+sus dependencias), y Java solo se advierte. Un resultado `2` significa "no pude
+verificar", nunca "está limpio".
 
 ## Seguridad
 

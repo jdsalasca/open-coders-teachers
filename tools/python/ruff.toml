@@ -1,0 +1,19 @@
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = ["E", "W", "F", "I", "N", "D", "ARG", "PLR", "C90", "B", "S", "UP", "SIM", "RUF"]
+ignore = ["D100", "D203", "D213", "PLR2004", "RUF001", "RUF002", "RUF003"]
+
+[lint.pylint]
+max-args = 4
+max-positional-args = 4
+max-branches = 10
+max-returns = 6
+max-statements = 40
+
+[lint.mccabe]
+max-complexity = 8
+
+[lint.pydocstyle]
+convention = "google"

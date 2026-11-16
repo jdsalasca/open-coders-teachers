@@ -46,6 +46,7 @@ jobs:
         run: |
           npm ci --no-fund --no-audit --prefix typescript-teacher
           npm ci --no-fund --no-audit --prefix React-teacher
+          npm ci --no-fund --no-audit --prefix tools/node
 
       - name: Escaneres y govulncheck
         run: |
