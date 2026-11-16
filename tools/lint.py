@@ -423,7 +423,7 @@ def security(langs: list[str]) -> int:
 
     print("\n== secretos (gitleaks) ==")
     code, output = root_command(
-        ["gitleaks", "detect", "--source", ".", "--no-git", "--redact", "--no-banner"]
+        ["gitleaks", "detect", "--source", ".", "--no-git", "--redact", "--no-banner", "-v"]
     )
     status = max(status, show(code, output, "sin secretos"))
 
