@@ -43,6 +43,12 @@ puede ver: requiere revisión humana y por eso está escrita aquí.
 \* Java no tiene detector de duplicación en este repo: `mvn pmd:cpd-check` es la
 vía cuando el curso lo necesite.
 
+## De los libros al linter
+
+[`books.md`](books.md) mapea cada principio de Clean Code, Refactoring,
+Code Complete, Effective Java, Clean Architecture, The Pragmatic Programmer y
+TDD a una regla concreta (o lo marca como manual).
+
 ## Cómo se leen las reglas
 
 Cada entrada trae una línea `Regla:` con el identificador exacto que aparece en

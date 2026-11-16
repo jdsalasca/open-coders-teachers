@@ -9,6 +9,9 @@
 
   <module name="FileTabCharacter"/>
   <module name="NewlineAtEndOfFile"/>
+  <module name="FileLength">
+    <property name="max" value="500"/>
+  </module>
 
   <module name="TreeWalker">
     <!-- imports -->
@@ -41,10 +44,20 @@
     <module name="ClassFanOutComplexity">
       <property name="max" value="20"/>
     </module>
+    <module name="BooleanExpressionComplexity">
+      <property name="max" value="3"/>
+    </module>
 
     <!-- estructura de la clase -->
     <module name="DeclarationOrder"/>
     <module name="NeedBraces"/>
+    <module name="ParameterAssignment"/>
+    <module name="HiddenField">
+      <property name="ignoreConstructorParameter" value="true"/>
+      <property name="ignoreSetter" value="true"/>
+    </module>
+    <module name="IllegalCatch"/>
+    <module name="IllegalThrows"/>
     <module name="LeftCurly"/>
     <module name="RightCurly"/>
     <module name="ModifierOrder"/>
@@ -65,9 +78,13 @@
     <module name="ConstantName"/>
     <module name="LocalVariableName"/>
     <module name="ParameterName"/>
+    <module name="PackageName"/>
+    <module name="StaticVariableName"/>
 
     <!-- documentacion -->
     <module name="MissingJavadocType"/>
+    <module name="SummaryJavadoc"/>
+    <module name="NonEmptyAtclauseDescription"/>
     <module name="MissingJavadocMethod">
       <property name="scope" value="public"/>
     </module>

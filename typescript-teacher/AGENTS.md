@@ -38,3 +38,5 @@ metodos.
 
 `src/**/*.test.ts` con vitest; cobertura minima 80% en `model` y `controller`.
 `npm run test` y `npm run dup` (jscpd: clones de 70+ tokens).
+- `eqeqeq`, `no-var`, `prefer-const`, `no-param-reassign`, `no-shadow`.
+- `no-non-null-assertion`, `switch-exhaustiveness-check`, `jsdoc/require-description`.

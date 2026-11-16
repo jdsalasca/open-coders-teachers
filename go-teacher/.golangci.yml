@@ -21,6 +21,15 @@ linters:
     - errorlint
     - modernize
     - depguard
+    - containedctx
+    - errname
+    - forcetypeassert
+    - gochecknoinits
+    - gochecknoglobals
+    - interfacebloat
+    - nilnil
+    - predeclared
+    - usestdlibvars
   settings:
     funlen:
       lines: 40
@@ -31,6 +40,8 @@ linters:
       max-complexity: 8
     dupl:
       threshold: 100
+    interfacebloat:
+      max: 10
     depguard:
       rules:
         dominio:
@@ -58,6 +69,10 @@ linters:
         - name: unused-parameter
         - name: early-return
         - name: comment-spacings
+        - name: context-as-argument
+        - name: package-comments
+        - name: superfluous-else
+        - name: unexported-return
   exclusions:
     rules:
       - path: _test\.go
@@ -70,3 +85,10 @@ linters:
 formatters:
   enable:
     - gofmt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(teachers/goteacher)

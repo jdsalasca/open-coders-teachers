@@ -50,3 +50,5 @@ sin comprobar los peer deps.
 `src/**/*.test.ts(x)` con vitest + jsdom; cobertura minima 80% en `model` y
 `viewmodel`. `npm run test` y `npm run dup` (jscpd). Tipos vagos (`{}`,
 `Object`, `Function`, `any`) son error.
+- `eqeqeq`, `no-var`, `prefer-const`, `no-param-reassign`, `no-shadow`.
+- `no-non-null-assertion`, `switch-exhaustiveness-check`, `jsdoc/require-description`.

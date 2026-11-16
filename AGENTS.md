@@ -80,10 +80,14 @@ Nombres de archivo: `test_*.py`, `*.test.ts`, `*.test.tsx`, `*_test.go`,
 | Variables/parámetros sin usar | error | error | error | error | error |
 | Tipos | mypy | tsc | tsc | compilador | compilador |
 | Indentación | ruff format | prettier | prettier | gofmt | spotless |
-| Orden de imports | ruff (I) | simple-import-sort | simple-import-sort | gofmt | google-java-format |
+| Orden de imports | ruff (I) | simple-import-sort | simple-import-sort | gci | google-java-format |
 | Orden de miembros en clase | — | member-ordering | member-ordering | — | DeclarationOrder |
-| Nombres | ruff (N) | naming-convention | naming-convention | revive | checkstyle |
+| Nombres | ruff (N, A) | naming-convention | naming-convention | revive, predeclared | checkstyle |
+| Doc con descripción real | D + Google | jsdoc/require-description | jsdoc/require-description | revive exported | SummaryJavadoc |
+| Sin reasignar parámetros | — | no-param-reassign | no-param-reassign | — | ParameterAssignment |
+| Sin `init`/globales | — | — | — | gochecknoinits, gochecknoglobals | StaticVariableName |
 | Duplicación | — | jscpd | jscpd + stylelint | dupl | — |
+| Archivo/Clase grande | — | — | — | interfacebloat | FileLength, ClassFanOutComplexity |
 | Dependencias | — | — | knip | — | — |
 
 Configs donde viven las reglas:

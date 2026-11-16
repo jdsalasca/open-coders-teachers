@@ -222,6 +222,21 @@ El permiso caduca en 10 minutos, es de un solo uso y queda en
 `.git/lint-skip.log`. El aviso recuerda explícitamente que hay que pedir
 confirmación humana antes de hacerlo.
 
+## Cobertura de los libros
+
+Cada principio de los libros canónicos está mapeado a una regla determinista o
+marcado como manual: [`resources/antipatterns/books.md`](resources/antipatterns/books.md).
+
+| Libro | Qué se exige |
+|---|---|
+| Clean Code | funciones ≤ 40 líneas, ≤ 4 parámetros, complejidad ≤ 8, nombres |
+| Refactoring | duplicación, código muerto, clase grande, anidamiento |
+| Code Complete | complejidad, anidamiento, alcance de variables, doc por rutina |
+| Effective Java | visibilidad, `equals`/`hashCode`, `IllegalCatch`, interfaz pequeña |
+| Clean Architecture | regla de dependencias y ciclos en las 5 carpetas |
+| Pragmatic Programmer | DRY, secretos, CI bloqueante |
+| TDD | test antes del código + cobertura mínima |
+
 ## Antipatrones
 
 El catálogo vive en [`resources/antipatterns/`](resources/antipatterns/README.md):

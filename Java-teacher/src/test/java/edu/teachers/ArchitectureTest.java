@@ -1,6 +1,7 @@
 package edu.teachers;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -28,6 +29,10 @@ class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAPackage("..infrastructure..");
+
+  @ArchTest
+  static final ArchRule sin_ciclos =
+      slices().matching("edu.teachers.(*)..").should().beFreeOfCycles();
 
   @ArchTest
   static final ArchRule infraestructura_sin_aplicacion =

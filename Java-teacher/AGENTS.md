@@ -38,3 +38,7 @@ constructores, metodos. La indentacion la decide Spotless, no la edites a mano.
 
 `*Test.java` con JUnit 5. `mvn test` corre ademas ArchUnit y JaCoCo (60% de
 lineas, excluyendo `Main`).
+
+Ademas: `SummaryJavadoc`, `NonEmptyAtclauseDescription`, `IllegalCatch`,
+`IllegalThrows`, `HiddenField`, `ParameterAssignment`, `BooleanExpressionComplexity`,
+`FileLength`, `PackageName`, `StaticVariableName`.
