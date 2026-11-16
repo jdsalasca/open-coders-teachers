@@ -9,7 +9,7 @@ mvn -q test                               # checkstyle en validate + reglas de c
 
 ## Arquitectura hexagonal
 
-```
+```text
 edu/teachers/domain/           entidades y puertos (interfaces)
 edu/teachers/application/      casos de uso
 edu/teachers/infrastructure/   adaptadores que implementan los puertos

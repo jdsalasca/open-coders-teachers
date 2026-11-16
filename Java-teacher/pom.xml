@@ -82,6 +82,9 @@
         <configuration>
           <minimumTokens>100</minimumTokens>
           <printFailingErrors>true</printFailingErrors>
+          <rulesets>
+            <ruleset>config/pmd/ruleset.xml</ruleset>
+          </rulesets>
         </configuration>
       </plugin>
 

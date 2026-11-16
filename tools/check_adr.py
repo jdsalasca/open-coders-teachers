@@ -18,8 +18,8 @@ ARCH_FILES = (
 
 def changed_files(base: str) -> list[str]:
     """Archivos cambiados entre base y HEAD."""
-    result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...HEAD"],
+    result = subprocess.run(  # noqa: S603 - git con argumentos controlados
+        ["git", "diff", "--name-only", f"{base}...HEAD"],  # noqa: S607 - git en el PATH
         capture_output=True,
         text=True,
         encoding="utf-8",

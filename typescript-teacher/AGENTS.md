@@ -10,7 +10,7 @@ python tools/lint.py --fix typescript-teacher  # desde la raiz
 
 ## Arquitectura MVC
 
-```
+```text
 src/model/        estado y reglas puras. No importa view ni controller.
 src/view/         DOM: pinta y avisa clics. No importa controller.
 src/controller/   orquesta modelo y vista.
@@ -38,5 +38,6 @@ metodos.
 
 `src/**/*.test.ts` con vitest; cobertura minima 80% en `model` y `controller`.
 `npm run test` y `npm run dup` (jscpd: clones de 70+ tokens).
+
 - `eqeqeq`, `no-var`, `prefer-const`, `no-param-reassign`, `no-shadow`.
 - `no-non-null-assertion`, `switch-exhaustiveness-check`, `jsdoc/require-description`.

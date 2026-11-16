@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import check_links
 import lint
 
 
@@ -183,6 +184,25 @@ def test_slop_exige_justificacion() -> None:
         (base / "y.py").write_text("import os  # noqa: S603 - motivo\n", encoding="utf-8")
         code, lines = lint.slop_check(["x.ts", "y.py"], base=base)
     check(code == 0, f"marco supresiones justificadas: {lines}")
+
+
+def test_check_links_detecta_rotos() -> None:
+    """Un enlace local inexistente se reporta."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        (base / "a.md").write_text("[x](no-existe.md)\n", encoding="utf-8")
+        problems = check_links.check_file(base / "a.md")
+    check(bool(problems), "no detecto el enlace roto")
+
+
+def test_check_links_acepta_validos() -> None:
+    """Un enlace a un archivo existente no es problema."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        (base / "b.md").write_text("# Hola\n", encoding="utf-8")
+        (base / "a.md").write_text("[x](b.md#hola)\n", encoding="utf-8")
+        problems = check_links.check_file(base / "a.md")
+    check(not problems, f"marco un enlace valido: {problems}")
 
 
 def test_cada_carpeta_configurada_existe() -> None:

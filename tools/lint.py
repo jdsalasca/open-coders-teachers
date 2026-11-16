@@ -154,7 +154,7 @@ LANGS = (
             # golangci-lint ya corre gofmt como formatter.
             Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
             Command(
-                ["go", "test", "./...", "-coverprofile=coverage.out"],
+                ["go", "test", "./...", "-coverpkg=./internal/...", "-coverprofile=coverage.out"],
                 requires="go.mod",
                 parser="go-cover",
             ),
@@ -173,6 +173,7 @@ LANGS = (
             Command(["mvn", "-q", "-B", "spotless:check"]),
             Command(["mvn", "-q", "-B", "checkstyle:check"]),
             Command(["mvn", "-q", "-B", "pmd:cpd-check"]),
+            Command(["mvn", "-q", "-B", "pmd:check"]),
             Command(["mvn", "-q", "-B", "test"]),
         ),
         fix=(Command(["mvn", "-q", "-B", "spotless:apply"]),),
@@ -317,8 +318,9 @@ def clean(text: str) -> str:
 
 
 def root_command(argv: list[str]) -> tuple[int | None, str]:
-    """Corre una herramienta desde la raiz del repo (secretos, semgrep)."""
-    exe = shutil.which(argv[0])
+    """Corre una herramienta desde la raiz del repo (secretos, docs)."""
+    local_bin = ROOT / "tools" / "node" / "node_modules" / ".bin"
+    exe = shutil.which(argv[0], path=str(local_bin)) or shutil.which(argv[0])
     if exe is None:
         return None, f"[X] falta '{argv[0]}' (ver README)"
     try:
@@ -969,7 +971,12 @@ def finish(status: int) -> int:
     return 0
 
 
-def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: list[str]) -> int:
+def lint_all(
+    args: argparse.Namespace,
+    by_lang: dict[str, list[str]],
+    banned: list[str],
+    files: list[str],
+) -> int:
     """Corre los linters de cada lenguaje y resume el resultado."""
     before = dirty_count() if (args.fix or args.unsafe) else 0
     status = 1 if banned else 0
@@ -995,6 +1002,19 @@ def lint_all(args: argparse.Namespace, by_lang: dict[str, list[str]], banned: li
         )
         if not args.json:
             print("\n".join(lines))
+
+    repo_status, repo_lines = repo_checks(files, fixers)
+    status = max(status, repo_status)
+    records.append(
+        {
+            "name": "repo",
+            "files": len(files),
+            "status": repo_status,
+            "output": repo_lines,
+        }
+    )
+    if not args.json:
+        print("\n" + "\n".join(repo_lines))
 
     if fixers and not args.json:
         print(f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s).")
@@ -1072,6 +1092,34 @@ def special_mode(args: argparse.Namespace, by_lang: dict[str, list[str]]) -> int
     return mutation(langs)
 
 
+def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
+    """Docs (markdownlint + enlaces) y nombres de archivo (ls-lint)."""
+    lines = ["== repo =="]
+    status = 0
+    md = [f for f in files if f.endswith(".md")]
+
+    checks: list[tuple[str, list[str]]] = []
+    if md:
+        markdown = ["markdownlint", *md, "--config", ".markdownlint.json"]
+        checks.append(("docs (markdownlint)", markdown + (["--fix"] if fix else [])))
+        checks.append(("docs (enlaces)", ["python", "tools/check_links.py", *md]))
+    checks.append(("nombres (ls-lint)", ["ls-lint"]))
+
+    for label, argv in checks:
+        code, output = root_command(argv)
+        if code is None:
+            lines.append(output)
+            return 2, lines
+        if code != 0:
+            status = 1
+            lines.append(f"  [X] {label}")
+            if output:
+                lines.append(output)
+        else:
+            lines.append(f"  ok: {label}")
+    return status, lines
+
+
 def repo_mode(args: argparse.Namespace) -> int:
     """Modo repo: las cinco carpetas de este proyecto."""
     files = expand(args.files) if args.files else candidates(args.staged)
@@ -1083,7 +1131,8 @@ def repo_mode(args: argparse.Namespace) -> int:
     mode = special_mode(args, by_lang)
     if mode is not None:
         return mode
-    if not by_lang and not banned:
+    has_docs = any(f.endswith(".md") for f in files)
+    if not by_lang and not banned and not has_docs:
         if args.json:
             print(
                 json.dumps(
@@ -1097,7 +1146,7 @@ def repo_mode(args: argparse.Namespace) -> int:
             if args.files:
                 print("Si es un proyecto externo, usa: --project <ruta>")
         return 2 if args.files else 0
-    return lint_all(args, by_lang, banned)
+    return lint_all(args, by_lang, banned, files)
 
 
 def validate(args: argparse.Namespace) -> str | None:

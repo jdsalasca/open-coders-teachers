@@ -9,7 +9,7 @@ go run ./cmd/api
 
 ## Arquitectura hexagonal
 
-```
+```text
 cmd/api/              composition root: unica pieza que conoce todo
 internal/domain/      entidades y puertos (interfaces). No importa app ni adapters.
 internal/app/         casos de uso. Importa domain.
@@ -33,5 +33,6 @@ Todo lo exportado lleva doc comment que empieza con el nombre del simbolo.
 
 `*_test.go` en el mismo paquete. El runner corre `go test ./...` con perfil de
 cobertura y exige 50% total; un paquete sin tests no suma.
+
 - `gochecknoinits`, `gochecknoglobals`, `forcetypeassert`, `interfacebloat`,
   `nilnil`, `predeclared`, `containedctx`, `errname`; `gci` ordena imports.

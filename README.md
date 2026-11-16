@@ -88,7 +88,7 @@ cd Java-teacher;        mvn test
 
 ## Estructura
 
-```
+```text
 open-coders-teachers/
 ├── python-teacher/      ruff + mypy + import-linter + pytest   hexagonal
 ├── typescript-teacher/  ESLint 10 + tsc + depcruise + vitest   MVC
@@ -159,6 +159,9 @@ todas las capas.
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador |
 | Código deprecado | — | `no-deprecated` (tipos) | `no-deprecated` (tipos) | `staticcheck` | `-Xlint:all` |
+| Métodos/campos privados muertos | — | — | — | `unused` | PMD `UnusedPrivate*` |
+| Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
+| Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
 | Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless |
 
@@ -336,6 +339,8 @@ está configurado; quedan documentados como pendientes.
 |---|---|
 | Mensajes de commit convencionales | `commitlint` en `.githooks/commit-msg` |
 | Mutantes sobrevivientes | Stryker, semanal |
+| Enlaces y tablas rotas | `markdownlint` + `check_links.py` |
+| Nombres fuera de convención | `ls-lint` |
 | Supply-chain del CI | CodeQL (JS/TS y Python) |
 | Bundle inflado | `size-limit` en React (120 kB) |
 | Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |

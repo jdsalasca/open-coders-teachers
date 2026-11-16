@@ -5,20 +5,11 @@ import (
 
 	"teachers/goteacher/internal/adapters/memory"
 	"teachers/goteacher/internal/domain"
+	"teachers/goteacher/internal/testutil"
 )
 
-func TestSaveReemplazaPorID(t *testing.T) {
-	repo := &memory.Repository{}
-	repo.Save(domain.Task{ID: 1, Title: "uno"})
-	repo.Save(domain.Task{ID: 1, Title: "dos"})
-
-	tasks := repo.All()
-	if len(tasks) != 1 {
-		t.Fatalf("quiero 1 tarea, hay %d", len(tasks))
-	}
-	if tasks[0].Title != "dos" {
-		t.Fatalf("title = %q, quiero dos", tasks[0].Title)
-	}
+func TestRepositoryCumpleContrato(t *testing.T) {
+	testutil.RepositoryContract(t, &memory.Repository{})
 }
 
 func TestAllDevuelveCopia(t *testing.T) {

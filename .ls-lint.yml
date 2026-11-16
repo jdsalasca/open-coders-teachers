@@ -1,0 +1,21 @@
+ls:
+  python-teacher:
+    .py: snake_case
+  go-teacher:
+    .go: snake_case
+  Java-teacher:
+    .java: PascalCase
+  React-teacher:
+    .tsx: PascalCase
+ignore:
+  - node_modules
+  - .git
+  - dist
+  - target
+  - coverage
+  - .opencode
+  - .stryker-tmp
+  - "**/*.test.ts"
+  - "**/*.module.scss"
+  - "**/_*.scss"
+  - "**/main.tsx"

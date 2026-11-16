@@ -21,6 +21,8 @@ autochequeo, no está listo.
    libro, `resources/antipatterns/books.md`.
 5. `python tools/lint.py --fix` y después `python tools/lint.py`.
 
+Los `.md` tambien se validan (markdownlint y enlaces locales).
+
 Una regla sin canario es una regla que se puede romper en silencio. El caso del
 repo de React que "no encontró nada" es el recordatorio: un linter que devuelve
 cero sin mirar es peor que no tener linter.
@@ -29,7 +31,7 @@ cero sin mirar es peor que no tener linter.
 
 Mensajes convencionales (los valida `.githooks/commit-msg`):
 
-```
+```text
 feat(react): agrega reglas de accesibilidad
 fix(python): corrige el contrato de capas
 docs: explica el modo portable

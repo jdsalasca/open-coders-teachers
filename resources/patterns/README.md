@@ -12,7 +12,7 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | **Composition Root** | `main.go`, `Main.java`, `main.ts`, `main.tsx` | convención: solo el root conoce todas las capas |
 | **MVC** | `model` / `view` / `controller` | `dependency-cruiser`: `view` no importa `controller`; `model` aislado |
 | **MVVM** | `model` / `viewmodel` / `view` | `dependency-cruiser`: `view` no importa `model`; `viewmodel` no importa `view` |
-| **Contract Test** | `python-teacher/tests/test_repository_contract.py` | el mismo test corre contra cada adaptador nuevo |
+| **Contract Test** | Python (`tests/test_repository_contract.py`), Go (`internal/testutil`), Java (`TaskRepositoryContractTest`) | el mismo test corre contra cada adaptador nuevo |
 | **DTO de salida** | `TaskView` en `application`; `TaskController` lo devuelve | ArchUnit: `..infrastructure.web..` no depende de `..domain..` |
 | **Singleton sin estado** | beans `@Service`/`@Component`/`@RestController` | ArchUnit (se activa con Spring): solo campos `final` |
 

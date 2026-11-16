@@ -154,6 +154,9 @@ Reglas de dependencia:
 - **Sin APIs deprecadas**: `no-deprecated` (con tipos) y `staticcheck` en Go.
 - **DTOs en la API**: un controller nunca devuelve entidades de dominio (Java).
 - **Puertos con nombre**: interfaces de dominio terminan en `Port`; adaptadores en `Repository`.
+- **Docs**: markdownlint y enlaces locales se validan en cada commit.
+- **Nombres**: `ls-lint` (py/go snake_case, java/tsx PascalCase).
+- **Java**: PMD caza metodos/campos privados sin usar (`UnusedPrivate*`).
 
 ## Cómo leer el reporte
 

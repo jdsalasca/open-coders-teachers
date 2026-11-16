@@ -8,7 +8,7 @@ python tools/lint.py --fix python-teacher   # desde la raiz
 
 ## Arquitectura hexagonal
 
-```
+```text
 app/
 ├── domain/          entidades y puertos (Protocol). No importa nada de app.
 ├── application/     casos de uso. Importa domain.
@@ -34,5 +34,6 @@ error, no sugerencia.
 `tests/test_*.py` con pytest; cobertura minima 60% sobre `app/`. El runner corre
 `pytest --cov=app --cov-fail-under=60`. Reglas `PT` para estilo de pytest y
 `B011` para `assert False`.
+
 - `A`: no sombrear builtins (`id`, `list`, `type`).
 - `RET`: sin `else` tras `return` ni asignaciones antes de retornar.
