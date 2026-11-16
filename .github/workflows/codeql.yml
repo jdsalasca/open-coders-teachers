@@ -27,9 +27,9 @@ jobs:
         # JS/TS y Python no necesitan build; Go usa autobuild.
         include:
           - language: javascript-typescript
-            build-mode: ${{ matrix.build-mode }}
+            build-mode: none
           - language: python
-            build-mode: ${{ matrix.build-mode }}
+            build-mode: none
           - language: go
             build-mode: autobuild
     steps:
