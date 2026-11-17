@@ -5,6 +5,7 @@ TypeScript 5.9 + ESLint 10 (flat config) + Prettier + `tsc --noEmit` +
 
 ```powershell
 cd typescript-teacher; npm install             # una vez
+npm run dev                                    # http://localhost:5173
 python tools/lint.py --fix typescript-teacher  # desde la raiz
 ```
 
@@ -19,6 +20,12 @@ src/main.ts       composition root.
 
 `npm exec depcruise src` falla con `modelo-aislado`, `vista-sin-controlador` o
 `sin-ciclos` si se rompe la direccion.
+
+## Vista
+
+`index.html` + Vite montan `src/main.ts` en `#app`; `src/view/counter-view.scss`
+define la tarjeta y los tokens visuales. La vista inyecta el DOM y solo avisa
+clics; no conoce el controlador.
 
 ## Reglas
 

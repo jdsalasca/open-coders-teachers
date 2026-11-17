@@ -108,7 +108,7 @@ composition roots y tests.
 ```text
 open-coders-teachers/
 ├── python-teacher/      ruff + mypy + import-linter + pytest   hexagonal
-├── typescript-teacher/  ESLint 10 + tsc + depcruise + vitest   MVC
+├── typescript-teacher/  ESLint 10 + tsc + Vite + depcruise + vitest MVC
 ├── React-teacher/       ESLint + Stylelint + knip + vitest     MVVM
 ├── go-teacher/          golangci-lint + depguard + HTTP + SQLite   hexagonal
 ├── Java-teacher/        Checkstyle + Spotless + ArchUnit + JaCoCo hexagonal
@@ -156,6 +156,13 @@ flowchart LR
 La infraestructura implementa puertos del dominio; el composition root
 (`main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs`) es la única pieza que
 conoce todas las capas.
+
+## Así se ve TypeScript-teacher
+
+<img src="docs/images/typescript-teacher.png" alt="Tarjeta de TypeScript teacher con el contador y el botón Incrementar" width="720">
+
+La vista inyecta la tarjeta y avisa clics; el controlador conecta el modelo y
+la vista, sin framework. El dev server es Vite y los estilos viven en SCSS.
 
 ## Así se ve React-teacher
 
@@ -207,7 +214,7 @@ reinicio y dos instancias sobre el mismo archivo con la misma clave.
 | Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador | compilador |
 | Dependencias muertas | — | — | `knip` | — | — | `dead_code` |
 | Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` | `clippy` + Semgrep |
-| Vulnerabilidades (deps) | `pip-audit` | `npm audit` | `npm audit` | `govulncheck` | OSV + Dependabot | OSV |
+| Vulnerabilidades (deps) | `pip-audit` | `npm audit --omit=dev` | `npm audit --omit=dev` | `govulncheck` | OSV + Dependabot | OSV |
 | Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo | `cargo-llvm-cov` |
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — | — |
 | Tipos | `mypy` | `tsc` | `tsc` + sin tipos vagos | compilador | compilador | compilador + `clippy` |
@@ -290,7 +297,7 @@ python tools/lint.py --audit      # solo dependencias
 | Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
 | Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
 | Rust | `clippy` + Semgrep | `unwrap`/`expect`, `panic`, `unsafe`, prints fuera de `main` |
-| Dependencias | `npm audit` (incluido `tools/node`), `govulncheck`, `pip-audit`, **OSV (Maven, crates.io)** + Dependabot | CVEs conocidas |
+| Dependencias | `npm audit --omit=dev` (runtime; dev vía Dependabot), `govulncheck`, `pip-audit`, **OSV (Maven, crates.io)** + Dependabot | CVEs conocidas |
 
 Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
 propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron

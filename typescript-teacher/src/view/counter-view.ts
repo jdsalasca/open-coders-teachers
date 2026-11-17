@@ -1,3 +1,5 @@
+import "./counter-view.scss";
+
 import type { CounterState } from "../model/counter.js";
 
 /** Vista del contador: solo pinta y avisa clics. */
@@ -14,8 +16,22 @@ export interface CounterView {
  */
 export function createCounterView(root: HTMLElement): CounterView {
   root.innerHTML = `
-    <button type="button" data-action="increment">+1</button>
-    <output data-role="value">0</output>
+    <main class="app">
+      <section class="card" aria-labelledby="counter-title">
+        <p class="eyebrow">MVC | Vite | TypeScript</p>
+        <h1 class="title" id="counter-title">TypeScript teacher</h1>
+        <p class="lead">Un contador simple, con la vista separada del controlador.</p>
+        <div class="meter">
+          <span class="label">Valor actual</span>
+          <output class="value" data-role="value" aria-live="polite">0</output>
+        </div>
+        <button class="button" type="button" data-action="increment">
+          <span class="plus" aria-hidden="true">+</span>
+          Incrementar
+        </button>
+        <p class="footer">view -&gt; controller -&gt; model | sin logica en el DOM</p>
+      </section>
+    </main>
   `;
   const button = root.querySelector<HTMLButtonElement>("[data-action=increment]");
   const output = root.querySelector<HTMLOutputElement>("[data-role=value]");

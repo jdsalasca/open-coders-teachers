@@ -33,6 +33,7 @@ public class TaskController {
    * @return tarea creada como DTO
    */
   public TaskView create(CreateTaskRequest request) {
+    Objects.requireNonNull(request, "request");
     Set<ConstraintViolation<CreateTaskRequest>> violations = validator.validate(request);
     if (!violations.isEmpty()) {
       throw new ConstraintViolationException(violations);

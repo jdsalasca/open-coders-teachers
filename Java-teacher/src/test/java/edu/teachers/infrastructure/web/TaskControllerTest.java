@@ -26,6 +26,11 @@ class TaskControllerTest {
   }
 
   @Test
+  void rechazaPeticionNula() {
+    assertThrows(NullPointerException.class, () -> controller.create(null));
+  }
+
+  @Test
   void conservaEspacios() {
     TaskView view = controller.create(new CreateTaskRequest("  estudiar  "));
 

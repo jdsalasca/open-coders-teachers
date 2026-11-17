@@ -16,8 +16,8 @@ from typing import Any
 from lintlib.common import LANGS, ROOT, Command, Lang, root_command, run, show
 
 AUDIT: dict[str, Command] = {
-    "typescript": Command(["npm", "audit", "--audit-level=high"]),
-    "react": Command(["npm", "audit", "--audit-level=high"]),
+    "typescript": Command(["npm", "audit", "--omit=dev", "--audit-level=high"]),
+    "react": Command(["npm", "audit", "--omit=dev", "--audit-level=high"]),
     "go": Command(["govulncheck", "./..."]),
 }
 
@@ -394,7 +394,9 @@ def audit(langs: list[str]) -> int:
             status = max(status, audit_command(AUDIT[name], lang))
 
     print("\n== vulnerabilidades: tools/node ==")
-    code, output = root_command(["npm", "audit", "--prefix", "tools/node", "--audit-level=high"])
+    code, output = root_command(
+        ["npm", "audit", "--prefix", "tools/node", "--omit=dev", "--audit-level=high"]
+    )
     status = max(status, show(code, output, "sin vulnerabilidades conocidas"))
 
     return max(status, audit_maven())

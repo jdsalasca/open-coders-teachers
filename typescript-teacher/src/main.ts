@@ -10,3 +10,10 @@ export function bootstrap(root: HTMLElement): void {
   const view = createCounterView(root);
   createCounterController(view).start();
 }
+
+const root = document.getElementById("app");
+if (!root) {
+  throw new Error("Falta el nodo #app en index.html");
+}
+
+bootstrap(root);

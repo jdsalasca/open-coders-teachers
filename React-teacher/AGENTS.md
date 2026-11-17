@@ -36,8 +36,9 @@ src/main.tsx      composition root
 ## Dependencias
 
 `knip` falla si una dependencia no se importa, si un import no está declarado o
-si un archivo/export queda sin usar. `npm audit --audit-level=high` revisa
-vulnerabilidades (`--audit`, requiere red).
+si un archivo/export queda sin usar. `npm audit --omit=dev --audit-level=high`
+revisa vulnerabilidades de runtime (`--audit`, requiere red); las de tooling se
+siguen con Dependabot.
 
 ## Nota de versiones
 

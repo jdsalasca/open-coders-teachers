@@ -84,6 +84,9 @@ jobs:
           npm ci --no-fund --no-audit --prefix React-teacher
           npm ci --no-fund --no-audit --prefix tools/node
 
+      - name: Build TypeScript
+        run: npm run build --prefix typescript-teacher
+
       - name: Presupuesto de bundle (React)
         run: npm run size --prefix React-teacher
 
