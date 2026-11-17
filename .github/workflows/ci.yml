@@ -96,6 +96,9 @@ jobs:
           npx playwright install --with-deps chromium
           npm run e2e
 
+      - name: E2E y accesibilidad (TypeScript)
+        run: npm run e2e --prefix typescript-teacher
+
       - name: Escaneres y govulncheck
         run: |
           # Los binarios se instalan desde $RUNNER_TEMP: si se descomprimen en el

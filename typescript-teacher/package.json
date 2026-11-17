@@ -6,6 +6,7 @@
     "build": "tsc --noEmit && vite build",
     "dev": "vite",
     "dup": "jscpd src",
+    "e2e": "playwright test",
     "fix": "eslint . --fix && prettier --write .",
     "lint": "eslint . --format=unix",
     "mutation": "stryker run",
@@ -14,7 +15,9 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^26.6.6",

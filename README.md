@@ -214,6 +214,7 @@ reinicio y dos instancias sobre el mismo archivo con la misma clave.
 | Dependencias circulares | — | `dependency-cruiser` | `dependency-cruiser` | compilador | compilador | compilador |
 | Dependencias muertas | — | — | `knip` | — | — | `dead_code` |
 | Vulnerabilidades (código) | ruff `S` | ESLint | ESLint | `gosec` | `IllegalCatch` | `clippy` + Semgrep |
+| Bugs de bytecode | - | - | - | - | SpotBugs | - |
 | Vulnerabilidades (deps) | `pip-audit` | `npm audit --omit=dev` | `npm audit --omit=dev` | `govulncheck` | OSV + Dependabot | OSV |
 | Sin tests / poca cobertura | pytest-cov | vitest | vitest | `go tool cover` | JaCoCo | `cargo-llvm-cov` |
 | Promesas sin `await` | — | `no-floating-promises` | `no-floating-promises` | — | — | — |
@@ -417,7 +418,8 @@ herramienta**. El agente ve el problema en el mismo turno, sin esperar al commit
   axe.
 
 ```powershell
-cd React-teacher; npm run e2e      # requiere npx playwright install chromium
+cd React-teacher; npm run e2e          # requiere npx playwright install chromium
+cd typescript-teacher; npm run e2e     # misma dependencia
 ```
 
 ## Mutation testing

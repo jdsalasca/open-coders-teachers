@@ -85,4 +85,6 @@ de Windows añade `-race` (en Windows exige cgo/gcc y se omite).
 - `internal/web` prueba 201/200, JSON inválido, campo desconocido, datos extra,
   nulo, blanco, NBSP, 200/201 emoji, 413, 415, 405, 404, paginación y error
   interno sin detalle.
+- `internal/web/integration_test.go` recorre HTTP -> controller -> service ->
+  SQLite real: crea, repite clave, lista y cierra la base con `t.TempDir()`.
 - `FuzzNewTask` corre con `go test` y con `go test -fuzz=FuzzNewTask`.

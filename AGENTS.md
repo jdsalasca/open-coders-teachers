@@ -180,7 +180,7 @@ Reglas de dependencia:
 - **Java**: PMD caza metodos/campos privados sin usar (`UnusedPrivate*`).
 - **Rust**: `rustfmt` + `clippy` (`missing_docs`, `unwrap_used`, `expect_used`, `panic`, `unsafe` prohibidos) y `cargo-llvm-cov` al 60%.
 - **Property tests**: una propiedad por funcion pura (Hypothesis, fast-check, quick, jqwik, proptest).
-- **E2E**: `npm run e2e` en React (Playwright + axe) antes de tocar la vista.
+- **E2E**: `npm run e2e` en React y TypeScript (Playwright + axe) antes de tocar la vista.
 - **Politica propia**: `.semgrep/rules.yml` detecta patrones concretos (fetch/axios en la vista, storage fuera de capa, env filtrado, prints y `println!`); un alias o API equivalente puede escapar.
 - **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
 - **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y OSV para Maven y crates.io; Dependabot es el complemento cuando el token puede leer alertas.

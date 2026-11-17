@@ -57,4 +57,5 @@ Ademas: `SummaryJavadoc`, `NonEmptyAtclauseDescription`, `IllegalCatch`,
 
 PMD añade `SystemPrintln`, `AvoidPrintStackTrace` y
 `AvoidCatchingGenericException`; `Main.java` queda excluido de PMD por ser el
-composition root que imprime el ejemplo.
+composition root que imprime el ejemplo. SpotBugs corre con esfuerzo `Max` y
+umbral `Medium` sobre el bytecode 21.

@@ -226,6 +226,7 @@ LANGS = (
             Command(["mvn", "-q", "-B", "checkstyle:check"]),
             Command(["mvn", "-q", "-B", "pmd:cpd-check"]),
             Command(["mvn", "-q", "-B", "pmd:check"]),
+            Command(["mvn", "-q", "-B", "spotbugs:check"]),
             Command(["mvn", "-q", "-B", "test"]),
         ),
         fix=(Command(["mvn", "-q", "-B", "spotless:apply"]),),

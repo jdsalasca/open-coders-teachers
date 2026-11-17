@@ -44,7 +44,8 @@ metodos.
 ## Tests
 
 `src/**/*.test.ts` con vitest; cobertura minima 80% en `model` y `controller`.
-`npm run test` y `npm run dup` (jscpd: clones de 70+ tokens).
+`npm run test`, `npm run dup` (jscpd: clones de 70+ tokens) y `npm run e2e`
+(Playwright + axe sobre la pagina Vite).
 
 - `eqeqeq`, `no-var`, `prefer-const`, `no-param-reassign`, `no-shadow`.
 - `no-non-null-assertion`, `switch-exhaustiveness-check`, `jsdoc/require-description`.
