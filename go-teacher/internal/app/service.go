@@ -17,12 +17,12 @@ func NewService(repo domain.RepositoryPort) *Service {
 	return &Service{repo: repo}
 }
 
-// Add crea una tarea con id asignado por el repositorio.
-func (s *Service) Add(ctx context.Context, title string) (domain.Task, error) {
-	return s.repo.Add(ctx, title)
+// Add crea una tarea; una clave de idempotencia repetida devuelve la original.
+func (s *Service) Add(ctx context.Context, title, key string) (domain.CreateResult, error) {
+	return s.repo.Create(ctx, title, key)
 }
 
-// List devuelve las tareas guardadas.
-func (s *Service) List(ctx context.Context) ([]domain.Task, error) {
-	return s.repo.All(ctx)
+// List devuelve una pagina de tareas ordenada por id.
+func (s *Service) List(ctx context.Context, page domain.Page) ([]domain.Task, error) {
+	return s.repo.List(ctx, page)
 }

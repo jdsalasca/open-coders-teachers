@@ -22,6 +22,9 @@ var ErrInvalidJSON = errors.New("payload invalido")
 // ErrInvalidInput indica datos que no cumplen la validacion.
 var ErrInvalidInput = errors.New("datos invalidos")
 
+// MaxIdempotencyKeyLength es el maximo de caracteres de la clave.
+const MaxIdempotencyKeyLength = 100
+
 // CreateTaskRequest es el payload de creacion de tarea.
 type CreateTaskRequest struct {
 	// Title es el titulo obligatorio, no blanco y de hasta 200 caracteres.
@@ -63,12 +66,19 @@ func notBlank(field validator.FieldLevel) bool {
 }
 
 // CreateFromJSON deserializa, valida y crea la tarea.
-func (c *TaskController) CreateFromJSON(ctx context.Context, payload []byte) (TaskView, error) {
+func (c *TaskController) CreateFromJSON(
+	ctx context.Context,
+	payload []byte,
+	key string,
+) (TaskView, bool, error) {
+	if len(key) > MaxIdempotencyKeyLength {
+		return TaskView{}, false, fmt.Errorf("%w: clave de idempotencia demasiado larga", ErrInvalidInput)
+	}
 	request, err := decodeRequest(payload)
 	if err != nil {
-		return TaskView{}, err
+		return TaskView{}, false, err
 	}
-	return c.Create(ctx, request)
+	return c.Create(ctx, request, key)
 }
 
 func decodeRequest(payload []byte) (CreateTaskRequest, error) {
@@ -85,20 +95,27 @@ func decodeRequest(payload []byte) (CreateTaskRequest, error) {
 }
 
 // Create valida la peticion y devuelve el DTO creado.
-func (c *TaskController) Create(ctx context.Context, request CreateTaskRequest) (TaskView, error) {
+func (c *TaskController) Create(
+	ctx context.Context,
+	request CreateTaskRequest,
+	key string,
+) (TaskView, bool, error) {
+	if len(key) > MaxIdempotencyKeyLength {
+		return TaskView{}, false, fmt.Errorf("%w: clave de idempotencia demasiado larga", ErrInvalidInput)
+	}
 	if err := c.validate.Struct(request); err != nil {
-		return TaskView{}, fmt.Errorf("%w: %w", ErrInvalidInput, err)
+		return TaskView{}, false, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
-	task, err := c.service.Add(ctx, request.Title)
+	result, err := c.service.Add(ctx, request.Title, key)
 	if err != nil {
-		return TaskView{}, err
+		return TaskView{}, false, err
 	}
-	return NewTaskView(task), nil
+	return NewTaskView(result.Task), result.Created, nil
 }
 
-// List devuelve las tareas como DTO.
-func (c *TaskController) List(ctx context.Context) ([]TaskView, error) {
-	tasks, err := c.service.List(ctx)
+// List devuelve una pagina de tareas como DTO.
+func (c *TaskController) List(ctx context.Context, page domain.Page) ([]TaskView, error) {
+	tasks, err := c.service.List(ctx, page)
 	if err != nil {
 		return nil, err
 	}

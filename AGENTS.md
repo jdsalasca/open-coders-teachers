@@ -124,6 +124,10 @@ Configs donde viven las reglas:
 Cada carpeta tiene una arquitectura declarada y **el linter la verifica**. Si el
 import va hacia el lado equivocado, el commit falla.
 
+`go-teacher` es el recorrido de referencia: HTTP + SQLite + paginación +
+idempotencia. Los demás teachers mantienen ejemplos mínimos para no duplicar
+infraestructura seis veces.
+
 | Carpeta | Capas permitidas | Verifica |
 |---|---|---|
 | `python-teacher` | `domain` ← `application` ← `infrastructure` | `lint-imports` |

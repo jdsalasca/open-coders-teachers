@@ -9,6 +9,10 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 |---|---|---|
 | **Ports & Adapters** (hexagonal) | `domain` define puertos `*Port`; `infrastructure` los implementa | `import-linter` (Python), `depguard` (Go), ArchUnit (Java), `tests/layers.rs` (Rust) |
 | **Repository** | `TaskRepositoryPort` es el puerto; `InMemoryTaskRepository` el adaptador | ArchUnit: puertos terminan en `Port`; adaptadores viven en `infrastructure` y terminan en `Repository` |
+| **API HTTP** | `internal/web` (Go): handler, DTOs y errores públicos | `httptest`: 201/200, 400/413/415/500, límites de cuerpo y timeouts |
+| **Paginación** | `domain.Page` + `limit/offset` | `NewPage` 1..100; contrato contra memoria y SQLite |
+| **Idempotencia** | `Idempotency-Key` + tabla `idempotency` | replay devuelve la tarea original con 200; test concurrente |
+| **Persistencia** | `internal/adapters/sqlite` (Go) | contrato compartido + test de reinicio y WAL |
 | **Composition Root** | `main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs` | convención: solo el root conoce todas las capas |
 | **MVC** | `model` / `view` / `controller` | `dependency-cruiser`: `view` no importa `controller`; `model` aislado |
 | **MVVM** | `model` / `viewmodel` / `view` | `dependency-cruiser`: `view` no importa `model`; `viewmodel` no importa `view` |

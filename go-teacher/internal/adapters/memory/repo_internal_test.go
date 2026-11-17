@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"teachers/goteacher/internal/domain"
 )
 
 // probeContext avisa cuando el codigo comprueba el contexto por primera vez.
@@ -42,6 +44,10 @@ func assertCancelWhileWaiting(
 	t.Helper()
 	probe := newProbeContext()
 	done := make(chan error, 1)
+	page, err := domain.NewPage(10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	repo.mu.Lock()
 	go func() { done <- call(probe) }()
@@ -52,25 +58,25 @@ func assertCancelWhileWaiting(
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, quiero context.Canceled", err)
 	}
-	if tasks, err := repo.All(context.Background()); err != nil || len(tasks) != 0 {
+	if tasks, err := repo.List(context.Background(), page); err != nil || len(tasks) != 0 {
 		t.Fatalf("no debe mutar: tasks=%v err=%v", tasks, err)
 	}
 }
 
-func TestAddDetectaCancelacionMientrasEsperaElMutex(t *testing.T) {
+func TestCreateDetectaCancelacionMientrasEsperaElMutex(t *testing.T) {
 	repo := &Repository{}
 
 	assertCancelWhileWaiting(t, repo, func(ctx context.Context) error {
-		_, err := repo.Add(ctx, "tarea")
+		_, err := repo.Create(ctx, "tarea", "")
 		return err
 	})
 }
 
-func TestAllDetectaCancelacionMientrasEsperaElMutex(t *testing.T) {
+func TestListDetectaCancelacionMientrasEsperaElMutex(t *testing.T) {
 	repo := &Repository{}
 
 	assertCancelWhileWaiting(t, repo, func(ctx context.Context) error {
-		_, err := repo.All(ctx)
+		_, err := repo.List(ctx, domain.Page{Limit: 10})
 		return err
 	})
 }

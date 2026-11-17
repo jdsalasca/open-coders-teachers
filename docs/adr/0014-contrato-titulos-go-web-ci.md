@@ -51,7 +51,8 @@ y el cliente OSV podía reportar "limpio" ante una respuesta truncada.
 - La auditoría curricular propone un recorrido HTTP + SQLite + paginación +
   idempotencia en un solo teacher de referencia. No se implementó aquí para no
   duplicar infraestructura en los seis ejemplos; queda como siguiente ronda.
-- No hay SBOM, control de licencias ni atestación de procedencia.
+- Hay SBOM informativo (SPDX) en CI, pero no control de licencias ni
+  atestación de procedencia.
 - La protección de rama y los checks obligatorios se configuran en GitHub, no
   en el repo.
 - Python mantiene dependencias directas fijadas sin hashes transitivos.

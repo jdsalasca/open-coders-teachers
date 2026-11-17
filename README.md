@@ -97,7 +97,7 @@ open-coders-teachers/
 ├── python-teacher/      ruff + mypy + import-linter + pytest   hexagonal
 ├── typescript-teacher/  ESLint 10 + tsc + depcruise + vitest   MVC
 ├── React-teacher/       ESLint + Stylelint + knip + vitest     MVVM
-├── go-teacher/          golangci-lint + depguard + go test     hexagonal
+├── go-teacher/          golangci-lint + depguard + HTTP + SQLite   hexagonal
 ├── Java-teacher/        Checkstyle + Spotless + ArchUnit + JaCoCo hexagonal
 ├── Rust-teacher/        rustfmt + clippy + cargo-llvm-cov       hexagonal
 ├── tools/
@@ -142,6 +142,30 @@ flowchart LR
 La infraestructura implementa puertos del dominio; el composition root
 (`main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs`) es la única pieza que
 conoce todas las capas.
+
+## Referencia HTTP (Go)
+
+`go-teacher` es el recorrido completo de una petición: HTTP → validación → caso
+de uso → SQLite, con paginación e idempotencia. Los otros cinco teachers
+conservan ejemplos mínimos; este muestra el patrón sin duplicarlo seis veces.
+
+```powershell
+cd go-teacher
+$env:TASKS_DB = "tasks.db"
+go run ./cmd/api
+```
+
+| Método | Ruta | Comportamiento |
+|---|---|---|
+| `POST` | `/tasks` | `201` nueva, `200` si repite `Idempotency-Key`; `400/413/415` |
+| `GET` | `/tasks?limit=20&offset=0` | página con `items`, `limit` y `offset`; límite 1..100 |
+| `GET` | `/healthz` | `200 {"status":"ok"}` |
+
+Cuerpo máximo 1 MiB, `Content-Type: application/json`, errores JSON sin filtrar
+detalles internos, timeouts y apagado ordenado. `TASKS_DB` y `TASKS_ADDR`
+configuran la base y la dirección. El adaptador SQLite usa `modernc.org/sqlite`
+(puro Go), WAL y una sola conexión; el contrato de `internal/testutil` corre
+contra memoria y SQLite, incluido el reinicio.
 
 ## Qué caza cada carpeta
 
@@ -379,6 +403,7 @@ baja de 80%. Python (`mutmut`) no soporta Windows nativo y Rust
 | Enlaces y tablas rotas | `markdownlint` + `check_links.py` |
 | Nombres fuera de convención | `ls-lint` |
 | Supply-chain del CI | CodeQL (JS/TS, Python, Go y Java; Rust no está soportado) |
+| SBOM | `anchore/sbom-action` (SPDX, informativo) |
 | Bundle inflado | `size-limit` en React (120 kB) |
 | Dependencias actualizadas | Dependabot (npm, Maven, Go, Actions) |
 | Decisiones de arquitectura | `docs/adr/` + gate `check_adr.py` |
@@ -415,6 +440,8 @@ baja de 80%. Python (`mutmut`) no soporta Windows nativo y Rust
 - React usa ESLint 9 porque `eslint-plugin-react` aún no soporta ESLint 10.
   No unifiques versiones sin revisar los peer deps.
 - `--audit` requiere red. No corre en el hook: es una revisión periódica.
+- `go run ./cmd/api` crea `tasks.db` (ignorada por git); `TASKS_DB` cambia la
+  ruta y `TASKS_ADDR` la dirección.
 - Rust se instala con `rustup` (toolchain 1.99 + `llvm-tools-preview`); la
   cobertura usa `cargo-llvm-cov`, instalado en global con `cargo install`.
 - La cobertura es un piso, no una meta: un test que ejecuta código sin afirmar

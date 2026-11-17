@@ -12,6 +12,9 @@ dist/
 coverage/
 coverage.out
 .jscpd/
+*.db
+*.db-shm
+*.db-wal
 
 .coverage
 .opencode/lint-plugin.log

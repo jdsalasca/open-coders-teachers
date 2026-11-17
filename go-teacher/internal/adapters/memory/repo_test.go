@@ -15,41 +15,69 @@ func TestRepositoryCumpleContrato(t *testing.T) {
 	testutil.RepositoryContract(t, &memory.Repository{})
 }
 
-func TestAllDevuelveCopia(t *testing.T) {
+func TestListDevuelveCopia(t *testing.T) {
 	ctx := context.Background()
 	repo := &memory.Repository{}
-	if _, err := repo.Add(ctx, "uno"); err != nil {
+	if _, err := repo.Create(ctx, "uno", ""); err != nil {
+		t.Fatal(err)
+	}
+	page, err := domain.NewPage(10, 0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	tasks, err := repo.All(ctx)
+	tasks, err := repo.List(ctx, page)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tasks[0] = domain.Task{}
 
-	again, err := repo.All(ctx)
+	again, err := repo.List(ctx, page)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if again[0].Title() != "uno" {
-		t.Fatal("All debe devolver una copia")
+		t.Fatal("List debe devolver una copia")
 	}
 }
 
-func TestAddRespetaContextoCancelado(t *testing.T) {
+func TestCreateRespetaContextoCancelado(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	repo := &memory.Repository{}
 
-	_, err := repo.Add(ctx, "uno")
+	_, err := repo.Create(ctx, "uno", "")
 
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, quiero context.Canceled", err)
 	}
 }
 
-func TestAddEsSeguroEnConcurrente(t *testing.T) {
+func TestCreateEsIdempotenteEnConcurrente(t *testing.T) {
+	repo := &memory.Repository{}
+
+	ids := createConcurrent(t, repo, 20, "misma-clave")
+
+	first := ids[0]
+	for _, id := range ids[1:] {
+		if id != first {
+			t.Fatalf("id = %d, quiero %d para la misma clave", id, first)
+		}
+	}
+	page, err := domain.NewPage(10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tasks, err := repo.List(context.Background(), page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("quiero 1 tarea, hay %d", len(tasks))
+	}
+}
+
+func TestCreateEsSeguroEnConcurrente(t *testing.T) {
 	ids := addConcurrent(t, 50)
 	seen := map[int]bool{}
 	for _, id := range ids {
@@ -65,19 +93,27 @@ func TestAddEsSeguroEnConcurrente(t *testing.T) {
 
 func addConcurrent(t *testing.T, count int) []int {
 	t.Helper()
-	ctx := context.Background()
 	repo := &memory.Repository{}
+
+	ids := createConcurrent(t, repo, count, "")
+	assertStored(t, repo, count)
+	return ids
+}
+
+func createConcurrent(t *testing.T, repo *memory.Repository, count int, key string) []int {
+	t.Helper()
+	ctx := context.Background()
 	var wg sync.WaitGroup
 	ids := make(chan int, count)
 
 	for range count {
 		wg.Go(func() {
-			task, err := repo.Add(ctx, "tarea")
+			result, err := repo.Create(ctx, "tarea", key)
 			if err != nil {
-				t.Errorf("Add fallo: %v", err)
+				t.Errorf("Create fallo: %v", err)
 				return
 			}
-			ids <- task.ID()
+			ids <- result.Task.ID()
 		})
 	}
 	wg.Wait()
@@ -87,13 +123,16 @@ func addConcurrent(t *testing.T, count int) []int {
 	for id := range ids {
 		out = append(out, id)
 	}
-	assertStored(t, repo, count)
 	return out
 }
 
 func assertStored(t *testing.T, repo *memory.Repository, count int) {
 	t.Helper()
-	all, err := repo.All(context.Background())
+	page, err := domain.NewPage(domain.MaxPageSize, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := repo.List(context.Background(), page)
 	if err != nil {
 		t.Fatal(err)
 	}
