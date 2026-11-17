@@ -4,9 +4,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    sequence: { shuffle: true },
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "json-summary"],
+      reporter: ["text", "html", "json-summary", "lcov"],
       include: ["src/model/**/*.ts", "src/controller/**/*.ts"],
       exclude: ["**/*.test.ts"],
       thresholds: {

@@ -95,6 +95,10 @@ cd Java-teacher;        mvn test
 cd Rust-teacher;        cargo llvm-cov --fail-under-lines 60
 ```
 
+En PR, `diff-cover` exige **80% en las líneas nuevas** de Python, Java,
+TypeScript, React y Rust (Go aún no exporta lcov). No sustituye el mínimo
+global: lo complementa.
+
 ## Estructura
 
 ```text
@@ -470,6 +474,8 @@ baja de 80%. Python (`mutmut`) no soporta Windows nativo y Rust
   ruta y `TASKS_ADDR` la dirección (por defecto `127.0.0.1:8080`).
 - Rust se instala con `rustup` (toolchain 1.99 + `llvm-tools-preview`); la
   cobertura usa `cargo-llvm-cov`, instalado en global con `cargo install`.
+- Python instala su runtime desde `python-teacher/requirements.lock` con
+  hashes; regénralo con `uv pip compile requirements.txt --generate-hashes`.
 - La cobertura es un piso, no una meta: un test que ejecuta código sin afirmar
   nada sube el número y no la confianza. Además es agregada por carpeta: una
   carpeta puede compensar un archivo débil, así que no se reporta como calidad

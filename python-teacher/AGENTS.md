@@ -38,6 +38,10 @@ exceptuados de `T20`.
 `mypy` exige anotaciones (`disallow_untyped_defs`). Una funcion sin tipos es
 error, no sugerencia.
 
+`requirements.lock` se genera con `uv pip compile requirements.txt
+--generate-hashes`; CI instala con `pip install --require-hashes` y `pip-audit`
+audita ese lock, no solo las dependencias directas.
+
 ## Tests
 
 `tests/test_*.py` con pytest; cobertura minima 60% sobre `app/`. El runner corre

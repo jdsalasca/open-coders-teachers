@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -186,7 +187,16 @@ LANGS = (
                 takes_files=False,
             ),
             Command(
-                ["cargo", "llvm-cov", "--fail-under-lines", "60", "--summary-only"],
+                [
+                    "cargo",
+                    "llvm-cov",
+                    "--fail-under-lines",
+                    "60",
+                    "--summary-only",
+                    "--lcov",
+                    "--output-path",
+                    "target/lcov.info",
+                ],
                 needs=(".rs",),
                 requires="Cargo.toml",
             ),
@@ -433,7 +443,7 @@ def show(code: int | None, output: str, ok: str) -> int:
     return 0
 
 
-def walk_files(root: Path):
+def walk_files(root: Path) -> Iterator[Path]:
     """Recorre root sin entrar en directorios generados."""
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP]

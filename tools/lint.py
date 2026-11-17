@@ -46,7 +46,7 @@ from lintlib.common import (
     expand,
     git_files,
     lang_by_folder,
-    lang_for,  # noqa: F401 - reexportado para tests
+    lang_for,
     languages_of,
     root_command,
     run,
@@ -54,7 +54,7 @@ from lintlib.common import (
     staged_deleted,
     walk_files,
 )
-from lintlib.portable import (  # noqa: F401 - reexportado para tests y CLI
+from lintlib.portable import (
     Project,
     discover,
     portable,
@@ -62,6 +62,35 @@ from lintlib.portable import (  # noqa: F401 - reexportado para tests y CLI
     project_warnings,
     target_flags,
 )
+
+__all__ = [
+    "LANGS",
+    "ROOT",
+    "SKIP_FILE",
+    "SKIP_LOG",
+    "SKIP_TTL",
+    "Lang",
+    "Project",
+    "add_config_langs",
+    "classify",
+    "consume_skip",
+    "discover",
+    "expand",
+    "lang_for",
+    "languages_of",
+    "missing_tests",
+    "osv_queries",
+    "parse_cargo_lock",
+    "parse_maven_dependencies",
+    "parse_osv_response",
+    "portable",
+    "portable_size",
+    "project_warnings",
+    "size_check",
+    "slop_check",
+    "target_flags",
+    "write_skip",
+]
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -510,7 +539,19 @@ def tools_checks(files: list[str], fix: bool) -> list[tuple[str, list[str]]]:
         check.append("--fix")
     else:
         fmt.append("--check")
-    return [("tools (ruff)", check), ("tools (format)", fmt)]
+    mypy = [
+        "mypy",
+        "tools",
+        "--config-file",
+        "python-teacher/pyproject.toml",
+        "--exclude",
+        "tools/fixtures",
+    ]
+    return [
+        ("tools (ruff)", check),
+        ("tools (format)", fmt),
+        ("tools (mypy)", mypy),
+    ]
 
 
 def workflow_checks(files: list[str]) -> list[tuple[str, list[str]]]:
@@ -577,6 +618,7 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
 CONFIG_LANGS = {
     "python-teacher/pyproject.toml": "python",
     "python-teacher/requirements.txt": "python",
+    "python-teacher/requirements.lock": "python",
     "typescript-teacher/package.json": "typescript",
     "typescript-teacher/tsconfig.json": "typescript",
     "typescript-teacher/eslint.config.js": "typescript",

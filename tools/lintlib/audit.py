@@ -11,6 +11,7 @@ import tempfile
 import tomllib
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 from lintlib.common import LANGS, ROOT, Command, Lang, root_command, run, show
 
@@ -137,15 +138,17 @@ def repo_slug() -> str | None:
     return match.group(1) if match else None
 
 
-def parse_alerts(raw: str) -> list[dict] | None:
+def parse_alerts(raw: str) -> list[dict[str, Any]] | None:
     """Aplana las paginas de gh --slurp; None si la respuesta no es JSON."""
     try:
         pages = json.loads(raw or "[]")
     except ValueError:
         return None
+    if not isinstance(pages, list):
+        return None
     if pages and isinstance(pages[0], list):
-        return [alert for page in pages for alert in page]
-    return pages
+        return [alert for page in pages for alert in page if isinstance(alert, dict)]
+    return [alert for alert in pages if isinstance(alert, dict)]
 
 
 OSV_URL = "https://api.osv.dev/v1/querybatch"
@@ -347,12 +350,14 @@ def audit_rust(_lang: Lang) -> int:
 
 
 def audit_python(lang: Lang) -> int:
-    """Dependencias Python con pip-audit; sin requirements no hay nada que ver."""
-    req = ROOT / lang.folder / "requirements.txt"
+    """Dependencias Python con pip-audit; usa el lock si existe."""
+    req = ROOT / lang.folder / "requirements.lock"
+    if not req.exists():
+        req = ROOT / lang.folder / "requirements.txt"
     if not req.exists():
         print("  sin requirements.txt: nada que auditar")
         return 0
-    return audit_command(Command(["pip-audit", "-r", "requirements.txt"]), lang)
+    return audit_command(Command(["pip-audit", "-r", req.name]), lang)
 
 
 def audit_command(cmd: Command, lang: Lang) -> int:

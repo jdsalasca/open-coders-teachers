@@ -28,7 +28,10 @@ jobs:
           python-version: "3.13"
 
       - name: Herramientas Python
-        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 pydantic==2.11.7 pip-audit==2.10.1 semgrep==1.179.0
+        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 pip-audit==2.10.1 semgrep==1.179.0 diff-cover==11.0.3
+
+      - name: Dependencias Python bloqueadas
+        run: pip install --require-hashes -r python-teacher/requirements.lock
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -133,6 +136,25 @@ jobs:
       - name: Lint, capas y tests
         run: python tools/lint.py
 
+      - name: Cobertura de lineas nuevas
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          diff-cover python-teacher/coverage.xml \
+            --compare-branch="origin/$BASE_REF" \
+            --fail-under=80
+          diff-cover Java-teacher/target/site/jacoco/jacoco.xml \
+            --compare-branch="origin/$BASE_REF" \
+            --fail-under=80
+          diff-cover \
+            typescript-teacher/coverage/lcov.info \
+            React-teacher/coverage/lcov.info \
+            Rust-teacher/target/lcov.info \
+            --compare-branch="origin/$BASE_REF" \
+            --fail-under=80
+
       - name: Publicar cobertura
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
@@ -160,7 +182,10 @@ jobs:
           python-version: "3.13"
 
       - name: Herramientas Python
-        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 pydantic==2.11.7 semgrep==1.179.0
+        run: pip install ruff==0.16.10 mypy==2.4.0 import-linter==2.16 pytest==8.4.1 pytest-cov==6.2.1 hypothesis==6.170.15 semgrep==1.179.0
+
+      - name: Dependencias Python bloqueadas
+        run: pip install --require-hashes -r python-teacher/requirements.lock
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:

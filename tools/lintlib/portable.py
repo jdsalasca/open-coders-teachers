@@ -7,6 +7,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 from lintlib.common import (
     NODE_EXTS,
@@ -248,7 +249,7 @@ def godot_project(project: Project, fix: bool) -> int:
     return max(status, show(*exec_external(["gdlint", "."], project.folder), "sin hallazgos"))
 
 
-def cargo_metadata(folder: Path) -> dict | None:
+def cargo_metadata(folder: Path) -> dict[str, Any] | None:
     """Metadata del crate o workspace; None si cargo no responde."""
     exe = portable_bin("cargo")
     if exe is None:
@@ -266,7 +267,7 @@ def cargo_metadata(folder: Path) -> dict | None:
     if proc.returncode != 0:
         return None
     try:
-        return json.loads(proc.stdout)
+        return cast("dict[str, Any]", json.loads(proc.stdout))
     except ValueError:
         return None
 

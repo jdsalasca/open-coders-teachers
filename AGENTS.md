@@ -91,6 +91,9 @@ seis carpetas y **falla si la cobertura baja del mínimo**. Además,
 Nombres de archivo: `test_*.py`, `*.test.ts`, `*.test.tsx`, `*_test.go`,
 `*Test.java`, `tests/*.rs` (y `#[cfg(test)]` en el modulo).
 
+En PR, `diff-cover` exige 80% de cobertura en las líneas nuevas de Python,
+Java, TypeScript, React y Rust; Go aún no exporta lcov.
+
 ## Límites duros por lenguaje
 
 | Regla | Python | TypeScript | React | Go | Java | Rust |
