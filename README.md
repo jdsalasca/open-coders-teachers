@@ -99,6 +99,10 @@ En PR, `diff-cover` exige **80% en las líneas nuevas** de Python, Java,
 TypeScript, React y Rust (Go aún no exporta lcov). No sustituye el mínimo
 global: lo complementa.
 
+El CI también ejecuta `tools/coverage_gate.py`: mínimo **por archivo** de 80%
+en TypeScript/React, 60% en Python/Java/Rust y 50% en Go, excluyendo
+composition roots y tests.
+
 ## Estructura
 
 ```text

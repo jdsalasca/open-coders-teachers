@@ -136,6 +136,9 @@ jobs:
       - name: Lint, capas y tests
         run: python tools/lint.py
 
+      - name: Cobertura por archivo
+        run: python tools/coverage_gate.py
+
       - name: Cobertura de lineas nuevas
         if: github.event_name == 'pull_request'
         env:
@@ -258,3 +261,6 @@ jobs:
 
       - name: Lint, capas y tests
         run: python tools/lint.py
+
+      - name: Cobertura por archivo
+        run: python tools/coverage_gate.py

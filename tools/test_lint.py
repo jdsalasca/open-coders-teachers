@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import check_links
+import coverage_gate
 import lint
 from lintlib import common
 
@@ -440,6 +441,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 """
 
     check(lint.parse_cargo_lock(text) == [("serde", "1.0.229")], "parseo incorrecto")
+
+
+def test_lcov_por_archivo() -> None:
+    """LCOV se convierte en line-rate por archivo."""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "lcov.info"
+        path.write_text("SF:src/a.ts\nLF:10\nLH:9\nend_of_record\n", encoding="utf-8")
+        rates = coverage_gate.parse_lcov(path)
+
+    check(rates == {"src/a.ts": 90.0}, str(rates))
+
+
+def test_go_deduplica_bloques() -> None:
+    """El mismo bloque en dos binarios de test no baja la cobertura."""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "coverage.out"
+        path.write_text(
+            "mode: set\na.go:1.1,2.1 2 0\na.go:1.1,2.1 2 1\nb.go:1.1,3.1 3 0\n",
+            encoding="utf-8",
+        )
+        rates = coverage_gate.parse_go(path)
+
+    check(rates == {"a.go": 100.0, "b.go": 0.0}, str(rates))
+
+
+def test_coverage_excluye_entrypoints() -> None:
+    """Los composition roots y tests no entran en el minimo por archivo."""
+    check(coverage_gate.excluded("python", "python-teacher/app/main.py"))
+    check(coverage_gate.excluded("go", "teachers/goteacher/cmd/api/main.go"))
+    check(coverage_gate.excluded("rust", "Rust-teacher/src/main.rs"))
+    check(coverage_gate.excluded("react", "React-teacher/src/main.tsx"))
+    check(not coverage_gate.excluded("java", "edu/teachers/domain/Task.java"))
 
 
 if __name__ == "__main__":

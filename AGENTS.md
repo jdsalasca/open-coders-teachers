@@ -94,6 +94,9 @@ Nombres de archivo: `test_*.py`, `*.test.ts`, `*.test.tsx`, `*_test.go`,
 En PR, `diff-cover` exige 80% de cobertura en las líneas nuevas de Python,
 Java, TypeScript, React y Rust; Go aún no exporta lcov.
 
+`tools/coverage_gate.py` exige además un mínimo por archivo: 80% TS/React, 60%
+Python/Java/Rust y 50% Go, sin contar composition roots ni tests.
+
 ## Límites duros por lenguaje
 
 | Regla | Python | TypeScript | React | Go | Java | Rust |

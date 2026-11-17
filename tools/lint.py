@@ -660,6 +660,7 @@ CONFIG_LANGS = {
     "tools/test_lint.py": "*",
     "tools/check_links.py": "*",
     "tools/check_adr.py": "*",
+    "tools/coverage_gate.py": "*",
 }
 
 
