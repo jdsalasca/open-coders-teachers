@@ -205,31 +205,43 @@ python tools/lint.py --project C:\ruta\al\proyecto --fix
 ```
 
 También detecta la ruta externa si se la pasas directo (`python tools/lint.py
-C:\ruta`). El modo portable **descubre proyectos por manifiesto**, sin importar
-el nombre de las carpetas:
+C:\ruta`). El modo portable **descubre proyectos por manifiesto y extensión**:
+un root con `package.json` y `requirements.txt` se separa en Node y Python; los
+crates de un workspace Rust se funden para no repetir clippy.
 
 | Manifiesto | Baseline |
 |---|---|
 | `package.json` | ESLint + Stylelint + dependency-cruiser (ciclos) |
 | `go.mod` | golangci-lint (sin reglas de capas) |
-| `pyproject.toml` | ruff |
-| `pom.xml` | Semgrep `p/java` + CodeQL Java (autobuild) |
-| `Cargo.toml` | `cargo fmt` + `cargo clippy` |
+| `pyproject.toml`, `requirements.txt` | ruff (incluye `T20`, `BLE`, `A`) |
+| `pom.xml`, `build.gradle`, `build.gradle.kts` | Semgrep `p/java` + reglas de `System.out`, `printStackTrace` y `catch (Exception)` |
+| `Cargo.toml` | `cargo fmt` + clippy estricto (`unwrap`/`expect`/`panic`/`todo`) sobre lib/bin/example |
+| `project.godot` | `gdlint` + `gdformat --check` |
 
 Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y
 salía con 0: solo conocía sus seis carpetas. Ahora, si encuentra archivos pero
 ningún manifiesto, **falla con código 2** en vez de fingir que está limpio.
 
 El baseline portable aplica reglas de calidad, no opiniones de estilo:
-`no-unused-vars`, `no-explicit-any`, `max-params: 4`, `max-lines-per-function:
-40`, `complexity: 8`, `max-depth: 3`, reglas de React, `eslint-plugin-security`,
-duplicados de SCSS y ciclos entre módulos. Los tests quedan exentos de los
-límites de tamaño.
+`no-unused-vars`, `no-explicit-any`, `no-console`, `eqeqeq`, `no-var`,
+`prefer-const`, `max-params: 4`, `max-lines-per-function: 40`, `complexity: 8`,
+`max-depth: 3`, reglas de React, `eslint-plugin-security`, duplicados de SCSS y
+ciclos entre módulos. También reporta fuentes de más de 400 líneas (sin tests
+ni generados) y avisa si no encuentra tests, CI o README. Los tests quedan
+exentos de los límites de tamaño.
 
-Límites conocidos: no ejecuta `tsc` ni los tests del proyecto externo (necesita
-sus dependencias). Java se revisa con Semgrep: seguridad sí, arquitectura y
-estilo no. Rust se revisa con `cargo fmt` y `cargo clippy`, sin tests ni
-cobertura. Un resultado `2` significa "no pude verificar", nunca "está limpio".
+```powershell
+python tools/lint.py --project C:\Users\jdsal\Documents\Programming-personal
+```
+
+Ese comando audita todos los proyectos del árbol; el resultado puede ser largo,
+así que empieza por una carpeta. Para Godot necesitas `gdtoolkit`:
+`uv tool install gdtoolkit` (aporta `gdlint` y `gdformat`). Límites conocidos:
+no ejecuta `tsc` ni los tests del proyecto externo (necesita sus dependencias). Java se revisa con
+Semgrep: seguridad y patrones, no arquitectura ni estilo. Rust se revisa sin
+tests ni cobertura. Godot depende de `gdtoolkit` y su parser puede no entender
+sintaxis nueva. No hay escaneo de secretos ni soporte específico de C/C++,
+C# o Kotlin. Un resultado `2` significa "no pude verificar", nunca "está limpio".
 
 ## Política propia (Semgrep)
 

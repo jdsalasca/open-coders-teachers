@@ -230,6 +230,76 @@ def test_todos_los_lenguajes_tienen_tests() -> None:
     check(not missing, str(missing))
 
 
+def test_discover_separa_poliglota() -> None:
+    """Un root con package.json y requirements.txt no mezcla lenguajes."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "package.json").write_text("{}", encoding="utf-8")
+        (root / "requirements.txt").write_text("", encoding="utf-8")
+        (root / "web.ts").write_text("", encoding="utf-8")
+        (root / "app.py").write_text("", encoding="utf-8")
+
+        projects = {project.kind: project for project in lint.discover(root)}
+
+    check(set(projects) == {"node", "python"}, str(sorted(projects)))
+    check(any(name.endswith("web.ts") for name in projects["node"].files))
+    check(any(name.endswith("app.py") for name in projects["python"].files))
+
+
+def test_discover_funde_workspace_rust() -> None:
+    """Los crates miembros no se auditan dos veces."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "Cargo.toml").write_text("[workspace]\nmembers = ['crates/a']\n")
+        member = root / "crates" / "a"
+        member.mkdir(parents=True)
+        (member / "Cargo.toml").write_text("[package]\nname = 'a'\n")
+        (member / "src").mkdir()
+        (member / "src" / "lib.rs").write_text("")
+
+        projects = [project for project in lint.discover(root) if project.kind == "rust"]
+
+    check(len(projects) == 1, str(projects))
+    check(any(name.endswith("lib.rs") for name in projects[0].files))
+
+
+def test_portable_size_detecta_archivo_grande() -> None:
+    """El baseline portable reporta fuentes de mas de 400 lineas."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        big = root / "big.py"
+        big.write_text("x = 1\n" * 401, encoding="utf-8")
+        test = root / "test_big.py"
+        test.write_text("x = 1\n" * 401, encoding="utf-8")
+        project = lint.Project("python", root, [big.as_posix(), test.as_posix()])
+
+        status, lines = lint.portable_size(project)
+
+    check(status == 1, "no detecto el archivo grande")
+    check(any("big.py" in line for line in lines), str(lines))
+
+
+def test_project_warnings_sin_higiene() -> None:
+    """Un proyecto vacio avisa de tests, CI y README."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        project = lint.Project("python", root, [])
+
+        warnings = lint.project_warnings(project, root)
+
+    check("no encontre tests" in warnings, str(warnings))
+    check("sin CI" in warnings, str(warnings))
+    check("sin README" in warnings, str(warnings))
+
+
+def test_target_flags() -> None:
+    """Solo se piden los targets que existen."""
+    check(lint.target_flags({"lib"}) == ["--lib"])
+    check(lint.target_flags({"bin"}) == ["--bins"])
+    check(lint.target_flags({"example"}) == ["--examples"])
+    check(lint.target_flags(set()) == ["--all-targets"])
+
+
 def test_missing_tests_detecta_carpetas_sin_tests() -> None:
     """Con carpetas vacias, reporta todos los lenguajes."""
     original = lint.ROOT

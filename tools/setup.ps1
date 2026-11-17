@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 
-$required = "python", "ruff", "mypy", "lint-imports", "node", "golangci-lint", "govulncheck", "mvn", "cargo", "cargo-llvm-cov"
+$required = "python", "ruff", "mypy", "lint-imports", "node", "golangci-lint", "govulncheck", "mvn", "cargo", "cargo-llvm-cov", "gdlint", "gdformat"
 $missing = $required | Where-Object { -not (Get-Command $_ -ErrorAction SilentlyContinue) }
 if ($missing) {
     Write-Warning "Faltan herramientas: $($missing -join ', '). Revisa el README."

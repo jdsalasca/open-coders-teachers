@@ -43,11 +43,31 @@ export default tseslint.config(
       "react/no-danger": "error",
       "react/no-unstable-nested-components": "error",
 
+      eqeqeq: ["error", "smart"],
+      "no-console": ["error", { allow: ["warn", "error"] }],
+      "no-eval": "error",
+      "no-implied-eval": "error",
+      "no-var": "error",
+      "prefer-const": "error",
+
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { args: "all", argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
       ],
+    },
+  },
+  {
+    files: [
+      "**/scripts/**",
+      "**/cli/**",
+      "**/bin/**",
+      "**/tools/**",
+      "**/commands/**",
+      "**/*.config.{ts,js,mjs,cjs}",
+    ],
+    rules: {
+      "no-console": "off",
     },
   },
   {

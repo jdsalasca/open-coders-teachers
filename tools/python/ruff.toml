@@ -2,8 +2,15 @@ line-length = 100
 target-version = "py313"
 
 [lint]
-select = ["E", "W", "F", "I", "N", "D", "ARG", "PLR", "C90", "B", "S", "UP", "SIM", "RUF"]
+select = ["E", "W", "F", "I", "N", "D", "ARG", "PLR", "C90", "B", "S", "UP", "SIM", "RUF", "T20", "BLE", "A"]
 ignore = ["D100", "D203", "D213", "PLR2004", "RUF001", "RUF002", "RUF003"]
+
+[lint.per-file-ignores]
+"**/scripts/**" = ["T20"]
+"**/cli/**" = ["T20"]
+"**/main.py" = ["T20"]
+"**/__main__.py" = ["T20"]
+"**/tests/**" = ["T20"]
 
 [lint.pylint]
 max-args = 4

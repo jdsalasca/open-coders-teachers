@@ -39,6 +39,7 @@ puede ver: requiere revisión humana y por eso está escrita aquí.
 | [Mock de todo](testing.md#mock-de-todo) | todos | manual |
 | [`assert` desactivado](testing.md#assert-desactivado-en-producción) | Python | automático |
 | [Cobertura sin intención](testing.md#cobertura-sin-intención) | todos | parcial |
+| [Errores de proyectos reales](real-projects.md) | todos | automático/parcial |
 
 \* Java no tiene detector de duplicación en este repo: `mvn pmd:cpd-check` es la
 vía cuando el curso lo necesite.

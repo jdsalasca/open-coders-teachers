@@ -40,9 +40,13 @@ una config de arquitectura (`eslint.config.js`, `.golangci.yml`,
 
 ## Proyectos externos
 
-`--project <ruta>` detecta proyectos por `package.json`, `go.mod`,
-`pyproject.toml` o `pom.xml` y aplica el baseline portable. Si el reporte dice
-que un proyecto no se pudo verificar, **no lo reportes como limpio**: dilo.
+`--project <ruta>` detecta proyectos por manifiesto y extensión
+(`package.json`, `go.mod`, `pyproject.toml`, `requirements.txt`, `pom.xml`,
+`build.gradle`, `Cargo.toml`, `project.godot`) y aplica el baseline portable.
+Un root políglota se separa por lenguaje y un workspace Rust se audita una sola
+vez. Además del linter, reporta fuentes de más de 400 líneas y avisa si faltan
+tests, CI o README (los avisos no bloquean). Si el reporte dice que un proyecto
+no se pudo verificar, **no lo reportes como limpio**: dilo.
 
 ## Skip de emergencia (solo con permiso humano)
 

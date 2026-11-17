@@ -50,11 +50,27 @@ rules:
       el dato.
     paths:
       exclude:
-        - "Java-teacher/src/main/java/edu/teachers/Main.java"
+        - "**/Main.java"
+        - "**/*Application.java"
     pattern-either:
       - pattern: System.out.println(...)
       - pattern: System.out.print(...)
       - pattern: System.out.printf(...)
+
+  - id: java-print-stack-trace
+    languages: [java]
+    severity: ERROR
+    message: >-
+      No imprimas el stack trace: usa un logger y propaga el error.
+    pattern: $ERROR.printStackTrace(...)
+
+  - id: java-catch-exception
+    languages: [java]
+    severity: ERROR
+    message: >-
+      Captura excepciones concretas; `catch (Exception)` oculta fallos.
+    pattern: |
+      try { ... } catch (Exception $E) { ... }
 
   - id: python-print
     languages: [python]
