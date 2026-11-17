@@ -295,9 +295,16 @@ def test_project_warnings_sin_higiene() -> None:
 def test_target_flags() -> None:
     """Solo se piden los targets que existen."""
     check(lint.target_flags({"lib"}) == ["--lib"])
+    check(lint.target_flags({"cdylib"}) == ["--lib"])
     check(lint.target_flags({"bin"}) == ["--bins"])
     check(lint.target_flags({"example"}) == ["--examples"])
     check(lint.target_flags(set()) == ["--all-targets"])
+
+
+def test_languages_of() -> None:
+    """Una ruta se clasifica por carpeta y extension."""
+    check(lint.languages_of(["python-teacher/app/domain/task.py"]) == {"python"})
+    check(lint.languages_of(["README.md"]) == set())
 
 
 def test_missing_tests_detecta_carpetas_sin_tests() -> None:

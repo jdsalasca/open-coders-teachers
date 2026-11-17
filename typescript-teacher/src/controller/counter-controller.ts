@@ -19,9 +19,14 @@ export function createCounterController(
   initial: unknown = { value: 0 },
 ): CounterController {
   let state: CounterState = parseCounter(initial);
+  let started = false;
 
   return {
     start(): void {
+      if (started) {
+        return;
+      }
+      started = true;
       view.onIncrement(() => {
         state = increment(state);
         view.render(state);

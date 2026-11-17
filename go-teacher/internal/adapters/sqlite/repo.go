@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -17,9 +18,21 @@ type Repository struct {
 	db *sql.DB
 }
 
+// sqliteDSN fuerza transacciones IMMEDIATE para serializar escritores.
+func sqliteDSN(path string) string {
+	if path == ":memory:" || strings.HasPrefix(path, "file::memory:") {
+		return path
+	}
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	return path + separator + "_txlock=immediate"
+}
+
 // Open abre la base, configura WAL y crea el esquema.
 func Open(path string) (*Repository, error) {
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", sqliteDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("abrir sqlite: %w", err)
 	}
@@ -200,6 +213,9 @@ func taskByID(ctx context.Context, tx *sql.Tx, id int64) (domain.Task, error) {
 
 // List devuelve una pagina ordenada por id.
 func (r *Repository) List(ctx context.Context, page domain.Page) ([]domain.Task, error) {
+	if _, err := domain.NewPage(page.Limit, page.Offset); err != nil {
+		return nil, err
+	}
 	rows, err := r.db.QueryContext(
 		ctx,
 		`SELECT id, title, done FROM tasks ORDER BY id LIMIT ? OFFSET ?`,

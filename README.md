@@ -66,6 +66,11 @@ extensión, y ejecuta lo que corresponda:
 
 Códigos de salida: `0` limpio, `1` problemas, `2` falta una herramienta.
 
+Con `--staged`, el runner elige las rutas del índice, pero las herramientas leen
+el árbol de trabajo; `staged_guard` rechaza archivos con cambios sin stagear. Un
+cambio de configuración amplía el alcance al proyecto completo. El hook es una
+ayuda: el check obligatorio es CI.
+
 ## Testing y TDD
 
 Primero el test que falla, después el código que lo hace pasar. El runner
@@ -162,10 +167,12 @@ go run ./cmd/api
 | `GET` | `/healthz` | `200 {"status":"ok"}` |
 
 Cuerpo máximo 1 MiB, `Content-Type: application/json`, errores JSON sin filtrar
-detalles internos, timeouts y apagado ordenado. `TASKS_DB` y `TASKS_ADDR`
-configuran la base y la dirección. El adaptador SQLite usa `modernc.org/sqlite`
-(puro Go), WAL y una sola conexión; el contrato de `internal/testutil` corre
-contra memoria y SQLite, incluido el reinicio.
+detalles internos, timeouts y apagado ordenado. Escucha en `127.0.0.1:8080` por
+defecto; `TASKS_ADDR` la expone si hace falta. `TASKS_DB` elige la base. Una
+página fuera de rango o un UTF-8 inválido devuelven `400`. El adaptador SQLite
+usa `modernc.org/sqlite`, WAL, `_txlock=immediate` y una conexión por instancia;
+el contrato de `internal/testutil` corre contra memoria y SQLite, incluido el
+reinicio y dos instancias sobre el mismo archivo con la misma clave.
 
 ## Qué caza cada carpeta
 
@@ -453,7 +460,7 @@ baja de 80%. Python (`mutmut`) no soporta Windows nativo y Rust
   No unifiques versiones sin revisar los peer deps.
 - `--audit` requiere red. No corre en el hook: es una revisión periódica.
 - `go run ./cmd/api` crea `tasks.db` (ignorada por git); `TASKS_DB` cambia la
-  ruta y `TASKS_ADDR` la dirección.
+  ruta y `TASKS_ADDR` la dirección (por defecto `127.0.0.1:8080`).
 - Rust se instala con `rustup` (toolchain 1.99 + `llvm-tools-preview`); la
   cobertura usa `cargo-llvm-cov`, instalado en global con `cargo install`.
 - La cobertura es un piso, no una meta: un test que ejecuta código sin afirmar

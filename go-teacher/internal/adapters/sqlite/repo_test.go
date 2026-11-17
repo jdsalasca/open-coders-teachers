@@ -31,9 +31,9 @@ func openAt(t *testing.T, path string) *sqlite.Repository {
 	return repo
 }
 
-func page(t *testing.T, limit, offset int) domain.Page {
+func page(t *testing.T) domain.Page {
 	t.Helper()
-	value, err := domain.NewPage(limit, offset)
+	value, err := domain.NewPage(10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func createAndClose(t *testing.T, path string) domain.Task {
 
 func assertPersisted(t *testing.T, repo *sqlite.Repository) {
 	t.Helper()
-	tasks, err := repo.List(context.Background(), page(t, 10, 0))
+	tasks, err := repo.List(context.Background(), page(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestRechazaTituloInvalido(t *testing.T) {
 	if !errors.Is(err, domain.ErrEmptyTitle) {
 		t.Fatalf("err = %v, quiero ErrEmptyTitle", err)
 	}
-	tasks, err := repo.List(ctx, page(t, 10, 0))
+	tasks, err := repo.List(ctx, page(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,44 @@ func TestCreateConcurrenteConLaMismaClave(t *testing.T) {
 	ids := createConcurrent(t, repo, 10, "misma-clave")
 
 	assertSameIDs(t, ids)
-	tasks, err := repo.List(context.Background(), page(t, 10, 0))
+	tasks, err := repo.List(context.Background(), page(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("quiero 1 tarea, hay %d", len(tasks))
+	}
+}
+
+func TestIdempotenciaEntreDosInstancias(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "tasks.db")
+	first := openAt(t, path)
+	second := openAt(t, path)
+
+	type outcome struct {
+		result domain.CreateResult
+		err    error
+	}
+	results := make(chan outcome, 2)
+	for _, repo := range []*sqlite.Repository{first, second} {
+		go func(repo *sqlite.Repository) {
+			result, err := repo.Create(context.Background(), "tarea", "clave")
+			results <- outcome{result: result, err: err}
+		}(repo)
+	}
+
+	one := <-results
+	two := <-results
+	if one.err != nil || two.err != nil {
+		t.Fatalf("errores: %v / %v", one.err, two.err)
+	}
+	if one.result.Task.ID() != two.result.Task.ID() {
+		t.Fatalf("ids = %d / %d", one.result.Task.ID(), two.result.Task.ID())
+	}
+	if one.result.Created == two.result.Created {
+		t.Fatal("uno debe crear y el otro hacer replay")
+	}
+	tasks, err := first.List(context.Background(), page(t))
 	if err != nil {
 		t.Fatal(err)
 	}

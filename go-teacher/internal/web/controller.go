@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/go-playground/validator/v10"
 
@@ -73,6 +74,9 @@ func (c *TaskController) CreateFromJSON(
 ) (TaskView, bool, error) {
 	if len(key) > MaxIdempotencyKeyLength {
 		return TaskView{}, false, fmt.Errorf("%w: clave de idempotencia demasiado larga", ErrInvalidInput)
+	}
+	if !utf8.Valid(payload) {
+		return TaskView{}, false, fmt.Errorf("%w: UTF-8 invalido", ErrInvalidJSON)
 	}
 	request, err := decodeRequest(payload)
 	if err != nil {

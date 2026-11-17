@@ -48,4 +48,14 @@ describe("counter-controller", () => {
 
     expect(rendered.at(-1)).toEqual({ value: 1 });
   });
+
+  it("no duplica listeners al arrancar dos veces", () => {
+    const { view, handlers } = fakeView();
+    const controller = createCounterController(view);
+
+    controller.start();
+    controller.start();
+
+    expect(handlers).toHaveLength(1);
+  });
 });

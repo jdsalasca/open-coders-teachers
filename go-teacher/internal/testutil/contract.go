@@ -3,6 +3,7 @@ package testutil
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"teachers/goteacher/internal/domain"
@@ -25,6 +26,15 @@ func RepositoryContract(t *testing.T, repo domain.RepositoryPort) {
 	assertReplay(t, repo, first)
 	assertList(t, repo, page, []domain.Task{first, second})
 	assertPage(t, repo, second)
+	assertInvalidPage(t, repo)
+}
+
+func assertInvalidPage(t *testing.T, repo domain.RepositoryPort) {
+	t.Helper()
+	_, err := repo.List(context.Background(), domain.Page{Limit: 0})
+	if !errors.Is(err, domain.ErrInvalidPage) {
+		t.Fatalf("err = %v, quiero ErrInvalidPage", err)
+	}
 }
 
 func createNew(

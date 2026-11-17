@@ -49,6 +49,9 @@ func (r *Repository) Create(
 
 // List devuelve una pagina ordenada por id.
 func (r *Repository) List(ctx context.Context, page domain.Page) ([]domain.Task, error) {
+	if _, err := domain.NewPage(page.Limit, page.Offset); err != nil {
+		return nil, err
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

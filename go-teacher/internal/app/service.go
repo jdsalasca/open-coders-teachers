@@ -24,5 +24,8 @@ func (s *Service) Add(ctx context.Context, title, key string) (domain.CreateResu
 
 // List devuelve una pagina de tareas ordenada por id.
 func (s *Service) List(ctx context.Context, page domain.Page) ([]domain.Task, error) {
+	if _, err := domain.NewPage(page.Limit, page.Offset); err != nil {
+		return nil, err
+	}
 	return s.repo.List(ctx, page)
 }

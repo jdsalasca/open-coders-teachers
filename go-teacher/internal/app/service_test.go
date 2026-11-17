@@ -156,6 +156,16 @@ func TestListPropagaErrorDelRepositorio(t *testing.T) {
 	}
 }
 
+func TestListRechazaPaginaInvalida(t *testing.T) {
+	service := app.NewService(&fakeRepo{})
+
+	_, err := service.List(context.Background(), domain.Page{Limit: 0})
+
+	if !errors.Is(err, domain.ErrInvalidPage) {
+		t.Fatalf("err = %v, quiero ErrInvalidPage", err)
+	}
+}
+
 func TestAddRespetaContextoCancelado(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

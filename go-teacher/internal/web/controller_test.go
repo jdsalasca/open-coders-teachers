@@ -131,6 +131,15 @@ func TestCreateFromJSONRechazaDatosExtra(t *testing.T) {
 	assertError(t, err, web.ErrInvalidJSON)
 }
 
+func TestCreateFromJSONRechazaUTF8Invalido(t *testing.T) {
+	payload := append([]byte(`{"title":"`), 0xff)
+	payload = append(payload, []byte(`"}`)...)
+
+	_, _, err := newController(t).CreateFromJSON(context.Background(), payload, "")
+
+	assertError(t, err, web.ErrInvalidJSON)
+}
+
 func TestCreateFromJSONRechazaTituloNulo(t *testing.T) {
 	_, _, err := newController(t).CreateFromJSON(
 		context.Background(),

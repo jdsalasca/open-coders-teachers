@@ -325,6 +325,21 @@ def expand(files: list[str]) -> list[str]:
     return [f.replace("\\", "/") for f in out if not SKIP & set(Path(f).parts)]
 
 
+def staged_deleted() -> list[str] | None:
+    """Rutas borradas en el indice; None si git falla."""
+    return git_files("diff", "--cached", "--name-only", "--diff-filter=D")
+
+
+def languages_of(paths: list[str]) -> set[str]:
+    """Lenguajes afectados por una lista de rutas."""
+    names = set()
+    for path in paths:
+        lang = lang_by_folder(path)
+        if lang and Path(path).suffix in lang.exts:
+            names.add(lang.name)
+    return names
+
+
 def candidates(staged: bool) -> list[str] | None:
     """Archivos a revisar: staged o todos; None si git no responde."""
     if staged:
@@ -1338,7 +1353,7 @@ def cargo_metadata(folder: Path) -> dict | None:
 def target_flags(kinds: set[str]) -> list[str]:
     """Flags de cargo para los tipos de target presentes."""
     flags = []
-    if "lib" in kinds or "proc-macro" in kinds:
+    if "lib" in kinds or kinds & {"proc-macro", "cdylib", "staticlib", "dylib"}:
         flags.append("--lib")
     if "bin" in kinds:
         flags.append("--bins")
@@ -1816,12 +1831,15 @@ def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> bool:
 
 
 def missing_tests() -> list[str]:
-    """Cada lenguaje del repo debe conservar al menos un test."""
+    """Cada lenguaje del repo debe conservar al menos un test versionado."""
+    found = git_files("ls-files", "--cached")
+    if found is None:
+        found = [path.relative_to(ROOT).as_posix() for path in walk_files(ROOT)]
     missing = []
     for lang in LANGS:
         if not lang.test_glob:
             continue
-        if not any((ROOT / lang.folder).rglob(lang.test_glob)):
+        if not any(Path(path).match(lang.test_glob) for path in found):
             missing.append(f"  {lang.folder}: no encontre {lang.test_glob}")
     return missing
 
@@ -1844,10 +1862,38 @@ def empty_result(args: argparse.Namespace) -> int:
     return 0
 
 
+def expand_deleted(deleted: list[str], by_lang: dict[str, list[str]]) -> None:
+    """Un borrado de codigo dispara el gate completo de su lenguaje."""
+    names = languages_of(deleted)
+    if not names:
+        return
+    everything = candidates(False) or []
+    for name in names:
+        lang = next(lg for lg in LANGS if lg.name == name)
+        by_lang[name] = [
+            f for f in everything if f.startswith(lang.folder + "/") and Path(f).suffix in lang.exts
+        ]
+
+
+def expand_config(
+    files: list[str],
+    deleted: list[str],
+    by_lang: dict[str, list[str]],
+    fixing: bool,
+) -> list[str]:
+    """Expande el alcance cuando cambia una configuracion."""
+    if add_config_langs([*files, *deleted], by_lang) and not fixing:
+        # El gate completo tambien cubre semgrep, docs y nombres del repo.
+        # Con --fix no se expande: evita reformatear docs y JSON ajenos al cambio.
+        return sorted(set(files) | set(candidates(False) or []))
+    return files
+
+
 def repo_mode(args: argparse.Namespace) -> int:
-    """Modo repo: las cinco carpetas de este proyecto."""
+    """Modo repo: las seis carpetas de este proyecto."""
     files = expand(args.files) if args.files else candidates(args.staged)
-    if files is None:
+    deleted = staged_deleted() if args.staged else []
+    if files is None or deleted is None:
         print("[X] git no respondio: no pude listar los archivos a revisar.")
         return 2
     missing = missing_tests()
@@ -1855,20 +1901,17 @@ def repo_mode(args: argparse.Namespace) -> int:
         print("[X] tests obligatorios ausentes:")
         print("\n".join(missing))
         return 1
-    if args.staged:
-        guard = staged_guard(files)
-        if guard is not None:
-            return guard
+    guard = staged_guard(files) if args.staged else None
+    if guard is not None:
+        return guard
     by_lang, banned = classify(files)
-    if add_config_langs(files, by_lang) and not (args.fix or args.unsafe):
-        # El gate completo tambien cubre semgrep, docs y nombres del repo.
-        # Con --fix no se expande: evita reformatear docs y JSON ajenos al cambio.
-        files = sorted(set(files) | set(candidates(False) or []))
+    expand_deleted(deleted, by_lang)
+    files = expand_config(files, deleted, by_lang, args.fix or args.unsafe)
     mode = special_mode(args, by_lang)
     if mode is not None:
         return mode
     has_docs = any(f.endswith(".md") for f in files)
-    if not by_lang and not banned and not has_docs:
+    if not by_lang and not banned and not has_docs and not deleted:
         return empty_result(args)
     return lint_all(args, by_lang, banned, files)
 

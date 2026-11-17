@@ -6,7 +6,7 @@ Es el **teacher de referencia**: API HTTP + SQLite + paginación + idempotencia.
 ```powershell
 cd go-teacher
 $env:TASKS_DB = "tasks.db"
-go run ./cmd/api                     # escucha en :8080
+go run ./cmd/api                     # escucha en 127.0.0.1:8080
 python tools/lint.py --fix go-teacher
 ```
 
@@ -34,18 +34,24 @@ dominio; adaptadores de salida no importan app; web no importa adaptadores.
 - `Content-Type: application/json` obligatorio; cuerpo máximo 1 MiB.
 - `Idempotency-Key` opcional (máx. 100): la misma clave devuelve la tarea
   original con `200` y no duplica.
-- `limit` debe estar entre 1 y 100; `offset` no puede ser negativo.
+- `limit` debe estar entre 1 y 100; `offset` no puede ser negativo. Una
+  `Page` inválida se rechaza en servicio y adaptadores (`ErrInvalidPage`).
+- Un payload con UTF-8 inválido se rechaza antes de decodificar; `encoding/json`
+  lo sustituiría por U+FFFD y ocultaría el problema.
 - Errores públicos: JSON `{"error":"..."}` sin filtrar detalles internos.
-- Timeouts de lectura/escritura y apagado ordenado con `SIGINT`.
-- Configuración: `TASKS_DB` (defecto `tasks.db`) y `TASKS_ADDR` (defecto `:8080`).
+- Timeouts de lectura/escritura y apagado ordenado con `SIGINT`; el proceso
+  espera a que `Shutdown` termine antes de cerrar SQLite.
+- Configuración: `TASKS_DB` (defecto `tasks.db`) y `TASKS_ADDR` (defecto
+  `127.0.0.1:8080`; usa `0.0.0.0:8080` solo si sabes exponerla).
 
 ## Persistencia
 
 SQLite con `modernc.org/sqlite` (puro Go, sin cgo). Dos tablas: `tasks` e
-`idempotency` (clave primaria + FK). WAL, `busy_timeout` y una sola conexión
-para evitar bloqueos en el ejemplo. Al reiniciar, las tareas y las claves
-persisten. El contrato del puerto vive en `internal/testutil` y corre contra
-memoria y SQLite.
+`idempotency` (clave primaria + FK). WAL, `busy_timeout`, `_txlock=immediate`
+para serializar escritores y una conexión por instancia. Al reiniciar, las
+tareas y las claves persisten; dos repositorios sobre el mismo archivo no
+duplican una clave (test de dos instancias). El contrato del puerto vive en
+`internal/testutil` y corre contra memoria y SQLite.
 
 ## Reglas
 

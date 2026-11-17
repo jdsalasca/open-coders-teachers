@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +24,7 @@ func main() {
 
 func run() error {
 	dbPath := env("TASKS_DB", "tasks.db")
-	addr := env("TASKS_ADDR", ":8080")
+	addr := env("TASKS_ADDR", "127.0.0.1:8080")
 
 	repository, err := sqlite.Open(dbPath)
 	if err != nil {
@@ -40,14 +41,26 @@ func run() error {
 		return err
 	}
 
-	server := newServer(addr, web.NewHandler(controller))
-	shutdownOnSignal(server)
-
-	log.Printf("escuchando en %s (db %s)", addr, dbPath)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
 		return err
 	}
-	return nil
+	server := newServer(addr, web.NewHandler(controller))
+	shutdownDone := make(chan struct{})
+	shutdownOnSignal(server, shutdownDone)
+
+	log.Printf("escuchando en %s (db %s)", listener.Addr(), dbPath)
+	return serve(server, listener, shutdownDone)
+}
+
+// serve espera el apagado ordenado antes de devolver el control.
+func serve(server *http.Server, listener net.Listener, shutdownDone <-chan struct{}) error {
+	err := server.Serve(listener)
+	if errors.Is(err, http.ErrServerClosed) {
+		<-shutdownDone
+		return nil
+	}
+	return err
 }
 
 func newServer(addr string, handler http.Handler) *http.Server {
@@ -61,9 +74,10 @@ func newServer(addr string, handler http.Handler) *http.Server {
 	}
 }
 
-func shutdownOnSignal(server *http.Server) {
+func shutdownOnSignal(server *http.Server, done chan<- struct{}) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	go func() {
+		defer close(done)
 		defer stop()
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)

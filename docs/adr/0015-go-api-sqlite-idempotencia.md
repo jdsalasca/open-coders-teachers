@@ -30,7 +30,8 @@ los seis teachers. Go es la opción con menos piezas: `net/http` y
 5. **Contrato del puerto** en `internal/testutil`: IDs únicos, replay,
    orden y paginación; corre contra memoria y SQLite.
 6. **Composición** en `cmd/api`: `TASKS_DB` (defecto `tasks.db`) y `TASKS_ADDR`
-   (defecto `:8080`), `signal.NotifyContext` para apagado.
+   (defecto `127.0.0.1:8080`), `signal.NotifyContext` para apagado y espera
+   explícita del `Shutdown` antes de cerrar SQLite.
 7. **Tests** de handler con `httptest` (201/200, JSON inválido, campos
    desconocidos, datos extra, nulo, blanco, NBSP, 200/201 emoji, 413, 415,
    405, 404, 500 sin detalle), de SQLite (reinicio y concurrencia) y fuzz de
