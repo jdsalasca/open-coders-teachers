@@ -1,11 +1,26 @@
 @use "tokens" as tokens;
 
 :root {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: tokens.$font-sans;
   color: tokens.$color-ink;
   background: tokens.$color-paper;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
+  min-width: 320px;
+  min-height: 100vh;
   margin: 0;
+  background:
+    radial-gradient(circle at 15% 10%, tokens.$color-accent-soft, transparent 45%),
+    tokens.$color-paper;
+}
+
+#root {
+  min-height: 100vh;
 }

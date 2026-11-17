@@ -25,6 +25,11 @@ public final class Main {
     TaskController controller = new TaskController(service, validator);
     controller.create(new CreateTaskRequest("estudiar"));
     List<TaskView> views = controller.list();
-    System.out.println(views);
+    System.out.println("Tareas");
+    System.out.println("-----");
+    for (TaskView view : views) {
+      String estado = view.done() ? "hecha" : "pendiente";
+      System.out.printf("%2d  %-20s  %s%n", view.id(), view.title(), estado);
+    }
   }
 }

@@ -14,10 +14,23 @@ function App(): JSX.Element {
 
   return (
     <main className={styles.app}>
-      <h1 className={styles.title}>React teacher</h1>
-      <p className={styles.lead}>MVVM: la vista no conoce el modelo.</p>
-      <p className={styles.count}>Valor: {value}</p>
-      <Button label="Incrementar" onClick={increment} />
+      <section aria-labelledby="app-title" className={styles.card}>
+        <p className={styles.eyebrow}>MVVM | Vite | TypeScript</p>
+        <h1 className={styles.title} id="app-title">
+          React teacher
+        </h1>
+        <p className={styles.lead}>Un contador simple, con capas grandes.</p>
+
+        <div className={styles.meter}>
+          <span className={styles.label}>Valor actual</span>
+          <output aria-live="polite" className={styles.count} data-testid="count">
+            {value}
+          </output>
+        </div>
+
+        <Button label="Incrementar" onClick={increment} />
+        <p className={styles.footer}>view -&gt; viewmodel -&gt; model | sin logica en el JSX</p>
+      </section>
     </main>
   );
 }

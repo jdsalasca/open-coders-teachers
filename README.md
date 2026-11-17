@@ -157,6 +157,13 @@ La infraestructura implementa puertos del dominio; el composition root
 (`main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs`) es la única pieza que
 conoce todas las capas.
 
+## Así se ve React-teacher
+
+<img src="docs/images/react-teacher.png" alt="Tarjeta de React teacher con el contador y el botón Incrementar" width="720">
+
+La vista solo pinta y avisa clics; el viewmodel guarda el estado. El E2E de
+Playwright + axe valida interacción, contraste y accesibilidad.
+
 ## Referencia HTTP (Go)
 
 `go-teacher` es el recorrido completo de una petición: HTTP → validación → caso

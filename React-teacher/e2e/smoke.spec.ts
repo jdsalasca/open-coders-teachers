@@ -9,7 +9,7 @@ test("la app renderiza sin violaciones de accesibilidad", async ({ page }) => {
   await expect(button).toBeVisible();
 
   await button.click();
-  await expect(page.getByText("Valor: 1")).toBeVisible();
+  await expect(page.getByTestId("count")).toHaveText("1");
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

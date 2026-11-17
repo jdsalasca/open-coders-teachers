@@ -1,22 +1,73 @@
+@use "../styles/tokens" as tokens;
+
 .app {
   display: grid;
-  gap: 16px;
-  place-content: center;
   min-height: 100vh;
-  padding: 32px;
+  padding: clamp(tokens.$space-lg, 6vw, 64px);
+  place-items: center;
+}
+
+.card {
+  width: min(560px, 100%);
+  padding: clamp(tokens.$space-lg, 5vw, 40px);
+  border: 1px solid tokens.$color-line;
+  border-radius: tokens.$radius-lg;
+  background: tokens.$color-surface;
+  box-shadow: tokens.$shadow-card;
+}
+
+.eyebrow {
+  margin: 0 0 tokens.$space-md;
+  color: tokens.$color-accent-strong;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .title {
   margin: 0;
-  font-size: 32px;
+  font-size: clamp(32px, 5vw, 44px);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
 
 .lead {
-  margin: 0;
-  font-size: 16px;
+  margin: tokens.$space-sm 0 0;
+  color: tokens.$color-muted;
+  line-height: 1.6;
+}
+
+.meter {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: tokens.$space-md;
+  margin: tokens.$space-xl 0 tokens.$space-lg;
+  padding: tokens.$space-md tokens.$space-lg;
+  border: 1px solid tokens.$color-line;
+  border-radius: tokens.$radius-md;
+  background: tokens.$color-paper;
+}
+
+.label {
+  color: tokens.$color-muted;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .count {
-  margin: 0;
-  font-size: 24px;
+  color: tokens.$color-ink;
+  font-size: clamp(48px, 10vw, 72px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.footer {
+  margin: tokens.$space-lg 0 0;
+  padding-top: tokens.$space-md;
+  border-top: 1px dashed tokens.$color-line;
+  color: tokens.$color-muted;
+  font-size: 12px;
 }

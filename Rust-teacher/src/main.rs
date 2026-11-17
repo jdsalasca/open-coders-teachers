@@ -12,7 +12,13 @@ fn main() -> ExitCode {
 
     match controller.create_from_json(r#"{"title":"estudiar"}"#) {
         Ok(view) => {
-            println!("{view:?}");
+            match serde_json::to_string_pretty(&view) {
+                Ok(json) => println!("{json}"),
+                Err(error) => {
+                    eprintln!("serializar tarea: {error}");
+                    return ExitCode::FAILURE;
+                }
+            }
             ExitCode::SUCCESS
         }
         Err(error) => {

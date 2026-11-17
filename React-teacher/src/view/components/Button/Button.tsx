@@ -16,6 +16,9 @@ interface ButtonProps {
 export function Button({ label, onClick }: ButtonProps): JSX.Element {
   return (
     <button className={styles.button} type="button" onClick={onClick}>
+      <span aria-hidden="true" className={styles.plus}>
+        +
+      </span>
       {label}
     </button>
   );
