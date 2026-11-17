@@ -25,6 +25,16 @@ def test_conserva_espacios() -> None:
     assert task.title == "  estudiar  "
 
 
+def test_lista_como_dtos() -> None:
+    """El controller devuelve vistas, no entidades."""
+    controller = _controller()
+    controller.create({"title": "uno"})
+
+    views = controller.list()
+
+    assert [view.title for view in views] == ["uno"]
+
+
 def test_rechaza_titulo_vacio() -> None:
     """Pydantic rechaza un titulo en blanco antes de llegar al dominio."""
     with pytest.raises(ValidationError):

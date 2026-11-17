@@ -64,6 +64,12 @@ linters:
           deny:
             - pkg: teachers/goteacher/internal/app
               desc: el adaptador implementa un puerto, no llama casos de uso
+        web:
+          files:
+            - "**/internal/web/**"
+          deny:
+            - pkg: teachers/goteacher/internal/adapters
+              desc: la frontera web no conoce adaptadores de salida
     revive:
       rules:
         - name: exported
@@ -86,6 +92,7 @@ linters:
         text: "^Err[A-Z]"
       - path: _test\.go
         linters:
+          - depguard
           - funlen
           - lll
           - cyclop

@@ -34,6 +34,9 @@ En `Cargo.toml`:
 Un `#[allow]` sin `reason = "..."` lo bloquea el gate (`--slop`). Los tests
 pueden usar `unwrap`/`expect` con un `#![allow]` interno justificado.
 
+`Task` valida id positivo, titulo no blanco y hasta 200 code points
+(`MAX_TITLE_LENGTH`); conserva los espacios y rechaza un titulo solo de NBSP.
+
 ## Tests
 
 `#[cfg(test)]` en cada modulo y pruebas de integracion en `tests/`.

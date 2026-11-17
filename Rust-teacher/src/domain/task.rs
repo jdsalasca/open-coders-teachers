@@ -11,7 +11,13 @@ pub enum DomainError {
     /// El titulo esta vacio o solo tiene espacios.
     #[error("el titulo no puede estar vacio")]
     EmptyTitle,
+    /// El titulo supera [`MAX_TITLE_LENGTH`] caracteres.
+    #[error("el titulo supera los 200 caracteres")]
+    TitleTooLong,
 }
+
+/// Maximo de caracteres (code points) del titulo.
+pub const MAX_TITLE_LENGTH: usize = 200;
 
 /// Errores que puede devolver la infraestructura.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -43,6 +49,9 @@ impl Task {
         }
         if title.trim().is_empty() {
             return Err(DomainError::EmptyTitle);
+        }
+        if title.chars().count() > MAX_TITLE_LENGTH {
+            return Err(DomainError::TitleTooLong);
         }
         Ok(Self {
             id,
@@ -90,7 +99,7 @@ mod tests {
     // Los tests fallan con panic a proposito.
     #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-    use super::{DomainError, Task};
+    use super::{DomainError, MAX_TITLE_LENGTH, Task};
 
     #[test]
     fn crea_una_tarea_valida() {
@@ -116,5 +125,26 @@ mod tests {
         let task = Task::new(1, "  estudiar  ", false).unwrap();
 
         assert_eq!("  estudiar  ", task.title());
+    }
+
+    #[test]
+    fn acepta_el_maximo_de_caracteres() {
+        let title = "😀".repeat(MAX_TITLE_LENGTH);
+
+        let task = Task::new(1, &title, false).unwrap();
+
+        assert_eq!(title, task.title());
+    }
+
+    #[test]
+    fn rechaza_titulo_largo() {
+        let title = "😀".repeat(MAX_TITLE_LENGTH + 1);
+
+        assert_eq!(Err(DomainError::TitleTooLong), Task::new(1, &title, false));
+    }
+
+    #[test]
+    fn rechaza_espacio_no_separable() {
+        assert_eq!(Err(DomainError::EmptyTitle), Task::new(1, "\u{a0}", false));
     }
 }

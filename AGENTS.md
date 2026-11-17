@@ -127,7 +127,7 @@ import va hacia el lado equivocado, el commit falla.
 | Carpeta | Capas permitidas | Verifica |
 |---|---|---|
 | `python-teacher` | `domain` ← `application` ← `infrastructure` | `lint-imports` |
-| `go-teacher` | `internal/domain` ← `internal/app` ← `internal/adapters` | `depguard` |
+| `go-teacher` | `internal/domain` ← `internal/app` ← (`internal/web`, `internal/adapters`) | `depguard` |
 | `Java-teacher` | `domain` ← `application` ← `infrastructure` | ArchUnit |
 | `Rust-teacher` | `domain` ← `application` ← `infrastructure` | `tests/layers.rs` |
 | `typescript-teacher` | `model` aislado; `controller` → `model` y `view`; `view` → `model` | `depcruise` |
@@ -170,7 +170,8 @@ Reglas de dependencia:
 - **Java**: compila a bytecode 21 (JDK 25) para que PIT y SpotBugs funcionen.
 - **Dependencias**: `--audit` usa npm/govulncheck/pip-audit y OSV para Maven y crates.io; Dependabot es el complemento cuando el token puede leer alertas.
 - **Null-safety**: `Objects.requireNonNull` (Java), errores (Go), Pydantic (Python), `no-unsafe-*` (TS), `Result` sin `unwrap` (Rust).
-- **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python, Zod en TypeScript/React, serde + validator en Rust; el dominio mantiene invariantes.
+- **Validación**: Bean Validation en el controller Java, Pydantic en la frontera Python, Zod en TypeScript/React, `validator` en Go, serde + validator en Rust; el dominio mantiene invariantes.
+- **Títulos**: 1..200 code points, sin recortar y no blancos (incluido NBSP), en dominio y frontera; Python, Java, Go y Rust devuelven DTO.
 - **IDs**: los asigna el repositorio (`AtomicInteger`, lock, mutex o `AtomicU64`) y nunca el caso de uso; en producción los asigna la base de datos.
 
 ## Cómo leer el reporte

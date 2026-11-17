@@ -74,6 +74,36 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  - package-ecosystem: pip
+    directory: /python-teacher
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: cargo
+    directory: /Rust-teacher
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

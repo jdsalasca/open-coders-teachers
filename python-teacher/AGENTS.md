@@ -13,7 +13,8 @@ app/
 ├── domain/          entidades y puertos (Protocol). No importa nada de app.
 ├── application/     casos de uso. Importa domain.
 ├── infrastructure/  adaptadores que implementan los puertos. Importa domain.
-└── interfaces/      frontera de entrada (Pydantic + controller).
+├── interfaces/      frontera de entrada (Pydantic + controller + DTO).
+└── main.py          composition root: unica pieza que conoce todas las capas.
 ```
 
 El dominio **no puede** importar `app.application`, `app.infrastructure` ni
@@ -22,7 +23,8 @@ infrastructure, e interfaces no puede importar infrastructure. Lo verifican
 `lint-imports` (`pyproject.toml`) y `tests/test_layers.py` con AST.
 
 La frontera Pydantic valida 1..200 caracteres (code points), rechaza títulos en
-blanco y **no recorta** el texto: el dominio conserva el título original.
+blanco y **no recorta** el texto; el dominio también exige 1..200 y conserva el
+título. El controller devuelve `TaskView`, no la entidad.
 
 ## Reglas
 

@@ -12,16 +12,17 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: read
 
 jobs:
   linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       # Actions fijadas por SHA: un tag movible es un vector de supply-chain.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -58,7 +59,7 @@ jobs:
       - name: Cobertura Rust
         uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov@0.9.1
 
       - name: Dependencias vulnerables (PR)
         if: github.event_name == 'pull_request'
@@ -115,9 +116,11 @@ jobs:
 
       - name: Secretos y patrones inseguros
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINT_SKIP_DEPENDABOT: "1"
         run: python tools/lint.py --security
+
+      - name: Secretos en el historial
+        run: gitleaks detect --source . --redact --no-banner -v
 
       - name: Lint, capas y tests
         run: python tools/lint.py
@@ -138,10 +141,12 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -178,7 +183,7 @@ jobs:
       - name: Cobertura Rust
         uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov@0.9.1
 
       - name: Dependencias vulnerables (PR)
         if: github.event_name == 'pull_request'

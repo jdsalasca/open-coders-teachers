@@ -33,6 +33,18 @@ def test_task_rechaza_id_invalido() -> None:
         Task(id=0, title="uno")
 
 
+def test_task_acepta_el_maximo_de_caracteres() -> None:
+    """Doscientos code points son validos en el dominio."""
+    task = Task(id=1, title="😀" * 200)
+    assert len(task.title) == 200
+
+
+def test_task_rechaza_titulo_largo() -> None:
+    """El dominio no acepta mas de 200 code points."""
+    with pytest.raises(ValueError, match="200"):
+        Task(id=1, title="😀" * 201)
+
+
 def test_ids_unicos_en_concurrente() -> None:
     """Cincuenta creaciones en paralelo no repiten id ni pierden tareas."""
     service = _service()

@@ -230,6 +230,21 @@ def test_todos_los_lenguajes_tienen_tests() -> None:
     check(not missing, str(missing))
 
 
+def test_missing_tests_detecta_carpetas_sin_tests() -> None:
+    """Con carpetas vacias, reporta todos los lenguajes."""
+    original = lint.ROOT
+    with tempfile.TemporaryDirectory() as tmp:
+        lint.ROOT = Path(tmp)
+        try:
+            for lang in lint.LANGS:
+                (lint.ROOT / lang.folder).mkdir()
+            missing = lint.missing_tests()
+        finally:
+            lint.ROOT = original
+
+    check(len(missing) == len(lint.LANGS), str(missing))
+
+
 def test_expand_normaliza_separadores() -> None:
     """Una ruta con backslash se compara igual que una con slash."""
     files = lint.expand(["typescript-teacher\\tsconfig.json"])
@@ -298,6 +313,23 @@ def test_consulta_osv() -> None:
     expected = {"queries": [{"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}]}
 
     check(lint.osv_queries([("g:a", "1.0")]) == expected, "consulta incorrecta")
+
+
+def test_osv_falla_si_la_respuesta_esta_incompleta() -> None:
+    """Una respuesta truncada no se puede reportar como limpia."""
+    packages = [("a", "1"), ("b", "2")]
+
+    check(lint.parse_osv_response(packages, {}) is None, "sin results")
+    check(lint.parse_osv_response(packages, {"results": [{"vulns": []}]}) is None, "corto")
+    check(lint.parse_osv_response(packages, {"results": "x"}) is None, "tipo")
+
+
+def test_osv_parsea_vulnerabilidades() -> None:
+    """Una respuesta completa se convierte en filas."""
+    packages = [("a", "1"), ("b", "2")]
+    data = {"results": [{"vulns": [{"id": "GHSA-1"}]}, {"vulns": []}]}
+
+    check(lint.parse_osv_response(packages, data) == ["  a@1: GHSA-1"], "parseo")
 
 
 def test_parsea_cargo_lock() -> None:

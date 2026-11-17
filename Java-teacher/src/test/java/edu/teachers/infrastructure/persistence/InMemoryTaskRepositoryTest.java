@@ -76,7 +76,11 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
         ids.add(future.get().id());
       }
       assertEquals(50, ids.size());
-      assertTrue(repo.all().size() == 50);
+      List<Task> all = repo.all();
+      assertEquals(50, all.size());
+      for (int index = 0; index < all.size(); index++) {
+        assertEquals(index + 1, all.get(index).id());
+      }
     } finally {
       pool.shutdown();
     }

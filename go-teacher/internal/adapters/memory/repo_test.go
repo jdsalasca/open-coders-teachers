@@ -71,16 +71,14 @@ func addConcurrent(t *testing.T, count int) []int {
 	ids := make(chan int, count)
 
 	for range count {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			task, err := repo.Add(ctx, "tarea")
 			if err != nil {
 				t.Errorf("Add fallo: %v", err)
 				return
 			}
 			ids <- task.ID()
-		}()
+		})
 	}
 	wg.Wait()
 	close(ids)

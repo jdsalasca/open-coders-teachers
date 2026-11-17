@@ -17,8 +17,15 @@ public record Task(int id, String title, boolean done) {
       throw new IllegalArgumentException("el id debe ser positivo");
     }
     Objects.requireNonNull(title, "title");
-    if (title.isBlank()) {
+    if (title.codePoints().allMatch(Task::isSpace)) {
       throw new IllegalArgumentException("el titulo no puede estar vacio");
     }
+    if (title.codePointCount(0, title.length()) > 200) {
+      throw new IllegalArgumentException("el titulo supera los 200 caracteres");
+    }
+  }
+
+  private static boolean isSpace(int codePoint) {
+    return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
   }
 }

@@ -65,3 +65,35 @@ func TestNewTaskRechazaTituloLargo(t *testing.T) {
 		t.Fatalf("err = %v, quiero ErrTitleTooLong", err)
 	}
 }
+
+func TestNewTaskRechazaUTF8Invalido(t *testing.T) {
+	_, err := domain.NewTask(1, string([]byte{0xff}), false)
+
+	if !errors.Is(err, domain.ErrInvalidUTF8) {
+		t.Fatalf("err = %v, quiero ErrInvalidUTF8", err)
+	}
+}
+
+func TestNewTaskRechazaEspacioNoSeparable(t *testing.T) {
+	_, err := domain.NewTask(1, "\u00a0", false)
+
+	if !errors.Is(err, domain.ErrEmptyTitle) {
+		t.Fatalf("err = %v, quiero ErrEmptyTitle", err)
+	}
+}
+
+func FuzzNewTask(f *testing.F) {
+	f.Add(1, "estudiar")
+	f.Fuzz(func(t *testing.T, id int, title string) {
+		task, err := domain.NewTask(id, title, false)
+		if err != nil {
+			return
+		}
+		if task.ID() != id {
+			t.Fatalf("id = %d, quiero %d", task.ID(), id)
+		}
+		if task.Title() != title {
+			t.Fatal("el titulo no se conservo")
+		}
+	})
+}

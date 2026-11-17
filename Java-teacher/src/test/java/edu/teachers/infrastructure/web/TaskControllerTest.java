@@ -56,6 +56,13 @@ class TaskControllerTest {
   }
 
   @Test
+  void rechazaEspacioNoSeparable() {
+    CreateTaskRequest request = new CreateTaskRequest("\u00a0");
+
+    assertThrows(ConstraintViolationException.class, () -> controller.create(request));
+  }
+
+  @Test
   void rechazaTituloLargo() {
     CreateTaskRequest request = new CreateTaskRequest("x".repeat(201));
 

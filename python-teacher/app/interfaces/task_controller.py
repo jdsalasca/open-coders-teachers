@@ -1,8 +1,8 @@
 """Adaptador de entrada: valida payloads y llama casos de uso."""
 
 from app.application.service import TaskService
-from app.domain.task import Task
 from app.interfaces.requests import CreateTaskRequest
+from app.interfaces.views import TaskView
 
 
 class TaskController:
@@ -12,7 +12,11 @@ class TaskController:
         """Inyecta el caso de uso."""
         self._service = service
 
-    def create(self, payload: dict[str, object]) -> Task:
-        """Valida el payload con Pydantic y crea la tarea."""
+    def create(self, payload: dict[str, object]) -> TaskView:
+        """Valida el payload con Pydantic y devuelve un DTO."""
         request = CreateTaskRequest.model_validate(payload)
-        return self._service.add(request.title)
+        return TaskView.from_domain(self._service.add(request.title))
+
+    def list(self) -> list[TaskView]:
+        """Lista las tareas como DTO."""
+        return [TaskView.from_domain(task) for task in self._service.list_all()]

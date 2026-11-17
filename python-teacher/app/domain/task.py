@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+MAX_TITLE_LENGTH = 200
+
 
 @dataclass(frozen=True)
 class Task:
@@ -18,6 +20,8 @@ class Task:
             raise ValueError("el id debe ser positivo")
         if not self.title.strip():
             raise ValueError("el titulo no puede estar vacio")
+        if len(self.title) > MAX_TITLE_LENGTH:
+            raise ValueError("el titulo supera los 200 caracteres")
 
 
 class TaskRepositoryPort(Protocol):

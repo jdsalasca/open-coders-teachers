@@ -133,7 +133,7 @@ flowchart LR
 | Carpeta | Capas | Herramienta | Regla |
 |---|---|---|---|
 | `python-teacher` | `domain` ← `application` ← `infrastructure` | `import-linter` | `pyproject.toml` |
-| `go-teacher` | `internal/domain` ← `internal/app` ← `internal/adapters` | `depguard` | `.golangci.yml` |
+| `go-teacher` | `internal/domain` ← `internal/app` ← (`internal/web`, `internal/adapters`) | `depguard` | `.golangci.yml` |
 | `Java-teacher` | `domain` ← `application` ← `infrastructure` | ArchUnit | `ArchitectureTest` |
 | `Rust-teacher` | `domain` ← `application` ← `infrastructure` | test de capas | `tests/layers.rs` |
 | `typescript-teacher` | `model` ← `view`, `controller` → ambos | `dependency-cruiser` | `.dependency-cruiser.js` |
@@ -169,7 +169,7 @@ conoce todas las capas.
 | Documentación | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces | markdownlint + enlaces |
 | Nombres de archivo | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` | `ls-lint` |
 | Entidades en la API | — | — | — | — | `web_sin_dominio` (DTOs) | `TaskView` (DTO) |
-| Validación de entrada | Pydantic + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | errores + título (200 runas) | Bean Validation (code points) + `Objects.requireNonNull` | `serde` + `validator` |
+| Validación de entrada | Pydantic + DTO + invariantes | Zod + `no-unsafe-*` | Zod + `no-unsafe-*` | validator + DTO (200 runas) | Bean Validation (code points) + `Objects.requireNonNull` | `serde` + `validator` |
 | IDs únicos | repositorio + lock + test | - | - | repositorio + mutex + test | repositorio + `AtomicInteger` + test | repositorio + mutex + test |
 | Indentación | `ruff format` | Prettier | Prettier | `gofmt` | Spotless | `rustfmt` |
 
@@ -231,7 +231,7 @@ python tools/lint.py --audit      # solo dependencias
 | Python | `ruff S` (bandit) | `eval`, `subprocess` con shell, secretos |
 | Node | `eslint-plugin-security` | `eval`, regex DoS, object injection |
 | Rust | `clippy` + Semgrep | `unwrap`/`expect`, `panic`, `unsafe`, prints fuera de `main` |
-| Dependencias | `npm audit`, `govulncheck`, `pip-audit`, **OSV (Maven, crates.io)** + Dependabot | CVEs conocidas |
+| Dependencias | `npm audit` (incluido `tools/node`), `govulncheck`, `pip-audit`, **OSV (Maven, crates.io)** + Dependabot | CVEs conocidas |
 
 Semgrep corre también en CI, y de hecho encontró dos problemas reales en el
 propio workflow (actions con tag movible y `curl | sh`): ambos se corrigieron
@@ -357,7 +357,7 @@ propósito y comprueba si los tests lo detectan.
 |---|---|---|
 | `typescript-teacher` | 11 | **100%** |
 | `React-teacher` | 10 | **90%** |
-| `Java-teacher` | 13 | **92%** |
+| `Java-teacher` | 14 | **93%** |
 
 ```powershell
 python tools/lint.py --mutation          # ambos

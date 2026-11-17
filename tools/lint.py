@@ -781,7 +781,7 @@ def parse_maven_dependencies(text: str) -> list[tuple[str, str]]:
 
 
 def maven_packages() -> list[tuple[str, str]] | None:
-    """Dependencias runtime de Java-teacher; None si Maven no responde."""
+    """Dependencias de Java-teacher (test incluye compile y runtime)."""
     exe = shutil.which("mvn")
     if exe is None:
         return None
@@ -793,7 +793,7 @@ def maven_packages() -> list[tuple[str, str]] | None:
                 "-q",
                 "-B",
                 "dependency:list",
-                "-DincludeScope=runtime",
+                "-DincludeScope=test",
                 f"-DoutputFile={output}",
             ],
             cwd=ROOT / "Java-teacher",
@@ -840,6 +840,27 @@ def osv_queries(packages: list[tuple[str, str]], ecosystem: str = "Maven") -> di
     }
 
 
+def parse_osv_response(packages: list[tuple[str, str]], data: object) -> list[str] | None:
+    """Convierte una respuesta batch de OSV; None si esta incompleta."""
+    if not isinstance(data, dict):
+        return None
+    results = data.get("results")
+    if not isinstance(results, list) or len(results) != len(packages):
+        return None
+    rows = []
+    for (name, version), result in zip(packages, results, strict=True):
+        if not isinstance(result, dict):
+            return None
+        vulns = result.get("vulns", [])
+        if not isinstance(vulns, list):
+            return None
+        for vuln in vulns:
+            if not isinstance(vuln, dict):
+                return None
+            rows.append(f"  {name}@{version}: {vuln.get('id', '?')}")
+    return rows
+
+
 def osv_vulnerabilities(
     packages: list[tuple[str, str]], ecosystem: str = "Maven"
 ) -> list[str] | None:
@@ -854,11 +875,7 @@ def osv_vulnerabilities(
             data = json.loads(response.read().decode("utf-8"))
     except (OSError, ValueError):
         return None
-    return [
-        f"  {name}@{version}: {vuln.get('id', '?')}"
-        for (name, version), result in zip(packages, data.get("results", []), strict=False)
-        for vuln in result.get("vulns", [])
-    ]
+    return parse_osv_response(packages, data)
 
 
 def dependabot_alerts() -> tuple[int | None, str]:
@@ -987,6 +1004,11 @@ def audit(langs: list[str]) -> int:
             status = max(status, handler(lang))
         else:
             status = max(status, audit_command(AUDIT[name], lang))
+
+    print("\n== vulnerabilidades: tools/node ==")
+    code, output = root_command(["npm", "audit", "--prefix", "tools/node", "--audit-level=high"])
+    status = max(status, show(code, output, "sin vulnerabilidades conocidas"))
+
     return max(status, audit_maven())
 
 

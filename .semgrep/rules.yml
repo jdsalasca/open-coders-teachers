@@ -66,6 +66,7 @@ rules:
       exclude:
         - "tools/**"
         - "python-teacher/tests/**"
+        - "python-teacher/app/main.py"
     pattern: print(...)
 
   - id: go-print
