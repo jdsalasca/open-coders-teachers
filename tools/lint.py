@@ -499,8 +499,32 @@ def special_mode(args: argparse.Namespace, by_lang: dict[str, list[str]]) -> int
     return mutation(langs)
 
 
+def tools_checks(files: list[str], fix: bool) -> list[tuple[str, list[str]]]:
+    """Ruff sobre el propio runner y sus tests."""
+    if not any(f.startswith("tools/") and f.endswith(".py") for f in files):
+        return []
+    base = ["--config", "python-teacher/pyproject.toml", "--exclude", "tools/fixtures"]
+    check = ["ruff", "check", "tools", *base]
+    fmt = ["ruff", "format", "tools", *base]
+    if fix:
+        check.append("--fix")
+    else:
+        fmt.append("--check")
+    return [("tools (ruff)", check), ("tools (format)", fmt)]
+
+
+def workflow_checks(files: list[str]) -> list[tuple[str, list[str]]]:
+    """Actionlint sobre los workflows."""
+    workflows = [
+        f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))
+    ]
+    if not workflows:
+        return []
+    return [("workflows (actionlint)", ["actionlint", *workflows])]
+
+
 def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
-    """Docs (markdownlint + enlaces) y nombres de archivo (ls-lint)."""
+    """Docs, nombres, tools, workflows y politica del repo."""
     lines = ["== repo =="]
     status = 0
     md = [f for f in files if f.endswith(".md")]
@@ -508,6 +532,8 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
     checks: list[tuple[str, list[str]]] = []
     if any(f.startswith("tools/") and f.endswith(".py") for f in files):
         checks.append(("autochequeo (test_lint)", ["python", "tools/test_lint.py"]))
+    checks.extend(tools_checks(files, fix))
+    checks.extend(workflow_checks(files))
     if md:
         markdown = ["markdownlint", *md, "--config", ".markdownlint.json"]
         checks.append(("docs (markdownlint)", markdown + (["--fix"] if fix else [])))

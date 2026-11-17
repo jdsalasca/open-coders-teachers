@@ -1,6 +1,7 @@
 package web_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -45,7 +46,12 @@ func newAPI(t *testing.T) http.Handler {
 
 func serve(t *testing.T, handler http.Handler, req request) *httptest.ResponseRecorder {
 	t.Helper()
-	httpRequest := httptest.NewRequest(req.method, req.path, strings.NewReader(req.body))
+	httpRequest := httptest.NewRequestWithContext(
+		context.Background(),
+		req.method,
+		req.path,
+		strings.NewReader(req.body),
+	)
 	if req.contentType != "" {
 		httpRequest.Header.Set("Content-Type", req.contentType)
 	}

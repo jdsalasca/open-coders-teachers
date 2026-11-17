@@ -131,6 +131,9 @@
         <configuration>
           <minimumTokens>100</minimumTokens>
           <printFailingErrors>true</printFailingErrors>
+          <excludes>
+            <exclude>**/Main.java</exclude>
+          </excludes>
           <rulesets>
             <ruleset>config/pmd/ruleset.xml</ruleset>
           </rulesets>

@@ -23,7 +23,8 @@ python tools/lint.py <archivos>  # revisa solo esos archivos
 Sale con código 1 si quedan problemas. El hook de git corre lo mismo sobre lo
 que está en stage: **un commit con violaciones se rechaza** y devuelve el
 reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push a `main`
-y en cada pull request.
+y en cada pull request. El gate también pasa `ruff` sobre `tools/` y
+`actionlint` sobre `.github/workflows/`; si falta `actionlint`, devuelve `2`.
 
 ## Lint en cada edición
 

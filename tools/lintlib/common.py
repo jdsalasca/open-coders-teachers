@@ -149,6 +149,7 @@ LANGS = (
                     "go",
                     "test",
                     *GO_RACE,
+                    "-shuffle=on",
                     "./...",
                     "-coverpkg=./internal/...",
                     "-coverprofile=coverage.out",

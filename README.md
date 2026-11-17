@@ -358,11 +358,17 @@ sepa dónde mirar.
 | Node 24+ | `winget install OpenJS.NodeJS.LTS` |
 | Go 1.27 + `golangci-lint` + `govulncheck` | `winget install GoLang.Go` / `winget install GolangCI.golangci-lint` / `go install golang.org/x/vuln/cmd/govulncheck@latest` |
 | JDK 25 + Maven (bytecode 21) | `winget install EclipseAdoptium.Temurin.25.JDK` / `winget install Apache.Maven` |
+| Rust 1.99 + `cargo-llvm-cov` | `rustup toolchain install 1.99.0` / `cargo install cargo-llvm-cov --locked` |
+| `actionlint` (workflows) | `winget install rhysd.actionlint` o `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12` |
+| `gdtoolkit` (Godot portable) | `uv tool install gdtoolkit` |
+
+El gate también pasa `ruff` sobre `tools/` y `actionlint` sobre
+`.github/workflows/`; si falta `actionlint`, el runner devuelve `2`.
 
 ## Añadir un lenguaje
 
 1. Crea la carpeta con su config de lint.
-2. Agrega un `Lang(...)` en `tools/lint.py` con sus comandos `check` y `fix`.
+2. Agrega un `Lang(...)` en `tools/lintlib/common.py` con sus comandos `check` y `fix`.
 3. Escribe su `AGENTS.md` con los límites y la arquitectura.
 4. `python tools/test_lint.py` y `python tools/lint.py`.
 

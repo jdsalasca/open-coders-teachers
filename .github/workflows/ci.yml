@@ -110,6 +110,7 @@ jobs:
           tar -xzf gitleaks_8.30.1_linux_x64.tar.gz
           sudo install gitleaks /usr/local/bin/gitleaks
           go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Autochequeo del runner
@@ -220,6 +221,12 @@ jobs:
           $bin = Get-ChildItem "$env:RUNNER_TEMP\golangci" -Recurse -Filter golangci-lint.exe |
             Select-Object -First 1
           $bin.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: actionlint
+        shell: pwsh
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Autochequeo del runner
         run: python tools/test_lint.py

@@ -54,3 +54,7 @@ agotamiento. Una entrada inválida puede consumir un ID (hueco documentado).
 Ademas: `SummaryJavadoc`, `NonEmptyAtclauseDescription`, `IllegalCatch`,
 `IllegalThrows`, `HiddenField`, `ParameterAssignment`, `BooleanExpressionComplexity`,
 `FileLength`, `PackageName`, `StaticVariableName`.
+
+PMD añade `SystemPrintln`, `AvoidPrintStackTrace` y
+`AvoidCatchingGenericException`; `Main.java` queda excluido de PMD por ser el
+composition root que imprime el ejemplo.

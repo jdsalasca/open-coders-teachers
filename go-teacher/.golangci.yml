@@ -24,13 +24,18 @@ linters:
     - depguard
     - bodyclose
     - containedctx
+    - contextcheck
     - errname
     - forcetypeassert
     - gochecknoinits
     - gochecknoglobals
     - interfacebloat
+    - nilerr
     - nilnil
+    - noctx
     - predeclared
+    - rowserrcheck
+    - sqlclosecheck
     - usestdlibvars
   settings:
     funlen:

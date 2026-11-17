@@ -23,6 +23,8 @@ select = [
   "RET",  # salidas innecesarias: else tras return, asignar y retornar
   "PERF", # rendimiento: listas por comprension, concatenacion en bucle
   "C4",   # comprehensions innecesarias
+  "BLE",  # except ciego
+  "T20",  # print() fuera de entrypoints
 ]
 ignore = [
   "D100",     # docstring de modulo: no aporta en scripts de clase
@@ -49,6 +51,8 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D103", "PLR0913", "S101"]
+"app/main.py" = ["T20"]
+"tools/**" = ["T20"]
 
 [tool.ruff.format]
 quote-style = "double"

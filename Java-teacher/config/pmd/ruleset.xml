@@ -7,6 +7,9 @@
 
   <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
   <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
+  <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
+  <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+  <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
   <rule ref="category/java/design.xml/TooManyMethods">
     <properties>
       <property name="maxmethods" value="15"/>

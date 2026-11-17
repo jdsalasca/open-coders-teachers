@@ -59,7 +59,8 @@ duplican una clave (test de dos instancias). El contrato del puerto vive en
 `revive` (exported, var-naming, arg-limit 4, cognitive 8, unused-parameter),
 `funlen` (40 lineas / 40 statements), `cyclop` (8), `dupl` (bloques de 100+
 tokens), `lll` (100), `gocritic`, `misspell`, `nakedret`, `gosec`,
-`errorlint`, `modernize` y `depguard`.
+`errorlint`, `modernize`, `depguard`, `nilerr`, `noctx`, `contextcheck`,
+`rowserrcheck` y `sqlclosecheck`.
 
 Todo lo exportado lleva doc comment que empieza con el nombre del simbolo.
 `Task` tiene campos privados y getters (`ID()`, `Title()`, `Done()`): el valor
@@ -73,9 +74,9 @@ desconocidos y datos extra fallan.
 
 ## Tests
 
-`*_test.go` en el mismo paquete. El runner corre `go test ./...` con perfil de
-cobertura y exige 50% total; un paquete sin tests no suma. Fuera de Windows
-añade `-race` (en Windows exige cgo/gcc y se omite).
+`*_test.go` en el mismo paquete. El runner corre `go test -shuffle=on ./...`
+con perfil de cobertura y exige 50% total; un paquete sin tests no suma. Fuera
+de Windows añade `-race` (en Windows exige cgo/gcc y se omite).
 
 - `internal/testutil` fija el contrato: IDs únicos, idempotencia, orden y
   paginación; corre contra memoria y SQLite.

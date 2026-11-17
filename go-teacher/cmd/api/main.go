@@ -41,7 +41,7 @@ func run() error {
 		return err
 	}
 
-	listener, err := net.Listen("tcp", addr)
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func shutdownOnSignal(server *http.Server, done chan<- struct{}) {
 		defer close(done)
 		defer stop()
 		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdown); err != nil {
 			log.Printf("apagar servidor: %v", err)
