@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import check_links
 import lint
+from lintlib import common
 
 
 def check(condition: bool, message: str = "") -> None:
@@ -310,14 +311,17 @@ def test_languages_of() -> None:
 def test_missing_tests_detecta_carpetas_sin_tests() -> None:
     """Con carpetas vacias, reporta todos los lenguajes."""
     original = lint.ROOT
+    original_common = common.ROOT
     with tempfile.TemporaryDirectory() as tmp:
         lint.ROOT = Path(tmp)
+        common.ROOT = lint.ROOT
         try:
             for lang in lint.LANGS:
                 (lint.ROOT / lang.folder).mkdir()
             missing = lint.missing_tests()
         finally:
             lint.ROOT = original
+            common.ROOT = original_common
 
     check(len(missing) == len(lint.LANGS), str(missing))
 
@@ -361,6 +365,19 @@ def test_config_global_expande_los_cinco_lenguajes() -> None:
 
     lint.add_config_langs([".semgrep/rules.yml"], by_lang)
 
+    check(
+        set(by_lang) == {lang.name for lang in lint.LANGS},
+        f"lenguajes: {sorted(by_lang)}",
+    )
+
+
+def test_config_de_lintlib_expande_todo() -> None:
+    """Un modulo del runner dispara el gate completo."""
+    by_lang: dict[str, list[str]] = {}
+
+    changed = lint.add_config_langs(["tools/lintlib/portable.py"], by_lang)
+
+    check(changed, "no detecto el modulo")
     check(
         set(by_lang) == {lang.name for lang in lint.LANGS},
         f"lenguajes: {sorted(by_lang)}",

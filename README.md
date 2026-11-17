@@ -106,7 +106,8 @@ open-coders-teachers/
 ├── Java-teacher/        Checkstyle + Spotless + ArchUnit + JaCoCo hexagonal
 ├── Rust-teacher/        rustfmt + clippy + cargo-llvm-cov       hexagonal
 ├── tools/
-│   ├── lint.py          runner único
+│   ├── lint.py          entrada compatible del runner
+│   ├── lintlib/         core, portable y audit
 │   ├── test_lint.py     autochequeo del runner
 │   └── setup.ps1        instalación en un clon nuevo
 ├── resources/
