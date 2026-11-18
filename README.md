@@ -57,6 +57,7 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --skip "motivo"` | permite el próximo commit sin linters (un solo uso) |
 | `python tools/lint.py --fix --unsafe` | arreglos que pueden cambiar comportamiento |
 | `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
+| `python tools/lint.py --project <ruta> --validate` | reporte externo por archivo y aspecto |
 | `python tools/lint.py --fast <archivo>` | solo herramientas de archivo (sin tests ni capas) |
 | `python tools/lint.py --json` | salida estructurada para agentes y scripts |
 | `python tools/lint.py <ruta> --validate` | reporte determinista por archivo y aspecto |
@@ -79,6 +80,8 @@ leer seis formatos distintos.
 python tools/lint.py Rust-teacher --validate
 python tools/lint.py typescript-teacher/src --validate --json
 python tools/lint.py --validate --fix
+python tools/lint.py --project C:\ruta\al\proyecto --validate
+python tools/lint.py --project C:\ruta\al\proyecto --validate --json
 ```
 
 Categorías: `calidad`, `capas`, `nombres`, `acoplamiento`, `srp`,
@@ -98,6 +101,15 @@ y línea se reporta a nivel de carpeta; no se inventa una ubicación.
 formateadores, orden de imports, lints con `fix` y `spotless`. Nombres,
 complejidad, capas y SRP se reportan como `manual` porque un arreglo automático
 podría cambiar el diseño.
+
+En proyectos externos, `--project <ruta> --validate` usa el baseline portable y
+aplica las mismas categorías. Rust es el caso más estricto: `cargo fmt` y
+clippy con `many_single_char_names`, `too_many_lines`, `cognitive_complexity`,
+`too_many_arguments`, repetición de módulo, imports comodín, `unwrap`/`expect`/
+`panic` y documentación de errores. Los umbrales viven en
+`tools/rust/clippy.toml`: 40 líneas por función, 8 de complejidad y 4
+parámetros. Los lints de casts numéricos no entran en el baseline externo para
+no ahogar el reporte; el teacher de Rust sí los cubre con `pedantic`.
 
 Con `--staged`, el runner elige las rutas del índice, pero las herramientas leen
 el árbol de trabajo; `staged_guard` rechaza archivos con cambios sin stagear. Un
@@ -266,6 +278,8 @@ reinicio y dos instancias sobre el mismo archivo con la misma clave.
 ```powershell
 python tools/lint.py --project C:\ruta\al\proyecto
 python tools/lint.py --project C:\ruta\al\proyecto --fix
+python tools/lint.py --project C:\ruta\al\proyecto --validate
+python tools/lint.py --project C:\ruta\al\proyecto --validate --json
 ```
 
 También detecta la ruta externa si se la pasas directo (`python tools/lint.py
@@ -279,7 +293,7 @@ crates de un workspace Rust se funden para no repetir clippy.
 | `go.mod` | golangci-lint (sin reglas de capas) |
 | `pyproject.toml`, `requirements.txt` | ruff (incluye `T20`, `BLE`, `A`) |
 | `pom.xml`, `build.gradle`, `build.gradle.kts` | Semgrep `p/java` + reglas de `System.out`, `printStackTrace` y `catch (Exception)` |
-| `Cargo.toml` | `cargo fmt` + clippy estricto (`unwrap`/`expect`/`panic`/`todo`) sobre lib/bin/example |
+| `Cargo.toml` | `cargo fmt` + clippy de diseño (`many_single_char_names`, `too_many_lines`, `cognitive_complexity`, `too_many_arguments`, `module_name_repetitions`, `unwrap`/`expect`/`panic`/`todo`) sobre todos los targets |
 | `project.godot` | `gdlint` + `gdformat --check` |
 
 Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y

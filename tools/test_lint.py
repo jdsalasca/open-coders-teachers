@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import check_links
 import coverage_gate
 import lint
-from lintlib import common, quality
+from lintlib import common, portable_quality, quality
 
 
 def check(condition: bool, message: str = "") -> None:
@@ -75,9 +75,7 @@ def test_ignora_extension_y_carpeta_equivocadas() -> None:
 
 def test_clasifica_css_prohibido() -> None:
     """Un .css en React-teacher se reporta como prohibido."""
-    by_lang, banned = lint.classify(
-        ["React-teacher/src/App.css", "React-teacher/src/App.tsx"]
-    )
+    by_lang, banned = lint.classify(["React-teacher/src/App.css", "React-teacher/src/App.tsx"])
     check(list(by_lang) == ["react"])
     check(len(banned) == 1)
 
@@ -86,13 +84,7 @@ def test_expand_ignora_generados() -> None:
     """Una carpeta se expande sin entrar en node_modules ni dist."""
     files = lint.expand(["React-teacher"])
     check(bool(files))
-    check(
-        not [
-            f
-            for f in files
-            if "node_modules" in f or f.startswith("React-teacher/dist")
-        ]
-    )
+    check(not [f for f in files if "node_modules" in f or f.startswith("React-teacher/dist")])
 
 
 def test_descubre_proyecto_por_manifiesto() -> None:
@@ -112,9 +104,8 @@ def test_portable_encuentra_hallazgos() -> None:
         code = lint.portable(fixture, False)
     salida = buffer.getvalue()
     if code == 2:
-        return skip_test(
-            "faltan herramientas del baseline portable: corre tools/setup.ps1"
-        )
+        skip_test("faltan herramientas del baseline portable: corre tools/setup.ps1")
+        return
     check(code == 1, f"esperaba hallazgos (1), obtuve {code}")
     check("max-params" in salida, "no reporto demasiados parametros")
     check("no-unused-vars" in salida, "no reporto variable sin usar")
@@ -123,7 +114,8 @@ def test_portable_encuentra_hallazgos() -> None:
 def test_canario_python() -> None:
     """La config de ruff de python-teacher sigue cazando violaciones."""
     if not has_tool("ruff"):
-        return skip_test("ruff no esta instalado: corre tools/setup.ps1")
+        skip_test("ruff no esta instalado: corre tools/setup.ps1")
+        return
     fixture = lint.ROOT / "tools" / "fixtures" / "bad-py" / "bad.py"
     config = lint.ROOT / "python-teacher" / "pyproject.toml"
     proc = run(
@@ -211,9 +203,7 @@ def test_slop_detecta_tests_apagados() -> None:
     """Un test enfocado no debe pasar."""
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
-        (base / "x.test.ts").write_text(
-            'it.only("corre solo", () => {});\n', encoding="utf-8"
-        )
+        (base / "x.test.ts").write_text('it.only("corre solo", () => {});\n', encoding="utf-8")
         code, lines = lint.slop_check(["x.test.ts"], base=base)
     check(code == 1, "no detecto el test enfocado")
     check(any(".only" in line for line in lines), "no reporto .only")
@@ -227,9 +217,7 @@ def test_slop_exige_justificacion() -> None:
             "// eslint-disable-next-line no-console -- lo pide la CLI\n",
             encoding="utf-8",
         )
-        (base / "y.py").write_text(
-            "import os  # noqa: S603 - motivo\n", encoding="utf-8"
-        )
+        (base / "y.py").write_text("import os  # noqa: S603 - motivo\n", encoding="utf-8")
         code, lines = lint.slop_check(["x.ts", "y.py"], base=base)
     check(code == 0, f"marco supresiones justificadas: {lines}")
 
@@ -293,9 +281,7 @@ def test_discover_funde_workspace_rust() -> None:
         (member / "src").mkdir()
         (member / "src" / "lib.rs").write_text("")
 
-        projects = [
-            project for project in lint.discover(root) if project.kind == "rust"
-        ]
+        projects = [project for project in lint.discover(root) if project.kind == "rust"]
 
     check(len(projects) == 1, str(projects))
     check(any(name.endswith("lib.rs") for name in projects[0].files))
@@ -381,8 +367,7 @@ def test_config_con_codigo_expande_el_proyecto() -> None:
 
     check(changed, "no detecto el cambio de configuracion")
     check(
-        "typescript-teacher/src/controller/counter-controller.ts"
-        in by_lang["typescript"],
+        "typescript-teacher/src/controller/counter-controller.ts" in by_lang["typescript"],
         "no expandio al proyecto completo",
     )
 
@@ -442,11 +427,7 @@ def test_parsea_dependencias_maven() -> None:
 
 def test_consulta_osv() -> None:
     """La consulta batch usa el ecosistema Maven y la version."""
-    expected = {
-        "queries": [
-            {"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}
-        ]
-    }
+    expected = {"queries": [{"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}]}
 
     check(lint.osv_queries([("g:a", "1.0")]) == expected, "consulta incorrecta")
 
@@ -456,9 +437,7 @@ def test_osv_falla_si_la_respuesta_esta_incompleta() -> None:
     packages = [("a", "1"), ("b", "2")]
 
     check(lint.parse_osv_response(packages, {}) is None, "sin results")
-    check(
-        lint.parse_osv_response(packages, {"results": [{"vulns": []}]}) is None, "corto"
-    )
+    check(lint.parse_osv_response(packages, {"results": [{"vulns": []}]}) is None, "corto")
     check(lint.parse_osv_response(packages, {"results": "x"}) is None, "tipo")
 
 
@@ -525,21 +504,17 @@ def test_changed_usa_merge_base() -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             identidad = ["-c", "user.email=test@example.com", "-c", "user.name=test"]
-            check(
-                run(["git", "init", "-q"], cwd=repo).returncode == 0, "git init fallo"
-            )
+            check(run(["git", "init", "-q"], cwd=repo).returncode == 0, "git init fallo")
             (repo / "viejo.py").write_text("x = 1\n", encoding="utf-8")
             check(run(["git", "add", "."], cwd=repo).returncode == 0, "git add fallo")
             check(
-                run(["git", *identidad, "commit", "-qm", "base"], cwd=repo).returncode
-                == 0,
+                run(["git", *identidad, "commit", "-qm", "base"], cwd=repo).returncode == 0,
                 "git commit base fallo",
             )
             (repo / "nuevo.py").write_text("y = 2\n", encoding="utf-8")
             check(run(["git", "add", "."], cwd=repo).returncode == 0, "git add fallo")
             check(
-                run(["git", *identidad, "commit", "-qm", "nuevo"], cwd=repo).returncode
-                == 0,
+                run(["git", *identidad, "commit", "-qm", "nuevo"], cwd=repo).returncode == 0,
                 "git commit nuevo fallo",
             )
             common.ROOT = repo
@@ -740,6 +715,14 @@ def test_categoriza_reglas() -> None:
     check(quality.categorize("max-lines", "eslint", "") == "srp")
     check(quality.categorize("simple-import-sort/imports", "eslint", "") == "imports")
     check(quality.categorize("cyclop", "golangci-lint", "") == "complejidad")
+    check(
+        quality.categorize(
+            "revive",
+            "golangci-lint",
+            "maximum number of arguments per function exceeded",
+        )
+        == "complejidad"
+    )
     check(quality.categorize("depguard", "golangci-lint", "") == "capas")
     check(quality.categorize("raro", "desconocido", "") == "calidad")
 
@@ -747,9 +730,7 @@ def test_categoriza_reglas() -> None:
 def test_render_agrupa_por_archivo() -> None:
     """El texto agrupa por archivo, ordena por linea y resume categorias."""
     violations = [
-        quality.Violation(
-            "a/b.ts", 2, 1, "calidad", "r1", "mensaje uno", "tool", False
-        ),
+        quality.Violation("a/b.ts", 2, 1, "calidad", "r1", "mensaje uno", "tool", False),
         quality.Violation("a/b.ts", 1, 1, "nombres", "r2", "mensaje dos", "tool", True),
     ]
     text = quality.render_text(violations)
@@ -761,9 +742,7 @@ def test_render_agrupa_por_archivo() -> None:
 
 def test_render_json_estructurado() -> None:
     """El JSON incluye total, resumen y cada violacion."""
-    violations = [
-        quality.Violation("a/b.ts", 2, 1, "calidad", "r1", "mensaje", "tool", False)
-    ]
+    violations = [quality.Violation("a/b.ts", 2, 1, "calidad", "r1", "mensaje", "tool", False)]
     data = json.loads(quality.render_json(violations))
 
     check(data["total"] == 1, str(data))
@@ -773,9 +752,7 @@ def test_render_json_estructurado() -> None:
 
 def test_parsea_ls_lint() -> None:
     """ls-lint reporta el archivo aunque no tenga linea."""
-    text = (
-        "Java-teacher/src/main/java/Bad_name.java failed for `.java` rules: pascalcase"
-    )
+    text = "Java-teacher/src/main/java/Bad_name.java failed for `.java` rules: pascalcase"
     found = quality.parse_generic(text, "nombres (ls-lint)")
 
     check(len(found) == 1, str(found))
@@ -803,6 +780,39 @@ def test_parsea_maven_test() -> None:
         str(test_failure),
     )
     check(len(archunit) == 1 and archunit[0].category == "capas", str(archunit))
+
+
+def test_portable_categoriza_diseno() -> None:
+    """El baseline externo separa nombres, SRP y complejidad."""
+    check(quality.categorize("clippy::many_single_char_names", "clippy", "") == "nombres")
+    check(quality.categorize("clippy::too_many_lines", "clippy", "") == "srp")
+    check(quality.categorize("clippy::cognitive_complexity", "clippy", "") == "complejidad")
+    check(quality.categorize("clippy::type_complexity", "clippy", "") == "complejidad")
+    check(quality.categorize("clippy::struct_excessive_bools", "clippy", "") == "srp")
+
+
+def test_portable_rutas_relativas() -> None:
+    """Una ruta absoluta externa se reporta relativa a la raiz."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        target = root / "src" / "main.rs"
+        target.parent.mkdir()
+        target.write_text("fn main() {}", encoding="utf-8")
+        violation = quality.Violation(str(target), 1, 1, "calidad", "r", "m", "test", False)
+
+        relative = portable_quality.external_path(violation, root)
+
+    check(relative.path == "src/main.rs", relative.path)
+
+
+def test_portable_clippy_enfocado() -> None:
+    """El baseline externo prioriza diseno sobre casts ruidosos."""
+    lints = portable_quality.RUST_LINTS
+
+    check("clippy::many_single_char_names" in lints)
+    check("clippy::too_many_lines" in lints)
+    check("clippy::cognitive_complexity" in lints)
+    check("clippy::pedantic" not in lints)
 
 
 if __name__ == "__main__":

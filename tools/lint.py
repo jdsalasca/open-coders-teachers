@@ -67,6 +67,7 @@ from lintlib.portable import (
     project_warnings,
     target_flags,
 )
+from lintlib.portable_quality import portable_validate
 from lintlib.quality import (
     Violation,
     dedupe,
@@ -124,9 +125,7 @@ def write_skip(reason: str) -> int:
     if not (ROOT / ".git").is_dir():
         print("[X] No es un repositorio git.")
         return 2
-    SKIP_FILE.write_text(
-        json.dumps({"reason": reason, "created": time.time()}), encoding="utf-8"
-    )
+    SKIP_FILE.write_text(json.dumps({"reason": reason, "created": time.time()}), encoding="utf-8")
     skip_warning(reason, "--skip")
     print("\n  El proximo `git commit` no ejecuta linters (un solo uso, 10 minutos).")
     return 0
@@ -256,16 +255,12 @@ def slop_check(files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
     for name in files:
         suffix = Path(name).suffix
         rules = [
-            (pattern, label, needs)
-            for exts, pattern, label, needs in SLOP_RULES
-            if suffix in exts
+            (pattern, label, needs) for exts, pattern, label, needs in SLOP_RULES if suffix in exts
         ]
         if not rules:
             continue
         try:
-            content = (
-                (base / name).read_text(encoding="utf-8", errors="replace").splitlines()
-            )
+            content = (base / name).read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
         for number, line in enumerate(content, 1):
@@ -275,16 +270,12 @@ def slop_check(files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
                     continue
                 if needs and needs in line[match.end() :]:
                     continue
-                lines.append(
-                    f"  {name}:{number}: {label} sin justificar: {line.strip()}"
-                )
+                lines.append(f"  {name}:{number}: {label} sin justificar: {line.strip()}")
                 status = 1
     return status, lines
 
 
-def size_check(
-    lang: Lang, files: list[str], base: Path = ROOT
-) -> tuple[int, list[str]]:
+def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
     """Reporta archivos que exceden el maximo de lineas del lenguaje."""
     if not lang.max_file_lines:
         return 0, []
@@ -294,15 +285,11 @@ def size_check(
         if Path(name).suffix not in lang.exts:
             continue
         try:
-            total = sum(
-                1 for _ in (base / name).open(encoding="utf-8", errors="replace")
-            )
+            total = sum(1 for _ in (base / name).open(encoding="utf-8", errors="replace"))
         except OSError:
             continue
         if total > lang.max_file_lines:
-            lines.append(
-                f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})"
-            )
+            lines.append(f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})")
             status = 1
     return status, lines
 
@@ -504,9 +491,7 @@ def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
 def parse_args() -> argparse.Namespace:
     """Lee las banderas de la linea de comandos."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "files", nargs="*", help="archivos concretos (por defecto todo)"
-    )
+    parser.add_argument("files", nargs="*", help="archivos concretos (por defecto todo)")
     parser.add_argument(
         "--fast",
         action="store_true",
@@ -528,9 +513,7 @@ def parse_args() -> argparse.Namespace:
         help="con --fix: incluye arreglos que pueden cambiar comportamiento",
     )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--staged", action="store_true", help="solo lo que esta en stage"
-    )
+    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
     group.add_argument(
         "--changed",
         metavar="BASE",
@@ -545,9 +528,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="secretos, patrones inseguros y dependencias",
     )
-    group.add_argument(
-        "--mutation", action="store_true", help="mutation testing (Stryker)"
-    )
+    group.add_argument("--mutation", action="store_true", help="mutation testing (Stryker)")
     parser.add_argument(
         "--project",
         metavar="RUTA",
@@ -642,9 +623,7 @@ def run_languages(
     return status, records, violations
 
 
-def finish_validate(
-    args: argparse.Namespace, status: int, violations: list[Violation]
-) -> int:
+def finish_validate(args: argparse.Namespace, status: int, violations: list[Violation]) -> int:
     """Cierra el modo --validate en texto o JSON."""
     violations = dedupe(violations)
     status = max(status, 1 if violations else 0)
@@ -685,9 +664,7 @@ def lint_all(
     if not args.json and not validate:
         print("\n" + "\n".join(repo_lines))
     if (args.fix or args.unsafe) and not args.json:
-        print(
-            f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s)."
-        )
+        print(f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s).")
     if validate:
         return finish_validate(args, status, violations)
     if args.json:
@@ -721,7 +698,9 @@ def external_mode(args: argparse.Namespace) -> int | None:
     if target is None:
         return None
     if args.validate:
-        print("[X] --validate no aplica a proyectos externos; usa --project")
+        if target.is_dir():
+            return portable_validate(target, args.fix or args.unsafe, args.json)
+        print("[X] --validate externo necesita una carpeta de proyecto")
         return 2
     if len(args.files) == 1 and target.is_dir():
         return portable(target, args.fix or args.unsafe)
@@ -795,9 +774,7 @@ def tools_checks(files: list[str], fix: bool) -> list[tuple[str, list[str]]]:
 def workflow_checks(files: list[str]) -> list[tuple[str, list[str]]]:
     """Actionlint sobre los workflows."""
     workflows = [
-        f
-        for f in files
-        if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))
+        f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))
     ]
     if not workflows:
         return []
@@ -821,9 +798,7 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
         checks.append(("docs (enlaces)", ["python", "tools/check_links.py", *md]))
     policy_exts = (".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".java", ".rs")
     policy = [
-        f
-        for f in files
-        if Path(f).suffix in policy_exts and not f.startswith("tools/fixtures/")
+        f for f in files if Path(f).suffix in policy_exts and not f.startswith("tools/fixtures/")
     ]
     if policy:
         checks.append(
@@ -903,6 +878,7 @@ CONFIG_LANGS = {
     "tools/check_links.py": "*",
     "tools/check_adr.py": "*",
     "tools/coverage_gate.py": "*",
+    "tools/rust/clippy.toml": "*",
 }
 
 
@@ -934,8 +910,7 @@ def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> bool:
     changed = [
         path
         for path in files
-        if path in CONFIG_LANGS
-        or (path.startswith("tools/lintlib/") and path.endswith(".py"))
+        if path in CONFIG_LANGS or (path.startswith("tools/lintlib/") and path.endswith(".py"))
     ]
     if not changed:
         return False
@@ -998,9 +973,7 @@ def expand_deleted(deleted: list[str], by_lang: dict[str, list[str]]) -> None:
     for name in names:
         lang = next(lg for lg in LANGS if lg.name == name)
         by_lang[name] = [
-            f
-            for f in everything
-            if f.startswith(lang.folder + "/") and Path(f).suffix in lang.exts
+            f for f in everything if f.startswith(lang.folder + "/") and Path(f).suffix in lang.exts
         ]
 
 
@@ -1037,9 +1010,7 @@ def repo_mode(args: argparse.Namespace) -> int:
         return guard
     by_lang, banned = classify(files)
     expand_deleted(deleted, by_lang)
-    files = expand_config(
-        files, deleted, by_lang, args.fix or args.unsafe or args.validate
-    )
+    files = expand_config(files, deleted, by_lang, args.fix or args.unsafe or args.validate)
     mode = special_mode(args, by_lang)
     if mode is not None:
         return mode
@@ -1051,40 +1022,63 @@ def repo_mode(args: argparse.Namespace) -> int:
 
 def validate(args: argparse.Namespace) -> str | None:
     """Errores de combinacion de banderas, o None si todo esta bien."""
-    if args.unsafe and not args.fix:
-        return "--unsafe solo tiene sentido junto a --fix"
-    if args.project and (args.audit or args.security):
-        return "--project no se combina con --audit ni --security"
-    if args.changed and args.project:
-        return "--changed no se combina con --project: --project audita otra ruta"
-    if args.fast and (
-        args.audit
-        or args.security
-        or args.mutation
-        or args.project
-        or args.skip is not None
-    ):
-        return "--fast solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
-    if args.json and (
-        args.audit
-        or args.security
-        or args.mutation
-        or args.project
-        or args.skip is not None
-    ):
-        return "--json solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
-    if args.validate and (
-        args.audit
-        or args.security
-        or args.mutation
-        or args.project
-        or args.skip is not None
-    ):
-        return (
-            "--validate solo aplica al modo normal "
-            "(sin --audit, --security, --mutation, --project ni --skip)"
-        )
+    checks = (
+        (
+            args.unsafe and not args.fix,
+            "--unsafe solo tiene sentido junto a --fix",
+        ),
+        (
+            args.project and (args.audit or args.security),
+            "--project no se combina con --audit ni --security",
+        ),
+        (
+            args.changed and args.project,
+            "--changed no se combina con --project: --project audita otra ruta",
+        ),
+        (
+            args.fast
+            and (
+                args.audit
+                or args.security
+                or args.mutation
+                or args.project
+                or args.skip is not None
+            ),
+            "--fast solo aplica al modo normal (sin --audit, --security, --project ni --skip)",
+        ),
+        (
+            args.json
+            and (
+                args.audit
+                or args.security
+                or args.mutation
+                or (args.project and not args.validate)
+                or args.skip is not None
+            ),
+            "--json solo aplica al modo normal (sin --audit, --security, --project ni --skip)",
+        ),
+        (
+            args.validate
+            and (args.audit or args.security or args.mutation or args.skip is not None),
+            "--validate solo aplica al modo normal (sin --audit, --security, --mutation ni --skip)",
+        ),
+    )
+    for active, message in checks:
+        if active:
+            return message
     return None
+
+
+def run_mode(args: argparse.Namespace) -> int:
+    """Ejecuta el modo normal, externo o de proyecto."""
+    if args.project:
+        if args.validate:
+            return portable_validate(Path(args.project), args.fix or args.unsafe, args.json)
+        return portable(Path(args.project), args.fix or args.unsafe)
+    external = external_mode(args)
+    if external is not None:
+        return external
+    return repo_mode(args)
 
 
 def main() -> int:
@@ -1098,12 +1092,7 @@ def main() -> int:
         return write_skip(args.skip)
     if args.staged and consume_skip():
         return 0
-    if args.project:
-        return portable(Path(args.project), args.fix or args.unsafe)
-    external = external_mode(args)
-    if external is not None:
-        return external
-    return repo_mode(args)
+    return run_mode(args)
 
 
 if __name__ == "__main__":

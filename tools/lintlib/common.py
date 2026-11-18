@@ -622,11 +622,17 @@ def portable_bin(name: str) -> str | None:
     return shutil.which(name, path=str(local)) or shutil.which(name)
 
 
-def exec_external(argv: list[str], cwd: Path) -> tuple[int | None, str]:
+def exec_external(
+    argv: list[str],
+    cwd: Path,
+    json_stdout: bool = False,
+    env: dict[str, str] | None = None,
+) -> tuple[int | None, str]:
     """Ejecuta una herramienta externa en la carpeta del proyecto."""
     exe = portable_bin(argv[0])
     if exe is None:
         return None, f"[X] falta '{argv[0]}' (instala tools/node: npm install)"
+    current = {**os.environ, **env} if env else None
     try:
         proc = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
             [exe, *argv[1:]],
@@ -636,10 +642,12 @@ def exec_external(argv: list[str], cwd: Path) -> tuple[int | None, str]:
             encoding="utf-8",
             errors="replace",
             timeout=TIMEOUT,
+            env=current,
         )
     except subprocess.TimeoutExpired:
         return 1, f"[X] '{argv[0]}' excedio {TIMEOUT}s"
-    output = clean(proc.stdout + proc.stderr)
+    raw = proc.stdout if json_stdout else proc.stdout + proc.stderr
+    output = clean(raw)
     return proc.returncode, output.replace(str(cwd) + os.sep, "").replace(str(cwd) + "/", "")
 
 

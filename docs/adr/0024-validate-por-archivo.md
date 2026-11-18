@@ -41,6 +41,14 @@ Decisiones concretas:
    `manual`.
 6. **Sin cambios en el gate**: `python tools/lint.py` y el hook siguen igual.
    `--validate` es una vista del mismo gate, no un gate paralelo.
+7. **Proyectos externos**: `--project <ruta> --validate` reutiliza el
+   descubrimiento portable y los mismos parsers. Rust usa un baseline de diseño
+   (`many_single_char_names`, `too_many_lines`, `cognitive_complexity`,
+   `too_many_arguments`, `module_name_repetitions`, imports comodín, `unwrap`/
+   `expect`/`panic`) con umbrales en `tools/rust/clippy.toml` (40 líneas, 8 de
+   complejidad, 4 parámetros). Los casts numéricos quedan fuera del baseline
+   externo para no ahogar el reporte; el teacher de Rust los cubre con
+   `pedantic`.
 
 ## Consecuencias
 
@@ -56,8 +64,11 @@ Decisiones concretas:
 - La cobertura de parsers es finita: una herramienta nueva necesita su parser y
   su test antes de prometer el reporte.
 - Una regla desconocida cae en `calidad`; no se adivina la categoría.
-- `--validate` no aplica a proyectos externos (`--project`) ni a `--audit`,
-  `--security` o `--mutation`.
+- En proyectos externos, `--validate` usa el baseline portable: no ejecuta los
+  tests ni la cobertura del proyecto, ni los plugins de Maven. Para el gate
+  completo hay que usar el runner del proyecto.
+- `--validate` no aplica a `--audit`, `--security` ni `--mutation`; para
+  proyectos externos sí aplica junto a `--project`.
 - Algunas herramientas solo permiten reportar a nivel de carpeta (por ejemplo,
   `lint-imports` o un fallo de build de Maven sin archivo).
 - No sustituye la revisión de diseño: SRP, acoplamiento y nombres siguen
