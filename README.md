@@ -59,12 +59,45 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py --project <ruta>` | audita un proyecto externo (manifiesto) |
 | `python tools/lint.py --fast <archivo>` | solo herramientas de archivo (sin tests ni capas) |
 | `python tools/lint.py --json` | salida estructurada para agentes y scripts |
+| `python tools/lint.py <ruta> --validate` | reporte determinista por archivo y aspecto |
+| `python tools/lint.py <ruta> --validate --json` | el mismo reporte, estructurado |
+| `python tools/lint.py <ruta> --validate --fix` | arregla lo determinista y reporta lo que queda |
 | `python tools/lint.py --mutation` | mutation testing (Stryker TS/React, PIT Java) |
 | `python tools/lint.py --unsafe` | con `--fix`: arreglos que cambian comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
 | `python tools/lint.py src/App.tsx` | un archivo |
 
 Códigos de salida: `0` limpio, `1` problemas, `2` falta una herramienta.
+
+## Reporte determinista por archivo
+
+`--validate` no sustituye al gate: normaliza la salida de cada herramienta y la
+agrupa por archivo y aspecto. Sirve para que un agente sepa qué corregir sin
+leer seis formatos distintos.
+
+```powershell
+python tools/lint.py Rust-teacher --validate
+python tools/lint.py typescript-teacher/src --validate --json
+python tools/lint.py --validate --fix
+```
+
+Categorías: `calidad`, `capas`, `nombres`, `acoplamiento`, `srp`,
+`complejidad`, `imports`, `formato`, `tests` y `cobertura`. Cada violación dice
+archivo, línea, regla, herramienta y si es `auto` (la arregla `--fix`) o
+`manual`.
+
+La clasificación es determinista, por regla y herramienta, no por heurística de
+IA: `naming-convention`, `N802`, `revive` y `TypeName` son `nombres`;
+`depcruise`, `depguard`, `lint-imports` y ArchUnit son `capas`;
+`complexity`, `cyclop` y `C901` son `complejidad`; `max-lines`, `filelength` y
+`ClassFanOutComplexity` son `srp`; `simple-import-sort`, `gci` y
+`CustomImportOrder` son `imports`. Lo que una herramienta no expone con archivo
+y línea se reporta a nivel de carpeta; no se inventa una ubicación.
+
+`--fix` aplica solo lo que cada herramienta marca como arreglo seguro:
+formateadores, orden de imports, lints con `fix` y `spotless`. Nombres,
+complejidad, capas y SRP se reportan como `manual` porque un arreglo automático
+podría cambiar el diseño.
 
 Con `--staged`, el runner elige las rutas del índice, pero las herramientas leen
 el árbol de trabajo; `staged_guard` rechaza archivos con cambios sin stagear. Un

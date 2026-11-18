@@ -13,6 +13,9 @@ python tools/lint.py --audit     # vulnerabilidades en dependencias (requiere re
 python tools/lint.py --security  # secretos, patrones inseguros y dependencias
 python tools/lint.py --project "ruta"  # audita un proyecto externo
 python tools/lint.py --json      # resumen estructurado
+python tools/lint.py <ruta> --validate  # violaciones por archivo y aspecto
+python tools/lint.py <ruta> --validate --json  # el mismo reporte, JSON
+python tools/lint.py <ruta> --validate --fix   # arregla lo determinista y reporta
 python tools/lint.py --mutation  # mutation testing (Stryker)
 python tools/lint.py --fast <archivo>  # un archivo, sin tests ni capas
 python tools/lint.py --skip "motivo"  # permite el próximo commit sin linters
@@ -25,6 +28,27 @@ que está en stage: **un commit con violaciones se rechaza** y devuelve el
 reporte. CI (`.github/workflows/ci.yml`) corre lo mismo en cada push a `main`
 y en cada pull request. El gate también pasa `ruff` sobre `tools/` y
 `actionlint` sobre `.github/workflows/`; si falta `actionlint`, devuelve `2`.
+
+## Reporte por archivo
+
+Antes de corregir, corre `python tools/lint.py <ruta> --validate`. Agrupa las
+violaciones por archivo y las clasifica en `calidad`, `capas`, `nombres`,
+`acoplamiento`, `srp`, `complejidad`, `imports`, `formato`, `tests` y
+`cobertura`. Cada línea dice archivo, línea, regla, herramienta y si es `auto`
+(la arregla `--fix`) o `manual`.
+
+La clasificación es determinista: sale de la regla y la herramienta, no de una
+heurística de IA. Ejemplos: `N802`/`naming-convention`/`TypeName` → `nombres`;
+`depcruise`/`depguard`/`lint-imports`/ArchUnit → `capas`; `C901`/`cyclop` →
+`complejidad`; `max-lines`/`filelength` → `srp`; `simple-import-sort`/`gci`/
+`CustomImportOrder` → `imports`. Si una herramienta no da archivo y línea, la
+violación se reporta a nivel de carpeta; nunca se inventa una ubicación.
+
+`--validate --json` devuelve `total`, `summary` y una lista de `violations` con
+`path`, `line`, `column`, `category`, `rule`, `message`, `tool` y `fixable`.
+`--validate --fix` aplica primero los arreglos deterministas y luego reporta lo
+que quede. Nombres, complejidad, capas y SRP quedan como `manual`: cambiarlos
+automáticamente podría romper el diseño.
 
 ## Lint en cada edición
 

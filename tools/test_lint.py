@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import json
 import shutil
 import subprocess
 import sys
@@ -13,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import check_links
 import coverage_gate
 import lint
-from lintlib import common
+from lintlib import common, quality
 
 
 def check(condition: bool, message: str = "") -> None:
@@ -74,7 +75,9 @@ def test_ignora_extension_y_carpeta_equivocadas() -> None:
 
 def test_clasifica_css_prohibido() -> None:
     """Un .css en React-teacher se reporta como prohibido."""
-    by_lang, banned = lint.classify(["React-teacher/src/App.css", "React-teacher/src/App.tsx"])
+    by_lang, banned = lint.classify(
+        ["React-teacher/src/App.css", "React-teacher/src/App.tsx"]
+    )
     check(list(by_lang) == ["react"])
     check(len(banned) == 1)
 
@@ -83,7 +86,13 @@ def test_expand_ignora_generados() -> None:
     """Una carpeta se expande sin entrar en node_modules ni dist."""
     files = lint.expand(["React-teacher"])
     check(bool(files))
-    check(not [f for f in files if "node_modules" in f or f.startswith("React-teacher/dist")])
+    check(
+        not [
+            f
+            for f in files
+            if "node_modules" in f or f.startswith("React-teacher/dist")
+        ]
+    )
 
 
 def test_descubre_proyecto_por_manifiesto() -> None:
@@ -103,7 +112,9 @@ def test_portable_encuentra_hallazgos() -> None:
         code = lint.portable(fixture, False)
     salida = buffer.getvalue()
     if code == 2:
-        return skip_test("faltan herramientas del baseline portable: corre tools/setup.ps1")
+        return skip_test(
+            "faltan herramientas del baseline portable: corre tools/setup.ps1"
+        )
     check(code == 1, f"esperaba hallazgos (1), obtuve {code}")
     check("max-params" in salida, "no reporto demasiados parametros")
     check("no-unused-vars" in salida, "no reporto variable sin usar")
@@ -200,7 +211,9 @@ def test_slop_detecta_tests_apagados() -> None:
     """Un test enfocado no debe pasar."""
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
-        (base / "x.test.ts").write_text('it.only("corre solo", () => {});\n', encoding="utf-8")
+        (base / "x.test.ts").write_text(
+            'it.only("corre solo", () => {});\n', encoding="utf-8"
+        )
         code, lines = lint.slop_check(["x.test.ts"], base=base)
     check(code == 1, "no detecto el test enfocado")
     check(any(".only" in line for line in lines), "no reporto .only")
@@ -214,7 +227,9 @@ def test_slop_exige_justificacion() -> None:
             "// eslint-disable-next-line no-console -- lo pide la CLI\n",
             encoding="utf-8",
         )
-        (base / "y.py").write_text("import os  # noqa: S603 - motivo\n", encoding="utf-8")
+        (base / "y.py").write_text(
+            "import os  # noqa: S603 - motivo\n", encoding="utf-8"
+        )
         code, lines = lint.slop_check(["x.ts", "y.py"], base=base)
     check(code == 0, f"marco supresiones justificadas: {lines}")
 
@@ -278,7 +293,9 @@ def test_discover_funde_workspace_rust() -> None:
         (member / "src").mkdir()
         (member / "src" / "lib.rs").write_text("")
 
-        projects = [project for project in lint.discover(root) if project.kind == "rust"]
+        projects = [
+            project for project in lint.discover(root) if project.kind == "rust"
+        ]
 
     check(len(projects) == 1, str(projects))
     check(any(name.endswith("lib.rs") for name in projects[0].files))
@@ -364,7 +381,8 @@ def test_config_con_codigo_expande_el_proyecto() -> None:
 
     check(changed, "no detecto el cambio de configuracion")
     check(
-        "typescript-teacher/src/controller/counter-controller.ts" in by_lang["typescript"],
+        "typescript-teacher/src/controller/counter-controller.ts"
+        in by_lang["typescript"],
         "no expandio al proyecto completo",
     )
 
@@ -424,7 +442,11 @@ def test_parsea_dependencias_maven() -> None:
 
 def test_consulta_osv() -> None:
     """La consulta batch usa el ecosistema Maven y la version."""
-    expected = {"queries": [{"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}]}
+    expected = {
+        "queries": [
+            {"package": {"name": "g:a", "ecosystem": "Maven"}, "version": "1.0"}
+        ]
+    }
 
     check(lint.osv_queries([("g:a", "1.0")]) == expected, "consulta incorrecta")
 
@@ -434,7 +456,9 @@ def test_osv_falla_si_la_respuesta_esta_incompleta() -> None:
     packages = [("a", "1"), ("b", "2")]
 
     check(lint.parse_osv_response(packages, {}) is None, "sin results")
-    check(lint.parse_osv_response(packages, {"results": [{"vulns": []}]}) is None, "corto")
+    check(
+        lint.parse_osv_response(packages, {"results": [{"vulns": []}]}) is None, "corto"
+    )
     check(lint.parse_osv_response(packages, {"results": "x"}) is None, "tipo")
 
 
@@ -501,17 +525,21 @@ def test_changed_usa_merge_base() -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             identidad = ["-c", "user.email=test@example.com", "-c", "user.name=test"]
-            check(run(["git", "init", "-q"], cwd=repo).returncode == 0, "git init fallo")
+            check(
+                run(["git", "init", "-q"], cwd=repo).returncode == 0, "git init fallo"
+            )
             (repo / "viejo.py").write_text("x = 1\n", encoding="utf-8")
             check(run(["git", "add", "."], cwd=repo).returncode == 0, "git add fallo")
             check(
-                run(["git", *identidad, "commit", "-qm", "base"], cwd=repo).returncode == 0,
+                run(["git", *identidad, "commit", "-qm", "base"], cwd=repo).returncode
+                == 0,
                 "git commit base fallo",
             )
             (repo / "nuevo.py").write_text("y = 2\n", encoding="utf-8")
             check(run(["git", "add", "."], cwd=repo).returncode == 0, "git add fallo")
             check(
-                run(["git", *identidad, "commit", "-qm", "nuevo"], cwd=repo).returncode == 0,
+                run(["git", *identidad, "commit", "-qm", "nuevo"], cwd=repo).returncode
+                == 0,
                 "git commit nuevo fallo",
             )
             common.ROOT = repo
@@ -523,6 +551,258 @@ def test_changed_usa_merge_base() -> None:
             )
     finally:
         common.ROOT = original
+
+
+def test_parsea_ruff() -> None:
+    """Ruff JSON se convierte en archivo, linea y categoria."""
+    text = (
+        '[{"code":"N802","filename":"app/foo.py","location":{"row":3,"column":5},'
+        '"message":"funcion mal nombrada","fix":null}]'
+    )
+    found = quality.parse_command(
+        common.Command(["ruff"], report="ruff-json"), text, 1, "python-teacher"
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].path == "python-teacher/app/foo.py", found[0].path)
+    check(found[0].category == "nombres", found[0].category)
+    check(found[0].line == 3, str(found[0].line))
+
+
+def test_parsea_eslint() -> None:
+    """ESLint JSON conserva regla, archivo y autoarreglo."""
+    text = (
+        '[{"filePath":"C:/repo/typescript-teacher/src/foo.ts","messages":'
+        '[{"ruleId":"simple-import-sort/imports","severity":2,"line":1,'
+        '"column":0,"message":"Ordena los imports",'
+        '"fix":{"range":[0,1],"text":""}}]}]'
+    )
+    found = quality.parse_command(
+        common.Command(["eslint"], report="eslint-json"), text, 1, "typescript-teacher"
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].category == "imports", found[0].category)
+    check(found[0].fixable)
+
+
+def test_parsea_stylelint() -> None:
+    """Stylelint JSON se normaliza como nombre de variable SCSS."""
+    text = (
+        '[{"source":"C:/repo/React-teacher/src/a.scss","warnings":'
+        '[{"line":2,"column":1,"rule":"scss/dollar-variable-pattern","text":"nombre"}]}]'
+    )
+    found = quality.parse_command(
+        common.Command(["stylelint"], report="stylelint-json"), text, 1, "React-teacher"
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].path == "React-teacher/src/a.scss", found[0].path)
+    check(found[0].category == "nombres", found[0].category)
+
+
+def test_parsea_golangci() -> None:
+    """golangci-lint JSON separa nombres de calidad general."""
+    text = (
+        '{"Issues":[{"FromLinter":"revive","Text":"var-naming: usa camelCase",'
+        '"Pos":{"Filename":"internal/foo.go","Line":10,"Column":2}}]}'
+    )
+    found = quality.parse_command(
+        common.Command(["golangci-lint"], report="golangci-json"), text, 1, "go-teacher"
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].path == "go-teacher/internal/foo.go", found[0].path)
+    check(found[0].category == "nombres", found[0].category)
+
+
+def test_parsea_clippy() -> None:
+    """Clippy JSON lee el span primario y la sugerencia."""
+    text = (
+        '{"reason":"compiler-message","message":{"level":"warning",'
+        '"message":"nombre poco claro","code":{"code":"clippy::module_name_repetitions"},'
+        '"spans":[{"file_name":"src/foo.rs","line_start":7,"column_start":3,'
+        '"is_primary":true}],"children":[{"suggested_replacement":"x"}]}}'
+    )
+    found = quality.parse_command(
+        common.Command(["cargo"], report="clippy-json"), text, 1, "Rust-teacher"
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].path == "Rust-teacher/src/foo.rs", found[0].path)
+    check(found[0].category == "nombres", found[0].category)
+    check(found[0].fixable)
+
+
+def test_parsea_depcruise() -> None:
+    """dependency-cruiser JSON reporta la capa que se rompe."""
+    text = (
+        '{"summary":{"violations":[{"from":"src/model/a.ts","to":"src/view/b.ts",'
+        '"rule":{"name":"modelo-aislado"},"comment":"El modelo no conoce la vista"}]}}'
+    )
+    found = quality.parse_command(
+        common.Command(["depcruise"], report="depcruise-json"),
+        text,
+        1,
+        "typescript-teacher",
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].category == "capas", found[0].category)
+    check(found[0].path == "typescript-teacher/src/model/a.ts", found[0].path)
+
+
+def test_parsea_xml_java() -> None:
+    """Checkstyle, PMD y SpotBugs se leen desde XML local."""
+    checkstyle = (
+        '<checkstyle><file name="src/main/java/Foo.java"><error line="5" column="9"'
+        ' source="com.puppycrawl.tools.checkstyle.checks.naming.TypeNameCheck"'
+        ' message="mal nombre"/></file></checkstyle>'
+    )
+    pmd = (
+        '<pmd><file name="src/main/java/Foo.java"><violation beginline="7"'
+        ' begincolumn="2" rule="CyclomaticComplexity">complejo</violation></file></pmd>'
+    )
+    spotbugs = (
+        '<BugCollection><BugInstance type="NP_NULL_ON_SOME_PATH">'
+        "<LongMessage>posible null</LongMessage>"
+        '<SourceLine classname="edu.teachers.Task" start="12"'
+        ' sourcepath="src/main/java/edu/teachers/Task.java"/></BugInstance></BugCollection>'
+    )
+
+    names = quality.parse_xml("checkstyle-xml", checkstyle)
+    complexity = quality.parse_xml("pmd-xml", pmd)
+    bugs = quality.parse_xml("spotbugs-xml", spotbugs)
+
+    check(len(names) == 1 and names[0].rule == "TypeNameCheck", str(names))
+    check(
+        len(complexity) == 1 and complexity[0].rule == "CyclomaticComplexity",
+        str(complexity),
+    )
+    check(len(bugs) == 1 and bugs[0].path.endswith("Task.java"), str(bugs))
+
+
+def test_parsea_tsc_y_mypy() -> None:
+    """TypeScript y mypy conservan codigo de error y ubicacion."""
+    tsc = quality.parse_command(
+        common.Command(["tsc"], report="tsc"),
+        "src/foo.ts(3,7): error TS2322: tipo incompatible",
+        2,
+        "typescript-teacher",
+    )
+    mypy = quality.parse_command(
+        common.Command(["mypy"], report="mypy"),
+        "app/foo.py:4:2: error: tipo incompatible  [assignment]",
+        1,
+        "python-teacher",
+    )
+
+    check(len(tsc) == 1 and tsc[0].rule == "TS2322", str(tsc))
+    check(len(mypy) == 1 and mypy[0].rule == "assignment", str(mypy))
+
+
+def test_parsea_lista_y_generico() -> None:
+    """Las herramientas sin JSON se leen por archivo o path:linea."""
+    files = quality.parse_command(
+        common.Command(["prettier"], report="file-list"),
+        "src/a.ts\nsrc/b.ts\n",
+        1,
+        "typescript-teacher",
+    )
+    generic = quality.parse_command(
+        common.Command(["golangci-lint"], report="generic"),
+        "internal/foo.go:12:3: mensaje",
+        1,
+        "go-teacher",
+    )
+
+    check(
+        len(files) == 2 and all(item.category == "formato" for item in files),
+        str(files),
+    )
+    check(len(generic) == 1, str(generic))
+    check(generic[0].path == "go-teacher/internal/foo.go", generic[0].path)
+
+
+def test_fallback_si_no_hay_parseo() -> None:
+    """Una salida rota no se pierde: queda una violacion del comando."""
+    found = quality.parse_command(
+        common.Command(["ruff"], report="ruff-json"), "sin json", 1, "python-teacher"
+    )
+
+    check(len(found) == 1, str(found))
+    check(found[0].path == "python-teacher", found[0].path)
+    check(found[0].category == "calidad", found[0].category)
+
+
+def test_categoriza_reglas() -> None:
+    """Cada aspecto tiene una categoria determinista."""
+    check(quality.categorize("max-lines", "eslint", "") == "srp")
+    check(quality.categorize("simple-import-sort/imports", "eslint", "") == "imports")
+    check(quality.categorize("cyclop", "golangci-lint", "") == "complejidad")
+    check(quality.categorize("depguard", "golangci-lint", "") == "capas")
+    check(quality.categorize("raro", "desconocido", "") == "calidad")
+
+
+def test_render_agrupa_por_archivo() -> None:
+    """El texto agrupa por archivo, ordena por linea y resume categorias."""
+    violations = [
+        quality.Violation(
+            "a/b.ts", 2, 1, "calidad", "r1", "mensaje uno", "tool", False
+        ),
+        quality.Violation("a/b.ts", 1, 1, "nombres", "r2", "mensaje dos", "tool", True),
+    ]
+    text = quality.render_text(violations)
+
+    check("a/b.ts" in text, text)
+    check(text.index("mensaje dos") < text.index("mensaje uno"), text)
+    check("calidad 1" in text and "nombres 1" in text, text)
+
+
+def test_render_json_estructurado() -> None:
+    """El JSON incluye total, resumen y cada violacion."""
+    violations = [
+        quality.Violation("a/b.ts", 2, 1, "calidad", "r1", "mensaje", "tool", False)
+    ]
+    data = json.loads(quality.render_json(violations))
+
+    check(data["total"] == 1, str(data))
+    check(data["summary"] == {"calidad": 1}, str(data))
+    check(data["violations"][0]["path"] == "a/b.ts", str(data))
+
+
+def test_parsea_ls_lint() -> None:
+    """ls-lint reporta el archivo aunque no tenga linea."""
+    text = (
+        "Java-teacher/src/main/java/Bad_name.java failed for `.java` rules: pascalcase"
+    )
+    found = quality.parse_generic(text, "nombres (ls-lint)")
+
+    check(len(found) == 1, str(found))
+    check(found[0].path == "Java-teacher/src/main/java/Bad_name.java", found[0].path)
+    check(quality.repo_path(found[0].path, "") == found[0].path)
+
+
+def test_parsea_maven_test() -> None:
+    """Maven separa un fallo de test de una violacion de capas."""
+    test_failure = quality.parse_command(
+        common.Command(["mvn"], report="maven-test"),
+        "Tests run: 5, Failures: 1, Errors: 0, Skipped: 0",
+        1,
+        "Java-teacher",
+    )
+    archunit = quality.parse_command(
+        common.Command(["mvn"], report="maven-test"),
+        "Architecture Violation: Class <A> depends on <B> in (TaskController.java:10)",
+        1,
+        "Java-teacher",
+    )
+
+    check(
+        len(test_failure) == 1 and test_failure[0].category == "tests",
+        str(test_failure),
+    )
+    check(len(archunit) == 1 and archunit[0].category == "capas", str(archunit))
 
 
 if __name__ == "__main__":

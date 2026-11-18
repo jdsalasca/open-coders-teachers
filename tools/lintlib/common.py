@@ -31,6 +31,10 @@ class Command:
     needs: solo se ejecuta si el lote trae alguna de esas extensiones.
     requires: ruta que debe existir dentro de la carpeta del lenguaje.
     parser: post-proceso del resultado ("go-cover" exige cobertura minima).
+    validate_argv: variante con salida estructurada para --validate.
+    report: parser de esa salida ("ruff-json", "checkstyle-xml", ...).
+    category: categoria por defecto si la regla no la determina.
+    artifact: XML que deja Maven para el reporte.
     """
 
     argv: list[str]
@@ -39,6 +43,10 @@ class Command:
     requires: str = ""
     parser: str = ""
     takes_files: bool = True
+    validate_argv: tuple[str, ...] = ()
+    report: str = ""
+    category: str = "calidad"
+    artifact: str = ""
 
 
 @dataclass(frozen=True)
@@ -66,10 +74,25 @@ LANGS = (
         max_file_lines=400,
         test_glob="test_*.py",
         check=(
-            Command(["ruff", "check", "--output-format=concise"], (".py",)),
-            Command(["ruff", "format", "--check"], (".py",)),
-            Command(["mypy", "."]),
-            Command(["lint-imports"]),
+            Command(
+                ["ruff", "check", "--output-format=concise"],
+                (".py",),
+                validate_argv=("ruff", "check", "--output-format=json"),
+                report="ruff-json",
+            ),
+            Command(
+                ["ruff", "format", "--check"],
+                (".py",),
+                validate_argv=("ruff", "format", "--check"),
+                report="file-list",
+                category="formato",
+            ),
+            Command(
+                ["mypy", "."],
+                validate_argv=("mypy", ".", "--no-error-summary", "--show-error-codes"),
+                report="mypy",
+            ),
+            Command(["lint-imports"], report="generic", category="capas"),
             Command(
                 [
                     "pytest",
@@ -79,6 +102,8 @@ LANGS = (
                     "--cov-fail-under=60",
                 ],
                 requires="tests",
+                report="pytest",
+                category="tests",
             ),
         ),
         fix=(
@@ -96,12 +121,45 @@ LANGS = (
         exts=(".ts", ".tsx", ".js", ".jsx"),
         test_glob="*.test.ts",
         check=(
-            Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
-            Command(["prettier", "--check"], (".ts", ".tsx", ".js", ".jsx", ".json", ".md")),
-            Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
-            Command(["depcruise", "src", "--config", ".dependency-cruiser.js"]),
-            Command(["vitest", "run", "--coverage"], requires="vitest.config.ts"),
-            Command(["jscpd", "src"], requires=".jscpd.json"),
+            Command(
+                ["eslint", "--format=unix"],
+                (".ts", ".tsx", ".js", ".jsx"),
+                validate_argv=("eslint", "--format=json"),
+                report="eslint-json",
+            ),
+            Command(
+                ["prettier", "--check"],
+                (".ts", ".tsx", ".js", ".jsx", ".json", ".md"),
+                validate_argv=("prettier", "--list-different"),
+                report="file-list",
+                category="formato",
+            ),
+            Command(
+                ["tsc", "--noEmit"],
+                needs=(".ts", ".tsx"),
+                validate_argv=("tsc", "--noEmit", "--pretty", "false"),
+                report="tsc",
+            ),
+            Command(
+                ["depcruise", "src", "--config", ".dependency-cruiser.js"],
+                validate_argv=(
+                    "depcruise",
+                    "src",
+                    "--config",
+                    ".dependency-cruiser.js",
+                    "--output-type",
+                    "json",
+                ),
+                report="depcruise-json",
+                category="capas",
+            ),
+            Command(
+                ["vitest", "run", "--coverage"],
+                requires="vitest.config.ts",
+                report="vitest",
+                category="tests",
+            ),
+            Command(["jscpd", "src"], requires=".jscpd.json", report="generic"),
         ),
         fix=(
             Command(["eslint", "--fix"], (".ts", ".tsx", ".js", ".jsx")),
@@ -115,16 +173,51 @@ LANGS = (
         banned=(".css",),
         test_glob="*.test.ts*",
         check=(
-            Command(["eslint", "--format=unix"], (".ts", ".tsx", ".js", ".jsx")),
-            Command(["stylelint"], (".scss",)),
-            Command(["tsc", "--noEmit"], needs=(".ts", ".tsx")),
-            Command(["knip", "--no-config-hints"]),
-            Command(["depcruise", "src", "--config", ".dependency-cruiser.js"]),
-            Command(["vitest", "run", "--coverage"], requires="vitest.config.ts"),
-            Command(["jscpd", "src"], requires=".jscpd.json"),
+            Command(
+                ["eslint", "--format=unix"],
+                (".ts", ".tsx", ".js", ".jsx"),
+                validate_argv=("eslint", "--format=json"),
+                report="eslint-json",
+            ),
+            Command(
+                ["stylelint"],
+                (".scss",),
+                validate_argv=("stylelint", "--formatter=json"),
+                report="stylelint-json",
+            ),
+            Command(
+                ["tsc", "--noEmit"],
+                needs=(".ts", ".tsx"),
+                validate_argv=("tsc", "--noEmit", "--pretty", "false"),
+                report="tsc",
+            ),
+            Command(["knip", "--no-config-hints"], report="generic"),
+            Command(
+                ["depcruise", "src", "--config", ".dependency-cruiser.js"],
+                validate_argv=(
+                    "depcruise",
+                    "src",
+                    "--config",
+                    ".dependency-cruiser.js",
+                    "--output-type",
+                    "json",
+                ),
+                report="depcruise-json",
+                category="capas",
+            ),
+            Command(
+                ["vitest", "run", "--coverage"],
+                requires="vitest.config.ts",
+                report="vitest",
+                category="tests",
+            ),
+            Command(["jscpd", "src"], requires=".jscpd.json", report="generic"),
             Command(
                 ["prettier", "--check"],
                 (".ts", ".tsx", ".js", ".jsx", ".scss", ".json", ".html"),
+                validate_argv=("prettier", "--list-different"),
+                report="file-list",
+                category="formato",
             ),
         ),
         fix=(
@@ -144,7 +237,18 @@ LANGS = (
         test_glob="*_test.go",
         check=(
             # golangci-lint ya corre gofmt como formatter.
-            Command(["golangci-lint", "run", "--output.text.print-issued-lines=false"]),
+            Command(
+                ["golangci-lint", "run", "--output.text.print-issued-lines=false"],
+                validate_argv=(
+                    "golangci-lint",
+                    "run",
+                    "--output.json.path",
+                    "stdout",
+                    "--output.text.path",
+                    "stderr",
+                ),
+                report="golangci-json",
+            ),
             Command(
                 [
                     "go",
@@ -157,6 +261,8 @@ LANGS = (
                 ],
                 requires="go.mod",
                 parser="go-cover",
+                report="go-test",
+                category="tests",
             ),
         ),
         fix=(
@@ -172,7 +278,14 @@ LANGS = (
         max_file_lines=400,
         test_glob="tests/*.rs",
         check=(
-            Command(["cargo", "fmt", "--check"], (".rs",), takes_files=False),
+            Command(
+                ["cargo", "fmt", "--check"],
+                (".rs",),
+                takes_files=False,
+                validate_argv=("cargo", "fmt", "--check"),
+                report="cargo-fmt",
+                category="formato",
+            ),
             Command(
                 [
                     "cargo",
@@ -185,6 +298,17 @@ LANGS = (
                 ],
                 (".rs",),
                 takes_files=False,
+                validate_argv=(
+                    "cargo",
+                    "clippy",
+                    "--all-targets",
+                    "--all-features",
+                    "--message-format=json",
+                    "--",
+                    "-D",
+                    "warnings",
+                ),
+                report="clippy-json",
             ),
             Command(
                 [
@@ -199,6 +323,8 @@ LANGS = (
                 ],
                 needs=(".rs",),
                 requires="Cargo.toml",
+                report="coverage",
+                category="cobertura",
             ),
         ),
         fix=(Command(["cargo", "fmt"]),),
@@ -222,12 +348,28 @@ LANGS = (
         exts=(".java",),
         test_glob="*Test.java",
         check=(
-            Command(["mvn", "-q", "-B", "spotless:check"]),
-            Command(["mvn", "-q", "-B", "checkstyle:check"]),
-            Command(["mvn", "-q", "-B", "pmd:cpd-check"]),
-            Command(["mvn", "-q", "-B", "pmd:check"]),
-            Command(["mvn", "-q", "-B", "spotbugs:check"]),
-            Command(["mvn", "-q", "-B", "test"]),
+            Command(
+                ["mvn", "-q", "-B", "spotless:check"],
+                report="spotless",
+                category="formato",
+            ),
+            Command(
+                ["mvn", "-q", "-B", "checkstyle:check"],
+                report="checkstyle-xml",
+                artifact="target/checkstyle-result.xml",
+            ),
+            Command(["mvn", "-q", "-B", "pmd:cpd-check"], report="generic"),
+            Command(
+                ["mvn", "-q", "-B", "pmd:check"],
+                report="pmd-xml",
+                artifact="target/pmd.xml",
+            ),
+            Command(
+                ["mvn", "-q", "-B", "spotbugs:check"],
+                report="spotbugs-xml",
+                artifact="target/spotbugsXml.xml",
+            ),
+            Command(["mvn", "-q", "-B", "test"], report="maven-test", category="calidad"),
         ),
         fix=(Command(["mvn", "-q", "-B", "spotless:apply"]),),
     ),
@@ -371,15 +513,18 @@ def matching(cmd: Command, files: list[str]) -> list[str]:
     return [f for f in files if Path(f).suffix in cmd.file_exts]
 
 
-def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
+def run(
+    cmd: Command, lang: Lang, files: list[str], argv: list[str] | None = None
+) -> tuple[int | None, str]:
     """Ejecuta un comando en la carpeta del lenguaje y filtra ruido.
 
     Devuelve None como codigo si la herramienta no esta instalada.
     """
+    command = argv or cmd.argv
     local_bin = ROOT / lang.folder / LOCAL_BIN
-    exe = shutil.which(cmd.argv[0], path=str(local_bin)) or shutil.which(cmd.argv[0])
+    exe = shutil.which(command[0], path=str(local_bin)) or shutil.which(command[0])
     if exe is None:
-        return None, f"[X] falta '{cmd.argv[0]}' (ver README)"
+        return None, f"[X] falta '{command[0]}' (ver README)"
     extra = (
         [Path(f).relative_to(lang.folder).as_posix() for f in matching(cmd, files)]
         if cmd.takes_files
@@ -387,7 +532,7 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
     )
     try:
         proc = subprocess.run(  # noqa: S603 - lista de argumentos, sin shell
-            [exe, *cmd.argv[1:], *extra],
+            [exe, *command[1:], *extra],
             cwd=ROOT / lang.folder,
             capture_output=True,
             text=True,
@@ -396,9 +541,10 @@ def run(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
             timeout=TIMEOUT,
         )
     except subprocess.TimeoutExpired:
-        return 1, f"[X] '{cmd.argv[0]}' excedio {TIMEOUT}s"
+        return 1, f"[X] '{command[0]}' excedio {TIMEOUT}s"
     prefix = str(ROOT / lang.folder)
-    output = clean(proc.stdout + proc.stderr)
+    raw = proc.stdout if cmd.report.endswith("json") else proc.stdout + proc.stderr
+    output = clean(raw)
     return proc.returncode, output.replace(prefix + "\\", "").replace(prefix + "/", "")
 
 

@@ -6,6 +6,9 @@ uso:
   python tools/lint.py --fix --unsafe   # incluye arreglos que cambian comportamiento
   python tools/lint.py --staged    # solo lo que esta en el indice (hook)
   python tools/lint.py --changed main   # solo lo que difiere de main (merge-base)
+  python tools/lint.py <ruta> --validate  # violaciones por archivo y aspecto
+  python tools/lint.py <ruta> --validate --json  # el mismo reporte, JSON
+  python tools/lint.py <ruta> --validate --fix   # arregla lo determinista y reporta
   python tools/lint.py --audit     # vulnerabilidades en dependencias
   python tools/lint.py --security  # secretos, patrones inseguros y dependencias
   python tools/lint.py --skip "motivo"  # permite el proximo commit sin linters
@@ -64,6 +67,15 @@ from lintlib.portable import (
     project_warnings,
     target_flags,
 )
+from lintlib.quality import (
+    Violation,
+    dedupe,
+    parse_command,
+    parse_generic,
+    render_json,
+    render_text,
+    to_violation,
+)
 
 __all__ = [
     "LANGS",
@@ -112,7 +124,9 @@ def write_skip(reason: str) -> int:
     if not (ROOT / ".git").is_dir():
         print("[X] No es un repositorio git.")
         return 2
-    SKIP_FILE.write_text(json.dumps({"reason": reason, "created": time.time()}), encoding="utf-8")
+    SKIP_FILE.write_text(
+        json.dumps({"reason": reason, "created": time.time()}), encoding="utf-8"
+    )
     skip_warning(reason, "--skip")
     print("\n  El proximo `git commit` no ejecuta linters (un solo uso, 10 minutos).")
     return 0
@@ -164,11 +178,14 @@ def go_cover(cmd: Command, lang: Lang) -> tuple[int | None, str]:
     return 0, f"  cobertura Go: {total:.1f}%"
 
 
-def execute(cmd: Command, lang: Lang, files: list[str]) -> tuple[int | None, str]:
+def execute(
+    cmd: Command, lang: Lang, files: list[str], validate: bool = False
+) -> tuple[int | None, str]:
     """Ejecuta un comando de revision, con su parser si lo tiene."""
     if cmd.parser == "go-cover":
         return go_cover(cmd, lang)
-    return run(cmd, lang, files)
+    argv = list(cmd.validate_argv) if validate and cmd.validate_argv else None
+    return run(cmd, lang, files, argv)
 
 
 # Marcadores de código generado sin cuidado. "needs" es la marca de
@@ -239,12 +256,16 @@ def slop_check(files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
     for name in files:
         suffix = Path(name).suffix
         rules = [
-            (pattern, label, needs) for exts, pattern, label, needs in SLOP_RULES if suffix in exts
+            (pattern, label, needs)
+            for exts, pattern, label, needs in SLOP_RULES
+            if suffix in exts
         ]
         if not rules:
             continue
         try:
-            content = (base / name).read_text(encoding="utf-8", errors="replace").splitlines()
+            content = (
+                (base / name).read_text(encoding="utf-8", errors="replace").splitlines()
+            )
         except OSError:
             continue
         for number, line in enumerate(content, 1):
@@ -254,12 +275,16 @@ def slop_check(files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
                     continue
                 if needs and needs in line[match.end() :]:
                     continue
-                lines.append(f"  {name}:{number}: {label} sin justificar: {line.strip()}")
+                lines.append(
+                    f"  {name}:{number}: {label} sin justificar: {line.strip()}"
+                )
                 status = 1
     return status, lines
 
 
-def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> tuple[int, list[str]]:
+def size_check(
+    lang: Lang, files: list[str], base: Path = ROOT
+) -> tuple[int, list[str]]:
     """Reporta archivos que exceden el maximo de lineas del lenguaje."""
     if not lang.max_file_lines:
         return 0, []
@@ -269,13 +294,123 @@ def size_check(lang: Lang, files: list[str], base: Path = ROOT) -> tuple[int, li
         if Path(name).suffix not in lang.exts:
             continue
         try:
-            total = sum(1 for _ in (base / name).open(encoding="utf-8", errors="replace"))
+            total = sum(
+                1 for _ in (base / name).open(encoding="utf-8", errors="replace")
+            )
         except OSError:
             continue
         if total > lang.max_file_lines:
-            lines.append(f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})")
+            lines.append(
+                f"  {name}:1 archivo de {total} lineas (maximo {lang.max_file_lines})"
+            )
             status = 1
     return status, lines
+
+
+def gate_violations(size_lines: list[str], slop_lines: list[str]) -> list[Violation]:
+    """Convierte los chequeos propios del runner en violaciones."""
+    out: list[Violation] = []
+    for line in size_lines:
+        match = re.match(r"^\s*(.+?):1 archivo de (\d+) lineas \(maximo (\d+)\)", line)
+        if match:
+            message = f"archivo de {match.group(2)} lineas (maximo {match.group(3)})"
+            out.append(
+                Violation(
+                    match.group(1),
+                    1,
+                    1,
+                    "srp",
+                    "max-file-lines",
+                    message,
+                    "gate",
+                    False,
+                )
+            )
+    for line in slop_lines:
+        match = re.match(r"^\s*(.+?):(\d+): (.+)$", line)
+        if match:
+            out.append(
+                Violation(
+                    match.group(1),
+                    int(match.group(2)),
+                    1,
+                    "calidad",
+                    "slop",
+                    match.group(3),
+                    "gate",
+                    False,
+                )
+            )
+    return out
+
+
+def banned_violations(banned: list[str]) -> list[Violation]:
+    """Convierte las extensiones prohibidas en violaciones."""
+    out: list[Violation] = []
+    for line in banned:
+        match = re.match(r"^\s*(.+?): extension prohibida", line)
+        if match:
+            out.append(
+                Violation(
+                    match.group(1),
+                    1,
+                    1,
+                    "calidad",
+                    "extension-prohibida",
+                    "usa SCSS en lugar de CSS",
+                    "estructura",
+                    False,
+                )
+            )
+    return out
+
+
+def repo_category(label: str) -> str:
+    """Categoria de un chequeo del repo por su nombre."""
+    if "nombres" in label:
+        return "nombres"
+    if "format" in label or "prettier" in label:
+        return "formato"
+    return "calidad"
+
+
+def repo_violations(lines: list[str]) -> list[Violation]:
+    """Convierte la salida de los chequeos del repo en violaciones."""
+    out: list[Violation] = []
+    label = "repo"
+    failed = False
+    parsed = 0
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[X]"):
+            if failed and parsed == 0:
+                out.append(repo_fallback(label))
+            label = stripped[3:].strip()
+            failed = True
+            parsed = 0
+            continue
+        if not stripped or stripped.startswith(("ok:", "==")):
+            continue
+        for finding in parse_generic(stripped, label):
+            out.append(to_violation(finding, "", repo_category(label)))
+            parsed += 1
+    if failed and parsed == 0:
+        out.append(repo_fallback(label))
+    return out
+
+
+def repo_fallback(label: str) -> Violation:
+    """Violacion de repo sin archivo concreto en la salida."""
+    return Violation(
+        "repo",
+        1,
+        1,
+        repo_category(label),
+        label,
+        "revisa la salida del gate",
+        "repo",
+        False,
+    )
 
 
 def report(
@@ -309,6 +444,49 @@ def report(
     return status, lines
 
 
+def report_validate(
+    lang: Lang,
+    files: list[str],
+    fix: tuple[Command, ...] = (),
+    fast: bool = False,
+) -> tuple[int, list[str], list[Violation]]:
+    """Corre el linter y devuelve violaciones normalizadas por archivo."""
+    lines = [f"== {lang.name} ({len(files)} archivo(s)) =="]
+    for cmd in fix:
+        run(cmd, lang, files)
+    status, size_lines = size_check(lang, files)
+    slop_status, slop_lines = slop_check(files)
+    status = max(status, slop_status)
+    violations = gate_violations(size_lines, slop_lines)
+    for cmd in lang.check:
+        if fast and not cmd.file_exts:
+            continue
+        if not should_run(cmd, lang, files):
+            continue
+        code, output = execute(cmd, lang, files, True)
+        if code is None:
+            lines.append(output)
+            violations.append(
+                Violation(
+                    lang.folder,
+                    1,
+                    1,
+                    "calidad",
+                    "herramienta",
+                    output,
+                    "gate",
+                    False,
+                )
+            )
+            return 2, lines, violations
+        violations.extend(parse_command(cmd, output, code, lang.folder))
+        if code != 0:
+            status = 1
+    violations = dedupe(violations)
+    status = 1 if violations else status
+    return status, lines, violations
+
+
 def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
     """Separa por lenguaje y detecta extensiones prohibidas."""
     by_lang: dict[str, list[str]] = {}
@@ -326,7 +504,9 @@ def classify(files: list[str]) -> tuple[dict[str, list[str]], list[str]]:
 def parse_args() -> argparse.Namespace:
     """Lee las banderas de la linea de comandos."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("files", nargs="*", help="archivos concretos (por defecto todo)")
+    parser.add_argument(
+        "files", nargs="*", help="archivos concretos (por defecto todo)"
+    )
     parser.add_argument(
         "--fast",
         action="store_true",
@@ -338,12 +518,19 @@ def parse_args() -> argparse.Namespace:
         help="salida JSON para agentes (solo modo normal)",
     )
     parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="reporte determinista por archivo (calidad, capas, nombres, ...)",
+    )
+    parser.add_argument(
         "--unsafe",
         action="store_true",
         help="con --fix: incluye arreglos que pueden cambiar comportamiento",
     )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
+    group.add_argument(
+        "--staged", action="store_true", help="solo lo que esta en stage"
+    )
     group.add_argument(
         "--changed",
         metavar="BASE",
@@ -358,7 +545,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="secretos, patrones inseguros y dependencias",
     )
-    group.add_argument("--mutation", action="store_true", help="mutation testing (Stryker)")
+    group.add_argument(
+        "--mutation", action="store_true", help="mutation testing (Stryker)"
+    )
     parser.add_argument(
         "--project",
         metavar="RUTA",
@@ -414,27 +603,32 @@ def finish(status: int) -> int:
     return 0
 
 
-def lint_all(
+def run_languages(
     args: argparse.Namespace,
     by_lang: dict[str, list[str]],
     banned: list[str],
-    files: list[str],
-) -> int:
-    """Corre los linters de cada lenguaje y resume el resultado."""
-    before = dirty_count() if (args.fix or args.unsafe) else 0
+    validate: bool,
+) -> tuple[int, list[dict[str, object]], list[Violation]]:
+    """Corre cada lenguaje y acumula su estado y sus violaciones."""
     status = 1 if banned else 0
-    if banned:
-        print("\n== estructura ==")
-        print("\n".join(banned))
-
+    violations = banned_violations(banned) if validate else []
     fixers = args.fix or args.unsafe
     records: list[dict[str, object]] = []
     for lang in LANGS:
         if lang.name not in by_lang:
             continue
         commands = lang.fix_unsafe if args.unsafe else lang.fix
-        lang_status, lines = report(lang, by_lang[lang.name], commands if fixers else (), args.fast)
+        if validate:
+            lang_status, lines, found = report_validate(
+                lang, by_lang[lang.name], commands if fixers else (), args.fast
+            )
+        else:
+            lang_status, lines = report(
+                lang, by_lang[lang.name], commands if fixers else (), args.fast
+            )
+            found = []
         status = max(status, lang_status)
+        violations.extend(found)
         records.append(
             {
                 "name": lang.name,
@@ -443,11 +637,43 @@ def lint_all(
                 "output": lines,
             }
         )
-        if not args.json:
+        if not args.json and not validate:
             print("\n".join(lines))
+    return status, records, violations
 
-    repo_status, repo_lines = repo_checks(files, fixers)
+
+def finish_validate(
+    args: argparse.Namespace, status: int, violations: list[Violation]
+) -> int:
+    """Cierra el modo --validate en texto o JSON."""
+    violations = dedupe(violations)
+    status = max(status, 1 if violations else 0)
+    if args.json:
+        print(render_json(violations))
+        return status
+    print("\n== validacion ==")
+    print(render_text(violations))
+    return finish(status)
+
+
+def lint_all(
+    args: argparse.Namespace,
+    by_lang: dict[str, list[str]],
+    banned: list[str],
+    files: list[str],
+) -> int:
+    """Corre los linters de cada lenguaje y resume el resultado."""
+    before = dirty_count() if (args.fix or args.unsafe) else 0
+    validate = args.validate
+    if banned and not validate:
+        print("\n== estructura ==")
+        print("\n".join(banned))
+
+    status, records, violations = run_languages(args, by_lang, banned, validate)
+    repo_status, repo_lines = repo_checks(files, args.fix or args.unsafe)
     status = max(status, repo_status)
+    if validate:
+        violations.extend(repo_violations(repo_lines))
     records.append(
         {
             "name": "repo",
@@ -456,12 +682,14 @@ def lint_all(
             "output": repo_lines,
         }
     )
-    if not args.json:
+    if not args.json and not validate:
         print("\n" + "\n".join(repo_lines))
-
-    if fixers and not args.json:
-        print(f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s).")
-
+    if (args.fix or args.unsafe) and not args.json:
+        print(
+            f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s)."
+        )
+    if validate:
+        return finish_validate(args, status, violations)
     if args.json:
         return emit_json(status, banned, records)
     return finish(status)
@@ -492,6 +720,9 @@ def external_mode(args: argparse.Namespace) -> int | None:
     target = external_target(args.files)
     if target is None:
         return None
+    if args.validate:
+        print("[X] --validate no aplica a proyectos externos; usa --project")
+        return 2
     if len(args.files) == 1 and target.is_dir():
         return portable(target, args.fix or args.unsafe)
     print("[X] ruta fuera del repo: usa --project <carpeta>")
@@ -564,7 +795,9 @@ def tools_checks(files: list[str], fix: bool) -> list[tuple[str, list[str]]]:
 def workflow_checks(files: list[str]) -> list[tuple[str, list[str]]]:
     """Actionlint sobre los workflows."""
     workflows = [
-        f for f in files if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))
+        f
+        for f in files
+        if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))
     ]
     if not workflows:
         return []
@@ -588,7 +821,9 @@ def repo_checks(files: list[str], fix: bool = False) -> tuple[int, list[str]]:
         checks.append(("docs (enlaces)", ["python", "tools/check_links.py", *md]))
     policy_exts = (".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".java", ".rs")
     policy = [
-        f for f in files if Path(f).suffix in policy_exts and not f.startswith("tools/fixtures/")
+        f
+        for f in files
+        if Path(f).suffix in policy_exts and not f.startswith("tools/fixtures/")
     ]
     if policy:
         checks.append(
@@ -699,7 +934,8 @@ def add_config_langs(files: list[str], by_lang: dict[str, list[str]]) -> bool:
     changed = [
         path
         for path in files
-        if path in CONFIG_LANGS or (path.startswith("tools/lintlib/") and path.endswith(".py"))
+        if path in CONFIG_LANGS
+        or (path.startswith("tools/lintlib/") and path.endswith(".py"))
     ]
     if not changed:
         return False
@@ -735,6 +971,9 @@ def missing_tests() -> list[str]:
 def empty_result(args: argparse.Namespace) -> int:
     """Sin lenguajes ni docs: explica el caso y devuelve el estado."""
     if args.json:
+        if args.validate:
+            print(render_json([]))
+            return 0
         print(
             json.dumps(
                 {"ok": True, "status": 0, "banned": [], "languages": []},
@@ -759,7 +998,9 @@ def expand_deleted(deleted: list[str], by_lang: dict[str, list[str]]) -> None:
     for name in names:
         lang = next(lg for lg in LANGS if lg.name == name)
         by_lang[name] = [
-            f for f in everything if f.startswith(lang.folder + "/") and Path(f).suffix in lang.exts
+            f
+            for f in everything
+            if f.startswith(lang.folder + "/") and Path(f).suffix in lang.exts
         ]
 
 
@@ -796,7 +1037,9 @@ def repo_mode(args: argparse.Namespace) -> int:
         return guard
     by_lang, banned = classify(files)
     expand_deleted(deleted, by_lang)
-    files = expand_config(files, deleted, by_lang, args.fix or args.unsafe)
+    files = expand_config(
+        files, deleted, by_lang, args.fix or args.unsafe or args.validate
+    )
     mode = special_mode(args, by_lang)
     if mode is not None:
         return mode
@@ -815,13 +1058,32 @@ def validate(args: argparse.Namespace) -> str | None:
     if args.changed and args.project:
         return "--changed no se combina con --project: --project audita otra ruta"
     if args.fast and (
-        args.audit or args.security or args.mutation or args.project or args.skip is not None
+        args.audit
+        or args.security
+        or args.mutation
+        or args.project
+        or args.skip is not None
     ):
         return "--fast solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
     if args.json and (
-        args.audit or args.security or args.mutation or args.project or args.skip is not None
+        args.audit
+        or args.security
+        or args.mutation
+        or args.project
+        or args.skip is not None
     ):
         return "--json solo aplica al modo normal (sin --audit, --security, --project ni --skip)"
+    if args.validate and (
+        args.audit
+        or args.security
+        or args.mutation
+        or args.project
+        or args.skip is not None
+    ):
+        return (
+            "--validate solo aplica al modo normal "
+            "(sin --audit, --security, --mutation, --project ni --skip)"
+        )
     return None
 
 
