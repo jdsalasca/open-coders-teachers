@@ -345,6 +345,19 @@ def candidates(staged: bool) -> list[str] | None:
     return [f for f in found if (ROOT / f).exists()]
 
 
+def changed_files(base: str) -> list[str] | None:
+    """Archivos que difieren de base; None si git no responde.
+
+    Usa el rango de tres puntos, asi que compara contra el merge-base: un PR
+    revisa lo que introduce, no lo que la rama base gano mientras tanto.
+    """
+    found = git_files("diff", "--name-only", "--diff-filter=ACMR", f"{base}...HEAD")
+    if found is None:
+        return None
+    # Un archivo borrado en el diff ya no existe: no se puede lintar.
+    return [f for f in found if (ROOT / f).exists()]
+
+
 def should_run(cmd: Command, lang: Lang, files: list[str]) -> bool:
     """False si el lote o la carpeta no cumplen los requisitos del comando."""
     if cmd.requires and not (ROOT / lang.folder / cmd.requires).exists():
