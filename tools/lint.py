@@ -5,6 +5,7 @@ uso:
   python tools/lint.py --fix       # arregla y vuelve a revisar
   python tools/lint.py --fix --unsafe   # incluye arreglos que cambian comportamiento
   python tools/lint.py --staged    # solo lo que esta en el indice (hook)
+  python tools/lint.py --changed main   # solo lo que difiere de main (merge-base)
   python tools/lint.py --audit     # vulnerabilidades en dependencias
   python tools/lint.py --security  # secretos, patrones inseguros y dependencias
   python tools/lint.py --skip "motivo"  # permite el proximo commit sin linters
@@ -43,6 +44,7 @@ from lintlib.common import (
     Command,
     Lang,
     candidates,
+    changed_files,
     expand,
     git_files,
     lang_by_folder,
@@ -342,6 +344,11 @@ def parse_args() -> argparse.Namespace:
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
+    group.add_argument(
+        "--changed",
+        metavar="BASE",
+        help="solo archivos que difieren de BASE, comparando contra el merge-base",
+    )
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
     group.add_argument(
         "--audit", action="store_true", help="busca vulnerabilidades en dependencias"
@@ -773,6 +780,8 @@ def expand_config(
 def repo_mode(args: argparse.Namespace) -> int:
     """Modo repo: las seis carpetas de este proyecto."""
     files = expand(args.files) if args.files else candidates(args.staged)
+    if args.changed and not args.files:
+        files = changed_files(args.changed)
     deleted = staged_deleted() if args.staged else []
     if files is None or deleted is None:
         print("[X] git no respondio: no pude listar los archivos a revisar.")
@@ -803,6 +812,8 @@ def validate(args: argparse.Namespace) -> str | None:
         return "--unsafe solo tiene sentido junto a --fix"
     if args.project and (args.audit or args.security):
         return "--project no se combina con --audit ni --security"
+    if args.changed and args.project:
+        return "--changed no se combina con --project: --project audita otra ruta"
     if args.fast and (
         args.audit or args.security or args.mutation or args.project or args.skip is not None
     ):
