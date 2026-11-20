@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,20 @@ def check(condition: bool, message: str = "") -> None:
     """Falla el autochequeo si la condicion no se cumple."""
     if not condition:
         raise AssertionError(message)
+
+
+def has_tool(name: str) -> bool:
+    """True si la herramienta esta en el PATH de esta maquina."""
+    return shutil.which(name) is not None
+
+
+def skip_test(motivo: str) -> None:
+    """Omite el test actual: skip con pytest, aviso si se corre como script."""
+    if "pytest" in sys.modules:
+        import pytest
+
+        pytest.skip(motivo)
+    print(f"[aviso] {motivo}")
 
 
 def run(argv: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -87,6 +102,8 @@ def test_portable_encuentra_hallazgos() -> None:
     with contextlib.redirect_stdout(buffer):
         code = lint.portable(fixture, False)
     salida = buffer.getvalue()
+    if code == 2:
+        return skip_test("faltan herramientas del baseline portable: corre tools/setup.ps1")
     check(code == 1, f"esperaba hallazgos (1), obtuve {code}")
     check("max-params" in salida, "no reporto demasiados parametros")
     check("no-unused-vars" in salida, "no reporto variable sin usar")
@@ -94,6 +111,8 @@ def test_portable_encuentra_hallazgos() -> None:
 
 def test_canario_python() -> None:
     """La config de ruff de python-teacher sigue cazando violaciones."""
+    if not has_tool("ruff"):
+        return skip_test("ruff no esta instalado: corre tools/setup.ps1")
     fixture = lint.ROOT / "tools" / "fixtures" / "bad-py" / "bad.py"
     config = lint.ROOT / "python-teacher" / "pyproject.toml"
     proc = run(
@@ -473,6 +492,37 @@ def test_coverage_excluye_entrypoints() -> None:
     check(coverage_gate.excluded("rust", "Rust-teacher/src/main.rs"))
     check(coverage_gate.excluded("react", "React-teacher/src/main.tsx"))
     check(not coverage_gate.excluded("java", "edu/teachers/domain/Task.java"))
+
+
+def test_changed_usa_merge_base() -> None:
+    """--changed lista lo que introduce el diff, no lo que gano la base despues."""
+    original = common.ROOT
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            identidad = ["-c", "user.email=test@example.com", "-c", "user.name=test"]
+            check(run(["git", "init", "-q"], cwd=repo).returncode == 0, "git init fallo")
+            (repo / "viejo.py").write_text("x = 1\n", encoding="utf-8")
+            check(run(["git", "add", "."], cwd=repo).returncode == 0, "git add fallo")
+            check(
+                run(["git", *identidad, "commit", "-qm", "base"], cwd=repo).returncode == 0,
+                "git commit base fallo",
+            )
+            (repo / "nuevo.py").write_text("y = 2\n", encoding="utf-8")
+            check(run(["git", "add", "."], cwd=repo).returncode == 0, "git add fallo")
+            check(
+                run(["git", *identidad, "commit", "-qm", "nuevo"], cwd=repo).returncode == 0,
+                "git commit nuevo fallo",
+            )
+            common.ROOT = repo
+            got = common.changed_files("HEAD~1")
+            check(got == ["nuevo.py"], f"esperaba ['nuevo.py'], obtuve {got}")
+            check(
+                common.changed_files("rama-que-no-existe") is None,
+                "una base inexistente debe devolver None, no una lista vacia",
+            )
+    finally:
+        common.ROOT = original
 
 
 if __name__ == "__main__":
