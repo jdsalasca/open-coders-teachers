@@ -8,7 +8,15 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from lintlib import architecture, java_quality, quality, test_quality, ts_quality
-from lintlib.common import NODE_EXTS, ROOT, TOOLS, Command, exec_external, relative
+from lintlib.common import (
+    NODE_EXTS,
+    ROOT,
+    TOOLS,
+    Command,
+    changed_files,
+    exec_external,
+    relative,
+)
 from lintlib.portable import (
     Project,
     discover,
@@ -118,6 +126,26 @@ PMD = MavenCheck(
     artifact="target/pmd.xml",
     report="pmd-xml",
 )
+
+CONFIG_NAMES = {
+    "package.json",
+    "package-lock.json",
+    "Cargo.toml",
+    "Cargo.lock",
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "pyproject.toml",
+    "requirements.txt",
+    "requirements.lock",
+    "go.mod",
+    "go.sum",
+    "tsconfig.json",
+    "project.godot",
+    "eslint.config.js",
+    ".golangci.yml",
+    "ruff.toml",
+}
 
 
 def project_prefix(project: Project, root: Path) -> str:
@@ -532,7 +560,58 @@ def finish(status: int) -> int:
     return 0
 
 
-def portable_validate(path: Path, fix: bool, as_json: bool) -> int:
+def scoped_projects(projects: list[Project], root: Path, changed: set[str]) -> list[Project]:
+    """Proyectos con solo los archivos que pertenecen al diff."""
+    out: list[Project] = []
+    for project in projects:
+        files = [
+            path for path in project.files if Path(path).relative_to(root).as_posix() in changed
+        ]
+        if files:
+            out.append(Project(project.kind, project.folder, files))
+    return out
+
+
+def apply_base(
+    projects: list[Project], root: Path, base: str | None
+) -> tuple[list[Project], set[str] | None, int | None]:
+    """Limita los proyectos al diff; devuelve tambien una salida temprana."""
+    if not base:
+        return projects, None, None
+    found = changed_files(base, root)
+    if found is None:
+        print(f"[X] git no pudo comparar {root} contra {base}.")
+        return projects, None, 2
+    changed = set(found)
+    if not changed:
+        print(f"Sin cambios frente a {base}.")
+        return projects, None, 0
+    if any(Path(item).name in CONFIG_NAMES for item in changed):
+        print(f"Cambio de configuracion frente a {base}: proyecto completo.")
+        return projects, None, None
+    scoped = scoped_projects(projects, root, changed)
+    if not scoped:
+        print(f"Sin cambios de codigo frente a {base}.")
+        return projects, None, 0
+    return scoped, changed, None
+
+
+def collect(
+    projects: list[Project], root: Path, fix: bool
+) -> tuple[int, list[quality.Violation], list[str]]:
+    """Valida todos los proyectos y acumula estado, hallazgos y avisos."""
+    status = 0
+    violations: list[quality.Violation] = []
+    warnings: list[str] = []
+    for project in projects:
+        project_status, found, project_warnings_found = validate_project(project, root, fix)
+        status = max(status, project_status)
+        violations.extend(found)
+        warnings.extend(project_warnings_found)
+    return status, quality.dedupe(violations), warnings
+
+
+def portable_validate(path: Path, fix: bool, as_json: bool, base: str | None = None) -> int:
     """Audita un proyecto externo y reporta violaciones por archivo."""
     root = path.resolve()
     if not root.is_dir():
@@ -543,20 +622,27 @@ def portable_validate(path: Path, fix: bool, as_json: bool) -> int:
         print(f"[X] {root}: no encontre un manifiesto de proyecto.")
         print("    Sin manifiesto no hay proyecto que auditar (no es 'todo limpio').")
         return 2
-    status = 0
-    violations: list[quality.Violation] = []
-    warnings: list[str] = []
-    for project in projects:
-        project_status, found, project_warnings_found = validate_project(project, root, fix)
-        status = max(status, project_status)
-        violations.extend(found)
-        warnings.extend(project_warnings_found)
-    violations = quality.dedupe(violations)
-    status = max(status, 1 if violations else 0)
+    projects, changed, early = apply_base(projects, root, base)
+    if early is not None:
+        if as_json:
+            print(quality.render_json([]))
+        return early
+    status, violations, warnings = collect(projects, root, fix)
+    if changed is not None:
+        violations = [
+            violation
+            for violation in violations
+            if violation.path in changed or violation.rule in {"herramienta", "gradle"}
+        ]
+        status = 2 if status == 2 else (1 if violations else 0)
+        warnings = []
+    else:
+        status = max(status, 1 if violations else 0)
     if as_json:
         print(quality.render_json(violations))
         return status
-    print(f"\n== validacion externa: {root.name} ==")
+    suffix = f" (base {base})" if base else ""
+    print(f"\n== validacion externa: {root.name}{suffix} ==")
     for warning in warnings:
         print(f"  aviso: {warning}")
     print(quality.render_text(violations))

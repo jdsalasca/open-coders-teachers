@@ -392,12 +392,13 @@ def lang_for(rel_path: str) -> str | None:
     return None
 
 
-def git_files(*args: str) -> list[str] | None:
+def git_files(*args: str, root: Path | None = None) -> list[str] | None:
     """Lista de archivos que devuelve git; None si git falla."""
+    cwd = root or ROOT
     try:
         out = subprocess.run(  # noqa: S603 - argumentos fijos, sin shell
             ["git", *args, "-z"],  # noqa: S607 - git esta en el PATH
-            cwd=ROOT,
+            cwd=cwd,
             capture_output=True,
             text=True,
             timeout=60,
@@ -487,17 +488,18 @@ def candidates(staged: bool) -> list[str] | None:
     return [f for f in found if (ROOT / f).exists()]
 
 
-def changed_files(base: str) -> list[str] | None:
+def changed_files(base: str, root: Path | None = None) -> list[str] | None:
     """Archivos que difieren de base; None si git no responde.
 
     Usa el rango de tres puntos, asi que compara contra el merge-base: un PR
     revisa lo que introduce, no lo que la rama base gano mientras tanto.
     """
-    found = git_files("diff", "--name-only", "--diff-filter=ACMR", f"{base}...HEAD")
+    cwd = root or ROOT
+    found = git_files("diff", "--name-only", "--diff-filter=ACMR", f"{base}...HEAD", root=cwd)
     if found is None:
         return None
     # Un archivo borrado en el diff ya no existe: no se puede lintar.
-    return [f for f in found if (ROOT / f).exists()]
+    return [f for f in found if (cwd / f).exists()]
 
 
 def should_run(cmd: Command, lang: Lang, files: list[str]) -> bool:

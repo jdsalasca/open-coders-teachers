@@ -65,6 +65,12 @@ Decisiones concretas:
    Serde/Axum/Tokio/SQLx). `tools/lintlib/test_quality.py` exige tests, limita
    su tamaño y casos, y exige al menos una aserción; `tools/lintlib/ts_quality.py`
    exige JSDoc en exports. Rust añade `missing_docs`.
+10. **Solo el diff**: `--base <rama>` (alias `--changed`) usa el merge-base
+    `rama...HEAD` y limita el reporte a los archivos tocados. Funciona en el
+    repo y en `--project`; `--fix` respeta el alcance. Un cambio de manifiesto
+    o configuración vuelve a auditar el proyecto completo. Sin `--base` el
+    análisis es completo. El wrapper `tools/quality.ps1` expone
+    `-Project`, `-Base`, `-Fix` y `-Json`.
 
 ## Consecuencias
 

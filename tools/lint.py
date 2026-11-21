@@ -5,7 +5,8 @@ uso:
   python tools/lint.py --fix       # arregla y vuelve a revisar
   python tools/lint.py --fix --unsafe   # incluye arreglos que cambian comportamiento
   python tools/lint.py --staged    # solo lo que esta en el indice (hook)
-  python tools/lint.py --changed main   # solo lo que difiere de main (merge-base)
+  python tools/lint.py --base develop   # solo lo que difiere de develop (merge-base)
+  python tools/lint.py --changed main   # alias de --base
   python tools/lint.py <ruta> --validate  # violaciones por archivo y aspecto
   python tools/lint.py <ruta> --validate --json  # el mismo reporte, JSON
   python tools/lint.py <ruta> --validate --fix   # arregla lo determinista y reporta
@@ -512,13 +513,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="con --fix: incluye arreglos que pueden cambiar comportamiento",
     )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
-    group.add_argument(
+    parser.add_argument(
+        "--base",
+        metavar="RAMA",
+        help="solo archivos que difieren de RAMA, comparando contra el merge-base",
+    )
+    parser.add_argument(
         "--changed",
         metavar="BASE",
-        help="solo archivos que difieren de BASE, comparando contra el merge-base",
+        help="alias de --base (compatibilidad)",
     )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--staged", action="store_true", help="solo lo que esta en stage")
     group.add_argument("--fix", action="store_true", help="aplica arreglos automaticos")
     group.add_argument(
         "--audit", action="store_true", help="busca vulnerabilidades en dependencias"
@@ -666,6 +672,10 @@ def lint_all(
     if (args.fix or args.unsafe) and not args.json:
         print(f"\nArreglos automaticos: {dirty_count() - before} archivo(s) modificado(s).")
     if validate:
+        violations = dedupe(violations)
+        scope = set(files) if base_ref(args) else None
+        if scope is not None:
+            violations = [violation for violation in violations if violation.path in scope]
         return finish_validate(args, status, violations)
     if args.json:
         return emit_json(status, banned, records)
@@ -697,10 +707,11 @@ def external_mode(args: argparse.Namespace) -> int | None:
     target = external_target(args.files)
     if target is None:
         return None
-    if args.validate:
+    base = base_ref(args)
+    if args.validate or base:
         if target.is_dir():
-            return portable_validate(target, args.fix or args.unsafe, args.json)
-        print("[X] --validate externo necesita una carpeta de proyecto")
+            return portable_validate(target, args.fix or args.unsafe, args.json, base)
+        print("[X] --validate/--base externo necesita una carpeta de proyecto")
         return 2
     if len(args.files) == 1 and target.is_dir():
         return portable(target, args.fix or args.unsafe)
@@ -881,6 +892,7 @@ CONFIG_LANGS = {
     "tools/rust/clippy.toml": "*",
     "tools/java/checkstyle.xml": "*",
     "tools/java/pmd.xml": "*",
+    "tools/quality.ps1": "*",
 }
 
 
@@ -993,11 +1005,18 @@ def expand_config(
     return files
 
 
+def base_ref(args: argparse.Namespace) -> str | None:
+    """Rama base del diff, aceptando --base o su alias --changed."""
+    value = args.base or args.changed
+    return value if isinstance(value, str) else None
+
+
 def repo_mode(args: argparse.Namespace) -> int:
     """Modo repo: las seis carpetas de este proyecto."""
+    base = base_ref(args)
     files = expand(args.files) if args.files else candidates(args.staged)
-    if args.changed and not args.files:
-        files = changed_files(args.changed)
+    if base and not args.files:
+        files = changed_files(base)
     deleted = staged_deleted() if args.staged else []
     if files is None or deleted is None:
         print("[X] git no respondio: no pude listar los archivos a revisar.")
@@ -1024,18 +1043,31 @@ def repo_mode(args: argparse.Namespace) -> int:
 
 def validate(args: argparse.Namespace) -> str | None:
     """Errores de combinacion de banderas, o None si todo esta bien."""
+    base = base_ref(args)
     checks = (
         (
             args.unsafe and not args.fix,
             "--unsafe solo tiene sentido junto a --fix",
         ),
         (
-            args.project and (args.audit or args.security),
-            "--project no se combina con --audit ni --security",
+            bool(args.base and args.changed),
+            "--base y --changed son alias; usa solo uno",
         ),
         (
-            args.changed and args.project,
-            "--changed no se combina con --project: --project audita otra ruta",
+            base is not None and args.staged,
+            "--base no se combina con --staged",
+        ),
+        (
+            base is not None and (args.audit or args.security or args.mutation),
+            "--base solo aplica al lint normal, no a --audit/--security/--mutation",
+        ),
+        (
+            base is not None and args.skip is not None,
+            "--base no se combina con --skip",
+        ),
+        (
+            args.project and (args.audit or args.security),
+            "--project no se combina con --audit ni --security",
         ),
         (
             args.fast
@@ -1054,7 +1086,7 @@ def validate(args: argparse.Namespace) -> str | None:
                 args.audit
                 or args.security
                 or args.mutation
-                or (args.project and not args.validate)
+                or (args.project and not (args.validate or base))
                 or args.skip is not None
             ),
             "--json solo aplica al modo normal (sin --audit, --security, --project ni --skip)",
@@ -1073,9 +1105,10 @@ def validate(args: argparse.Namespace) -> str | None:
 
 def run_mode(args: argparse.Namespace) -> int:
     """Ejecuta el modo normal, externo o de proyecto."""
+    base = base_ref(args)
     if args.project:
-        if args.validate:
-            return portable_validate(Path(args.project), args.fix or args.unsafe, args.json)
+        if args.validate or base:
+            return portable_validate(Path(args.project), args.fix or args.unsafe, args.json, base)
         return portable(Path(args.project), args.fix or args.unsafe)
     external = external_mode(args)
     if external is not None:

@@ -1,5 +1,6 @@
 """Autochequeo del runner: deteccion, portable, skip y canarios por lenguaje."""
 
+import argparse
 import contextlib
 import io
 import json
@@ -985,6 +986,32 @@ def test_jsdoc_typescript() -> None:
 
     check(len(missing) == 1 and missing[0].rule == "jsdoc-export", str(missing))
     check(not ok, str(ok))
+
+
+def test_base_ref_alias() -> None:
+    """--base y --changed son el mismo punto de comparacion."""
+    check(lint.base_ref(argparse.Namespace(base="develop", changed=None)) == "develop")
+    check(lint.base_ref(argparse.Namespace(base=None, changed="main")) == "main")
+    check(lint.base_ref(argparse.Namespace(base=None, changed=None)) is None)
+
+
+def test_scoped_projects() -> None:
+    """El diff deja solo los archivos cambiados del proyecto."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        backend = root / "backend"
+        source = backend / "src"
+        source.mkdir(parents=True)
+        changed = source / "a.rs"
+        changed.write_text("fn a() {}\n", encoding="utf-8")
+        untouched = source / "b.rs"
+        untouched.write_text("fn b() {}\n", encoding="utf-8")
+        project = lint.Project("rust", backend, [changed.as_posix(), untouched.as_posix()])
+
+        scoped = portable_quality.scoped_projects([project], root, {"backend/src/a.rs"})
+
+    check(len(scoped) == 1, str(scoped))
+    check(scoped[0].files == [changed.as_posix()], str(scoped[0].files))
 
 
 if __name__ == "__main__":

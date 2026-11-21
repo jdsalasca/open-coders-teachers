@@ -63,6 +63,8 @@ extensión, y ejecuta lo que corresponda:
 | `python tools/lint.py <ruta> --validate` | reporte determinista por archivo y aspecto |
 | `python tools/lint.py <ruta> --validate --json` | el mismo reporte, estructurado |
 | `python tools/lint.py <ruta> --validate --fix` | arregla lo determinista y reporta lo que queda |
+| `python tools/lint.py --base develop --validate` | solo el diff de la rama contra `develop` |
+| `python tools/lint.py --project <ruta> --base develop --validate` | diff de un proyecto externo |
 | `python tools/lint.py --mutation` | mutation testing (Stryker TS/React, PIT Java) |
 | `python tools/lint.py --unsafe` | con `--fix`: arreglos que cambian comportamiento |
 | `python tools/lint.py React-teacher` | una carpeta |
@@ -117,6 +119,32 @@ además exige `missing_docs`.
 formateadores, orden de imports, lints con `fix` y `spotless`. Nombres,
 complejidad, capas y SRP se reportan como `manual` porque un arreglo automático
 podría cambiar el diseño.
+
+## Solo el diff de una rama
+
+`--base <rama>` compara contra el **merge-base** de esa rama y limita el
+reporte a los archivos que introduce la rama actual. `--changed` es un alias.
+
+```powershell
+python tools/lint.py --base develop --validate
+python tools/lint.py --project C:\work\repo --base develop --validate
+python tools/lint.py --project C:\work\repo --base develop --validate --json
+python tools/lint.py --project C:\work\repo --base develop --validate --fix
+```
+
+Sin `--base`, `--project ... --validate` audita **todo** el proyecto. Si el diff
+toca un manifiesto o configuración (`Cargo.toml`, `go.mod`, `pom.xml`,
+`package.json`, `pyproject.toml`, `tsconfig.json`, etc.), el gate vuelve a
+auditar el proyecto completo: un cambio de configuración no se puede validar
+mirando solo un archivo. Si no hay cambios, sale `0` con un reporte vacío.
+
+Para el trabajo, el wrapper evita recordar las banderas:
+
+```powershell
+pwsh tools/quality.ps1 -Project C:\work\repo -Base develop
+pwsh tools/quality.ps1 -Project C:\work\repo -Base develop -Fix -Json
+pwsh tools/quality.ps1 -Project C:\work\repo          # proyecto completo
+```
 
 En proyectos externos, `--project <ruta> --validate` usa el baseline portable y
 aplica las mismas categorías. Rust es el caso más estricto: `cargo fmt` y
@@ -176,8 +204,9 @@ open-coders-teachers/
 ├── Rust-teacher/        rustfmt + clippy + cargo-llvm-cov       hexagonal
 ├── tools/
 │   ├── lint.py          entrada compatible del runner
-│   ├── lintlib/         core, portable y audit
+│   ├── lintlib/         core, portable, audit y reporte por archivo
 │   ├── test_lint.py     autochequeo del runner
+│   ├── quality.ps1      reporte de calidad para un proyecto externo
 │   └── setup.ps1        instalación en un clon nuevo
 ├── resources/
 │   └── antipatterns/    catálogo: síntoma, arreglo y regla que lo caza

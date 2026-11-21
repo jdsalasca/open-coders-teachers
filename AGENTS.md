@@ -16,8 +16,9 @@ python tools/lint.py --json      # resumen estructurado
 python tools/lint.py <ruta> --validate  # violaciones por archivo y aspecto
 python tools/lint.py <ruta> --validate --json  # el mismo reporte, JSON
 python tools/lint.py <ruta> --validate --fix   # arregla lo determinista y reporta
-python tools/lint.py --project <ruta> --validate  # proyecto externo
-python tools/lint.py --project <ruta> --validate --json
+python tools/lint.py --base develop --validate  # solo el diff contra develop
+python tools/lint.py --project <ruta> --base develop --validate  # externo, diff
+python tools/lint.py --project <ruta> --base develop --validate --json
 python tools/lint.py --mutation  # mutation testing (Stryker)
 python tools/lint.py --fast <archivo>  # un archivo, sin tests ni capas
 python tools/lint.py --skip "motivo"  # permite el próximo commit sin linters
@@ -51,6 +52,11 @@ violación se reporta a nivel de carpeta; nunca se inventa una ubicación.
 `--validate --fix` aplica primero los arreglos deterministas y luego reporta lo
 que quede. Nombres, complejidad, capas y SRP quedan como `manual`: cambiarlos
 automáticamente podría romper el diseño.
+
+`--base <rama>` compara contra el merge-base y limita el reporte al diff de la
+rama actual; `--changed` es alias. Sin `--base`, el reporte cubre todo el
+proyecto. Si el diff toca un manifiesto o configuración, se audita el proyecto
+completo; si no hay cambios, sale 0 con reporte vacío.
 
 Para proyectos externos usa `python tools/lint.py --project <ruta> --validate`
 (o pasa la carpeta directo). El baseline portable no ejecuta tests ni cobertura;
