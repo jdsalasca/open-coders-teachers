@@ -10,8 +10,8 @@ def verificar_contrato(repository: TaskRepositoryPort) -> None:
     second = repository.create("dos")
 
     assert first.id != second.id
-    assert [task.id for task in repository.all()] == [first.id, second.id]
-    assert repository.all() is not repository.all()
+    assert [task.id for task in repository.list()] == [first.id, second.id]
+    assert repository.list() is not repository.list()
 
 
 def test_memoria_cumple_el_contrato() -> None:

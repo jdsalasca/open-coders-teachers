@@ -18,5 +18,5 @@ public interface TaskRepositoryPort {
    *
    * @return lista de tareas
    */
-  List<Task> all();
+  List<Task> list();
 }

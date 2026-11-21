@@ -8,6 +8,7 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | Patrón | Dónde vive | Cómo se verifica |
 |---|---|---|
 | **Ports & Adapters** (hexagonal) | `domain` define puertos `*Port`; `infrastructure` los implementa | `import-linter` (Python), `depguard` (Go), ArchUnit (Java), `tests/layers.rs` (Rust) |
+| **Puerto operacional** | `*Port`/`*UseCase`/`*Gateway` con 1..4 métodos-verbo; sin interfaces de framework | `tools/lintlib/abstractions.py` en el repo y en proyectos externos |
 | **Repository** | `TaskRepositoryPort` es el puerto; `InMemoryTaskRepository` el adaptador | ArchUnit: puertos terminan en `Port`; adaptadores viven en `infrastructure` y terminan en `Repository` |
 | **API HTTP** | `internal/web` (Go): handler, DTOs y errores públicos | `httptest`: 201/200, 400/413/415/500, límites de cuerpo y timeouts |
 | **Paginación** | `domain.Page` + `limit/offset` | `NewPage` 1..100; contrato contra memoria y SQLite |
@@ -26,6 +27,7 @@ Si el patrón no aparece aquí, es una convención oral: no cuenta.
 | Principio | Regla determinista | Dónde |
 |---|---|---|
 | **DIP**: el dominio no conoce frameworks ni infraestructura | dominio solo `java..`/`..domain..` (ArchUnit), solo stdlib+dominio (depguard), capas (import-linter), `tests/layers.rs` (Rust) | Java, Go, Python, Rust |
+| **DIP por tipo**: la aplicación depende de la abstracción | `abstractions.py`: puertos 1..4 verbos; servicios Java/TS sin clases concretas de infraestructura/adapters/repo | repo y proyectos externos |
 | **SRP**: una clase, una razón de cambio | `FileLength`, `ClassFanOutComplexity`, 400 líneas (TS/Python/Rust) | todas |
 | **OCP**: extender sin tocar `switch` | `exhaustive` (Go), `switch-exhaustiveness-check` (TS), `MissingSwitchDefault` (Java), `match` exhaustivo (Rust) | Go, TS, Java, Rust |
 | **ISP**: interfaces pequeñas | `interfacebloat` máx. 10 | Go |

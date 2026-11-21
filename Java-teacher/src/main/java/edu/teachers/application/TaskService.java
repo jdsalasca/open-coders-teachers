@@ -35,7 +35,7 @@ public class TaskService {
    * @return tareas existentes
    */
   public List<Task> list() {
-    return repository.all();
+    return repository.list();
   }
 
   /**
@@ -44,6 +44,6 @@ public class TaskService {
    * @return vistas de las tareas
    */
   public List<TaskView> listViews() {
-    return repository.all().stream().map(TaskView::from).toList();
+    return repository.list().stream().map(TaskView::from).toList();
   }
 }

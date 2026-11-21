@@ -91,7 +91,7 @@ pub trait TaskRepositoryPort: Send + Sync {
     ///
     /// # Errors
     /// Devuelve [`RepositoryError`] si la persistencia falla.
-    fn all(&self) -> Result<Vec<Task>, RepositoryError>;
+    fn list(&self) -> Result<Vec<Task>, RepositoryError>;
 }
 
 #[cfg(test)]

@@ -16,6 +16,7 @@ import check_links
 import coverage_gate
 import lint
 from lintlib import (
+    abstractions,
     architecture,
     common,
     java_quality,
@@ -986,6 +987,106 @@ def test_jsdoc_typescript() -> None:
 
     check(len(missing) == 1 and missing[0].rule == "jsdoc-export", str(missing))
     check(not ok, str(ok))
+
+
+def test_puertos_operacionales() -> None:
+    """Un puerto con un metodo que no es operacion se reporta."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "app" / "domain" / "ports.py"
+        source.parent.mkdir(parents=True)
+        source.write_text(
+            "from typing import Protocol\n\n"
+            "class TaskRepositoryPort(Protocol):\n"
+            "    def all(self) -> list[str]: ...\n",
+            encoding="utf-8",
+        )
+        bad = abstractions.analyze(root, "python")
+        source.write_text(
+            "from typing import Protocol\n\n"
+            "class TaskRepositoryPort(Protocol):\n"
+            "    def list(self) -> list[str]: ...\n",
+            encoding="utf-8",
+        )
+        ok = abstractions.analyze(root, "python")
+
+    check(any(item.rule == "metodo-no-operacional" for item in bad), str(bad))
+    check(not ok, str(ok))
+
+
+def test_java_dip_y_framework() -> None:
+    """Un servicio Java no puede depender de un repositorio de framework."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo = root / "src" / "main" / "java" / "com" / "x" / "repo"
+        service = root / "src" / "main" / "java" / "com" / "x" / "service"
+        repo.mkdir(parents=True)
+        service.mkdir(parents=True)
+        (repo / "UserRepository.java").write_text(
+            "package com.x.repo;\n"
+            "import org.springframework.data.jpa.repository.JpaRepository;\n"
+            "public interface UserRepository extends JpaRepository<Object, Long> {}\n",
+            encoding="utf-8",
+        )
+        (service / "UserService.java").write_text(
+            "package com.x.service;\n"
+            "public class UserService {\n"
+            "  private final UserRepository repository;\n"
+            "  public UserService(UserRepository repository) { this.repository = repository; }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+        rules = {item.rule for item in abstractions.analyze(root, "java")}
+
+    check("abstraccion-framework" in rules, str(rules))
+    check("dip-framework" in rules, str(rules))
+
+
+def test_ts_dip() -> None:
+    """Un controlador TypeScript no importa la clase concreta del servicio."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        service = root / "src" / "service"
+        controller = root / "src" / "controller"
+        service.mkdir(parents=True)
+        controller.mkdir(parents=True)
+        (service / "user-service.ts").write_text("export class UserService {}\n", encoding="utf-8")
+        (controller / "user-controller.ts").write_text(
+            'import { UserService } from "../service/user-service.js";\n'
+            "export const controller = new UserService();\n",
+            encoding="utf-8",
+        )
+
+        rules = {item.rule for item in abstractions.analyze(root, "typescript")}
+
+    check("dip-concreta" in rules, str(rules))
+
+
+def test_puertos_go_rust() -> None:
+    """Go y Rust tambien exigen metodos-verbo en sus puertos."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        go = root / "internal" / "domain" / "port.go"
+        go.parent.mkdir(parents=True)
+        go.write_text(
+            "package domain\n\ntype RepoPort interface {\n\tAll() []string\n}\n",
+            encoding="utf-8",
+        )
+        rust = root / "src" / "domain" / "port.rs"
+        rust.parent.mkdir(parents=True)
+        rust.write_text(
+            "pub trait RepoPort {\n    fn all(&self) -> Vec<String>;\n}\n",
+            encoding="utf-8",
+        )
+
+        rules = {
+            item.rule
+            for language in ("go", "rust")
+            for item in abstractions.analyze(root, language)
+        }
+
+    check("metodo-no-operacional" in rules, str(rules))
 
 
 def test_base_ref_alias() -> None:

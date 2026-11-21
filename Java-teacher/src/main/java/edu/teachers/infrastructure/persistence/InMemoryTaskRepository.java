@@ -41,7 +41,7 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
   }
 
   @Override
-  public synchronized List<Task> all() {
+  public synchronized List<Task> list() {
     return List.copyOf(tasks);
   }
 }

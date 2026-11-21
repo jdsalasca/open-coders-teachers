@@ -20,7 +20,7 @@ class InMemoryTaskRepository(TaskRepositoryPort):
             self._tasks.append(task)
             return task
 
-    def all(self) -> list[Task]:
+    def list(self) -> list[Task]:
         """Devuelve una copia en orden de insercion."""
         with self._lock:
             return list(self._tasks)

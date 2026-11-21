@@ -115,6 +115,14 @@ DTOs/esquemas sin tipos del dominio, JSDoc en exports de TypeScript y tests
 reales: existencia, tamaño, cantidad de casos y al menos una aserción. Rust
 además exige `missing_docs`.
 
+En todos los lenguajes, las abstracciones (`*Port`, `*UseCase`, `*Gateway`,
+`*Repository`, `*Service`, `*Controller`, `*View`, `*ViewModel`, `*Presenter`,
+`*Handler`) deben ser **operacionales**: entre 1 y 4 métodos, con nombre de
+verbo, sin interfaces de framework tipo `JpaRepository`. La capa de aplicación
+no puede depender de clases concretas de `infrastructure`/`adapters`/`repo`:
+Java y TypeScript lo comprueban sobre campos, constructores e imports; Python,
+Go y Rust lo imponen con la dirección de capas.
+
 `--fix` aplica solo lo que cada herramienta marca como arreglo seguro:
 formateadores, orden de imports, lints con `fix` y `spotless`. Nombres,
 complejidad, capas y SRP se reportan como `manual` porque un arreglo automático

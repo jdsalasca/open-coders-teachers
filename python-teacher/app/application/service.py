@@ -16,4 +16,4 @@ class TaskService:
 
     def list_all(self) -> list[Task]:
         """Devuelve las tareas existentes."""
-        return self._repository.all()
+        return self._repository.list()

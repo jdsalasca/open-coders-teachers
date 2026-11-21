@@ -69,6 +69,12 @@ constructor, mappers y tests unitarios. En Python, Go y TypeScript aplica el
 mismo analizador de capas, el dominio sin frameworks y tests con aserciones;
 TypeScript además exige JSDoc en exports.
 
+En todos los lenguajes, los puertos (`*Port`, `*UseCase`, `*Gateway`,
+`*Repository`, `*Service`, `*Controller`, `*View`, `*ViewModel`, `*Presenter`,
+`*Handler`) deben tener 1..4 métodos-verbo y no pueden extender interfaces de
+framework. La capa de aplicación debe depender de la abstracción, no de una
+clase concreta de `infrastructure`/`adapters`/`repo`.
+
 ## Lint en cada edición
 
 El plugin `.opencode/plugins/lint-on-edit.ts` corre `--fast` sobre el archivo que

@@ -28,6 +28,7 @@ import sys
 import time
 from pathlib import Path
 
+from lintlib import abstractions
 from lintlib.audit import (  # noqa: F401 - reexportado para tests y CLI
     AUDIT,
     MUTATION,
@@ -401,6 +402,18 @@ def repo_fallback(label: str) -> Violation:
     )
 
 
+def abstraction_violations(lang: Lang) -> list[Violation]:
+    """Puertos, DIP y abstracciones operacionales del lenguaje."""
+    return abstractions.analyze(ROOT / lang.folder, lang.name, lang.folder)
+
+
+def architecture_lines(lang: Lang) -> tuple[int, list[str]]:
+    """Estado y lineas de las reglas de arquitectura del lenguaje."""
+    found = abstraction_violations(lang)
+    lines = [f"  {item.path}:{item.line}: {item.message} [{item.rule}]" for item in found]
+    return (1 if found else 0), lines
+
+
 def report(
     lang: Lang,
     files: list[str],
@@ -415,6 +428,9 @@ def report(
     slop_status, slop_lines = slop_check(files)
     status = max(status, slop_status)
     lines.extend(size_lines + slop_lines)
+    arch_status, arch_lines = architecture_lines(lang)
+    status = max(status, arch_status)
+    lines.extend(arch_lines)
     for cmd in lang.check:
         if fast and not cmd.file_exts:
             continue
@@ -446,6 +462,10 @@ def report_validate(
     slop_status, slop_lines = slop_check(files)
     status = max(status, slop_status)
     violations = gate_violations(size_lines, slop_lines)
+    arch = abstraction_violations(lang)
+    violations.extend(arch)
+    if arch:
+        status = 1
     for cmd in lang.check:
         if fast and not cmd.file_exts:
             continue

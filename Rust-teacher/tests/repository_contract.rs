@@ -14,7 +14,7 @@ fn contrato(repository: &impl TaskRepositoryPort) {
     let second = repository.create("dos").unwrap();
 
     assert_ne!(first.id(), second.id());
-    let all = repository.all().unwrap();
+    let all = repository.list().unwrap();
     assert_eq!(2, all.len());
     assert_eq!("uno", all[0].title());
     assert_eq!("dos", all[1].title());
@@ -42,7 +42,7 @@ fn los_ids_son_unicos_en_concurrente() {
         handle.join().unwrap();
     }
 
-    let ids: HashSet<u64> = repository.all().unwrap().iter().map(Task::id).collect();
+    let ids: HashSet<u64> = repository.list().unwrap().iter().map(Task::id).collect();
 
     assert_eq!(160, ids.len());
 }

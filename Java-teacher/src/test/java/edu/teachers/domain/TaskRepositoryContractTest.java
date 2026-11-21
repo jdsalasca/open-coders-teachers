@@ -24,6 +24,6 @@ public abstract class TaskRepositoryContractTest {
     Task second = repo.create("dos");
 
     assertNotEquals(first.id(), second.id());
-    assertEquals(List.of(first, second), repo.all());
+    assertEquals(List.of(first, second), repo.list());
   }
 }

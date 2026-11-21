@@ -71,6 +71,13 @@ Decisiones concretas:
     o configuración vuelve a auditar el proyecto completo. Sin `--base` el
     análisis es completo. El wrapper `tools/quality.ps1` expone
     `-Project`, `-Base`, `-Fix` y `-Json`.
+11. **DIP y puertos operacionales**: `tools/lintlib/abstractions.py` exige
+    abstracciones de 1..4 métodos con nombre de verbo, sin interfaces de
+    framework (`JpaRepository`/`CrudRepository`). En Java y TypeScript detecta
+    servicios/controladores que dependen de clases concretas de
+    infraestructura/adapters/repo; en Python, Go y Rust la dirección de capas
+    impide esa dependencia. El gate del repo aplica las mismas reglas a los
+    teachers; los puertos `all()` se renombraron a `list()`.
 
 ## Consecuencias
 

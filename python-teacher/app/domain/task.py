@@ -30,5 +30,5 @@ class TaskRepositoryPort(Protocol):
     def create(self, title: str) -> Task:
         """Crea una tarea con id unico."""
 
-    def all(self) -> list[Task]:
+    def list(self) -> list[Task]:
         """Devuelve todas las tareas."""

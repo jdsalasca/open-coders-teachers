@@ -7,7 +7,14 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from lintlib import architecture, java_quality, quality, test_quality, ts_quality
+from lintlib import (
+    abstractions,
+    architecture,
+    java_quality,
+    quality,
+    test_quality,
+    ts_quality,
+)
 from lintlib.common import (
     NODE_EXTS,
     ROOT,
@@ -297,6 +304,7 @@ def rust_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
     extra = [
         *architecture.analyze(project.folder, "rust"),
         *test_quality.analyze(project.folder, "rust"),
+        *abstractions.analyze(project.folder, "rust"),
     ]
     status = max(fmt[0], clippy[0], 1 if extra else 0)
     return status, [
@@ -362,6 +370,7 @@ def node_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
         *architecture.analyze(project.folder, "typescript"),
         *test_quality.analyze(project.folder, "typescript"),
         *ts_quality.analyze(project.folder),
+        *abstractions.analyze(project.folder, "typescript"),
     ]
     status = max(status, 1 if extra else 0)
     out.extend(prefixed(extra, project_prefix(project, root)))
@@ -382,6 +391,7 @@ def go_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[qu
     extra = [
         *architecture.analyze(project.folder, "go"),
         *test_quality.analyze(project.folder, "go"),
+        *abstractions.analyze(project.folder, "go"),
     ]
     status = max(status, 1 if extra else 0)
     out.extend(prefixed(extra, project_prefix(project, root)))
@@ -405,6 +415,7 @@ def python_violations(
     extra = [
         *architecture.analyze(project.folder, "python"),
         *test_quality.analyze(project.folder, "python"),
+        *abstractions.analyze(project.folder, "python"),
     ]
     status = max(status, 1 if extra else 0)
     out.extend(prefixed(extra, project_prefix(project, root)))
@@ -483,6 +494,7 @@ def java_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
     status = 0
     prefix = project_prefix(project, root)
     out = prefixed(java_quality.analyze(project.folder), prefix)
+    out.extend(abstractions.analyze(project.folder, "java", prefix))
     if (project.folder / "pom.xml").is_file():
         for check in (CHECKSTYLE, PMD):
             check_status, found = maven_check(check, project, root)

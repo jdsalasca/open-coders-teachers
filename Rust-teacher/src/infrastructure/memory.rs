@@ -23,7 +23,7 @@ impl TaskRepositoryPort for InMemoryTaskRepository {
         Ok(task)
     }
 
-    fn all(&self) -> Result<Vec<Task>, RepositoryError> {
+    fn list(&self) -> Result<Vec<Task>, RepositoryError> {
         let tasks = self
             .tasks
             .lock()
@@ -47,7 +47,7 @@ mod tests {
         let error = repository.create("   ").unwrap_err();
 
         assert_eq!(RepositoryError::Domain(DomainError::EmptyTitle), error);
-        assert!(repository.all().unwrap().is_empty());
+        assert!(repository.list().unwrap().is_empty());
     }
 
     #[test]
@@ -55,9 +55,9 @@ mod tests {
         let repository = InMemoryTaskRepository::default();
         repository.create("uno").unwrap();
 
-        let mut tasks = repository.all().unwrap();
+        let mut tasks = repository.list().unwrap();
         tasks.clear();
 
-        assert_eq!(1, repository.all().unwrap().len());
+        assert_eq!(1, repository.list().unwrap().len());
     }
 }

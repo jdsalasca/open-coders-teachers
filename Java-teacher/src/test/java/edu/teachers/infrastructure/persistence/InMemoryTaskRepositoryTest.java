@@ -28,7 +28,7 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
   void devuelveListaInmutable() {
     TaskRepositoryPort repo = new InMemoryTaskRepository();
     repo.create("uno");
-    List<Task> tasks = repo.all();
+    List<Task> tasks = repo.list();
 
     assertThrows(UnsupportedOperationException.class, () -> tasks.add(new Task(9, "x", false)));
   }
@@ -41,7 +41,7 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
     Task valid = repo.create("uno");
 
     assertEquals(2, valid.id());
-    assertEquals(1, repo.all().size());
+    assertEquals(1, repo.list().size());
   }
 
   @Test
@@ -58,7 +58,7 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
     InMemoryTaskRepository repo = new InMemoryTaskRepository(Integer.MAX_VALUE);
 
     assertThrows(IllegalStateException.class, () -> repo.create("uno"));
-    assertTrue(repo.all().isEmpty());
+    assertTrue(repo.list().isEmpty());
   }
 
   @Test
@@ -76,7 +76,7 @@ class InMemoryTaskRepositoryTest extends TaskRepositoryContractTest {
         ids.add(future.get().id());
       }
       assertEquals(50, ids.size());
-      List<Task> all = repo.all();
+      List<Task> all = repo.list();
       assertEquals(50, all.size());
       for (int index = 0; index < all.size(); index++) {
         assertEquals(index + 1, all.get(index).id());

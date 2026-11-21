@@ -22,5 +22,5 @@ def test_repositorio_conserva_las_tareas(titles: list[str]) -> None:
     repository = InMemoryTaskRepository()
     created = [repository.create(title) for title in titles]
 
-    assert [task.title for task in repository.all()] == titles
+    assert [task.title for task in repository.list()] == titles
     assert len({task.id for task in created}) == len(created)

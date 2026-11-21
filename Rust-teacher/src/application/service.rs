@@ -38,7 +38,7 @@ impl<R: TaskRepositoryPort> TaskService<R> {
     /// # Errors
     /// Propaga [`AppError`] si la persistencia falla.
     pub fn list(&self) -> Result<Vec<Task>, AppError> {
-        self.repository.all().map_err(AppError::from)
+        self.repository.list().map_err(AppError::from)
     }
 
     /// Lista las tareas como DTO de salida.
@@ -48,7 +48,7 @@ impl<R: TaskRepositoryPort> TaskService<R> {
     pub fn list_views(&self) -> Result<Vec<TaskView>, AppError> {
         Ok(self
             .repository
-            .all()?
+            .list()?
             .into_iter()
             .map(TaskView::from)
             .collect())
@@ -94,7 +94,7 @@ mod tests {
             Ok(task)
         }
 
-        fn all(&self) -> Result<Vec<Task>, RepositoryError> {
+        fn list(&self) -> Result<Vec<Task>, RepositoryError> {
             if self.fail.load(Ordering::Relaxed) {
                 return Err(RepositoryError::Unavailable);
             }
