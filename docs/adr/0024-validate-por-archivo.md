@@ -57,6 +57,14 @@ Decisiones concretas:
    inyección por constructor, mappers fuera del servicio y tests unitarios por
    servicio. Checkstyle/PMD requieren Maven; Gradle conserva el analizador y
    Semgrep.
+9. **Resto de lenguajes**: `tools/lintlib/architecture.py` aplica las mismas
+   reglas de capas a Python, Go, Rust y TypeScript/React (`domain` no importa
+   application/infrastructure/web; `application` no importa infraestructura ni
+   web; `model`/`lib`/`components` no importan capas superiores). El dominio no
+   importa frameworks (SQLAlchemy/Django/FastAPI/Pydantic, GORM/Gin/Echo,
+   Serde/Axum/Tokio/SQLx). `tools/lintlib/test_quality.py` exige tests, limita
+   su tamaño y casos, y exige al menos una aserción; `tools/lintlib/ts_quality.py`
+   exige JSDoc en exports. Rust añade `missing_docs`.
 
 ## Consecuencias
 
@@ -74,12 +82,16 @@ Decisiones concretas:
 - Una regla desconocida cae en `calidad`; no se adivina la categoría.
 - En proyectos externos, `--validate` usa el baseline portable: no ejecuta los
   tests ni la cobertura del proyecto, ni los plugins de Maven. Para el gate
-  completo hay que usar el runner del proyecto. En Java, los tests se revisan
-  de forma estática (existencia, tamaño y aserciones), no se ejecutan.
+  completo hay que usar el runner del proyecto. Los tests se revisan de forma
+  estática (existencia, tamaño, casos y aserciones), no se ejecutan.
 - `--validate` no aplica a `--audit`, `--security` ni `--mutation`; para
   proyectos externos sí aplica junto a `--project`.
 - Checkstyle/PMD de Java externo asumen Maven; Gradle solo recibe el
   analizador de arquitectura y Semgrep.
+- La arquitectura portable reconoce capas por nombre (`domain`, `application`,
+  `infrastructure`, `web`, `api`, `adapters`, `repo`, `model`, `view`,
+  `controller`, `viewmodel`, `pages`, `components`, `lib`). Un proyecto con
+  otros nombres no recibe esas reglas; no se adivina la capa.
 - Algunas herramientas solo permiten reportar a nivel de carpeta (por ejemplo,
   `lint-imports` o un fallo de build de Maven sin archivo).
 - No sustituye la revisión de diseño: SRP, acoplamiento y nombres siguen

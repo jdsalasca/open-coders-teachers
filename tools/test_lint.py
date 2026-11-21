@@ -14,7 +14,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 import check_links
 import coverage_gate
 import lint
-from lintlib import common, java_quality, portable_quality, quality
+from lintlib import (
+    architecture,
+    common,
+    java_quality,
+    portable_quality,
+    quality,
+    test_quality,
+    ts_quality,
+)
 
 
 def check(condition: bool, message: str = "") -> None:
@@ -812,6 +820,7 @@ def test_portable_clippy_enfocado() -> None:
     check("clippy::many_single_char_names" in lints)
     check("clippy::too_many_lines" in lints)
     check("clippy::cognitive_complexity" in lints)
+    check("missing_docs" in lints)
     check("clippy::pedantic" not in lints)
 
 
@@ -866,6 +875,116 @@ def test_java_arquitectura() -> None:
     check("mapper" in rules, str(rules))
     check("sin-tests" in rules, str(rules))
     check("sin-test-unitario" in rules, str(rules))
+
+
+def test_architecture_python() -> None:
+    """Python externo no permite dominio -> infraestructura ni app -> web."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        domain = root / "app" / "domain"
+        app = root / "app" / "application"
+        domain.mkdir(parents=True)
+        app.mkdir(parents=True)
+        (domain / "task.py").write_text(
+            "from app.infrastructure.db import Session\n", encoding="utf-8"
+        )
+        (app / "service.py").write_text("from app.web.api import router\n", encoding="utf-8")
+
+        rules = {violation.rule for violation in architecture.analyze(root, "python")}
+
+    check("capa-dependencia" in rules, str(rules))
+
+
+def test_architecture_typescript() -> None:
+    """TypeScript externo mantiene lib y model fuera de paginas/componentes."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        lib = root / "src" / "lib"
+        model = root / "src" / "model"
+        lib.mkdir(parents=True)
+        model.mkdir(parents=True)
+        (lib / "api.ts").write_text('import { Home } from "../pages/Home";\n', encoding="utf-8")
+        (model / "user.ts").write_text(
+            'import { Avatar } from "../components/Avatar";\n', encoding="utf-8"
+        )
+
+        rules = {violation.rule for violation in architecture.analyze(root, "typescript")}
+
+    check("capa-dependencia" in rules, str(rules))
+
+
+def test_architecture_go() -> None:
+    """Go externo no permite dominio -> adapters ni app -> web."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        domain = root / "internal" / "domain"
+        app = root / "internal" / "app"
+        domain.mkdir(parents=True)
+        app.mkdir(parents=True)
+        (domain / "task.go").write_text(
+            'package domain\n\nimport "mod/internal/adapters/db"\n', encoding="utf-8"
+        )
+        (app / "service.go").write_text(
+            'package app\n\nimport "mod/internal/web"\n', encoding="utf-8"
+        )
+
+        rules = {violation.rule for violation in architecture.analyze(root, "go")}
+
+    check("capa-dependencia" in rules, str(rules))
+
+
+def test_architecture_rust() -> None:
+    """Rust externo no permite dominio -> infraestructura ni serde en dominio."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        domain = root / "src" / "domain"
+        domain.mkdir(parents=True)
+        (domain / "task.rs").write_text(
+            "use crate::infrastructure::db::Repo;\nuse serde::Serialize;\n",
+            encoding="utf-8",
+        )
+
+        rules = {violation.rule for violation in architecture.analyze(root, "rust")}
+
+    check("capa-dependencia" in rules, str(rules))
+    check("dominio-framework" in rules, str(rules))
+
+
+def test_calidad_de_tests() -> None:
+    """Sin tests o sin aserciones no se considera limpio."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "app.py").write_text("def sumar(a, b):\n    return a + b\n", encoding="utf-8")
+        missing = test_quality.analyze(root, "python")
+
+        tests = root / "tests"
+        tests.mkdir()
+        (tests / "test_app.py").write_text(
+            "def test_suma():\n    assert 2 == 1 + 1\n", encoding="utf-8"
+        )
+        ok = test_quality.analyze(root, "python")
+
+    check(any(item.rule == "sin-tests" for item in missing), str(missing))
+    check(not ok, str(ok))
+
+
+def test_jsdoc_typescript() -> None:
+    """Un export publico sin JSDoc se reporta."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "src" / "lib" / "api.ts"
+        source.parent.mkdir(parents=True)
+        source.write_text("export function request(): void {}\n", encoding="utf-8")
+        missing = ts_quality.analyze(root)
+
+        source.write_text(
+            "/** Hace una peticion. */\nexport function request(): void {}\n",
+            encoding="utf-8",
+        )
+        ok = ts_quality.analyze(root)
+
+    check(len(missing) == 1 and missing[0].rule == "jsdoc-export", str(missing))
+    check(not ok, str(ok))
 
 
 if __name__ == "__main__":

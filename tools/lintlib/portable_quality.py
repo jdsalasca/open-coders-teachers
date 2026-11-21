@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from lintlib import java_quality, quality
+from lintlib import architecture, java_quality, quality, test_quality, ts_quality
 from lintlib.common import NODE_EXTS, ROOT, TOOLS, Command, exec_external, relative
 from lintlib.portable import (
     Project,
@@ -20,6 +20,8 @@ from lintlib.portable import (
 RUST_LINTS = (
     "-D",
     "warnings",
+    "-D",
+    "missing_docs",
     "-D",
     "clippy::many_single_char_names",
     "-D",
@@ -122,6 +124,13 @@ def project_prefix(project: Project, root: Path) -> str:
     """Prefijo del proyecto relativo a la raiz externa."""
     prefix = project.folder.relative_to(root).as_posix()
     return "" if prefix == "." else prefix
+
+
+def prefixed(violations: list[quality.Violation], prefix: str) -> list[quality.Violation]:
+    """Prefija las rutas de un proyecto con su carpeta externa."""
+    if not prefix:
+        return violations
+    return [replace(violation, path=f"{prefix}/{violation.path}") for violation in violations]
 
 
 def external_path(violation: quality.Violation, root: Path) -> quality.Violation:
@@ -257,7 +266,16 @@ def rust_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
         rust_clippy(project, False), project.folder, json_stdout=True, env=RUST_ENV
     )
     clippy = _result(Command(["cargo"], report="clippy-json"), result, project, root)
-    return max(fmt[0], clippy[0]), [*fmt[1], *clippy[1]]
+    extra = [
+        *architecture.analyze(project.folder, "rust"),
+        *test_quality.analyze(project.folder, "rust"),
+    ]
+    status = max(fmt[0], clippy[0], 1 if extra else 0)
+    return status, [
+        *fmt[1],
+        *clippy[1],
+        *prefixed(extra, project_prefix(project, root)),
+    ]
 
 
 def node_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[quality.Violation]]:
@@ -312,6 +330,13 @@ def node_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
         )
         status = max(status, result[0])
         out.extend(result[1])
+    extra = [
+        *architecture.analyze(project.folder, "typescript"),
+        *test_quality.analyze(project.folder, "typescript"),
+        *ts_quality.analyze(project.folder),
+    ]
+    status = max(status, 1 if extra else 0)
+    out.extend(prefixed(extra, project_prefix(project, root)))
     return status, out
 
 
@@ -320,28 +345,42 @@ def go_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[qu
     base = ["golangci-lint", "run", "--config", str(TOOLS / "go" / ".golangci.yml")]
     if fix:
         exec_external([*base, "--fix"], project.folder)
-    return run_json_result(
+    status, out = run_json_result(
         Command(["golangci-lint"], report="golangci-json"),
         [*base, "--output.json.path", "stdout", "--output.text.path", "stderr"],
         project,
         root,
     )
+    extra = [
+        *architecture.analyze(project.folder, "go"),
+        *test_quality.analyze(project.folder, "go"),
+    ]
+    status = max(status, 1 if extra else 0)
+    out.extend(prefixed(extra, project_prefix(project, root)))
+    return status, out
 
 
 def python_violations(
     project: Project, root: Path, fix: bool
 ) -> tuple[int, list[quality.Violation]]:
     """Ruff con el baseline portable."""
-    files = relative(project.files, project.folder)
+    files = relative([f for f in project.files if Path(f).suffix == ".py"], project.folder)
     base = ["ruff", "check", "--config", str(TOOLS / "python" / "ruff.toml")]
     if fix:
         exec_external([*base, "--fix", *files], project.folder)
-    return run_json_result(
+    status, out = run_json_result(
         Command(["ruff"], report="ruff-json"),
         [*base, "--output-format=json", *files],
         project,
         root,
     )
+    extra = [
+        *architecture.analyze(project.folder, "python"),
+        *test_quality.analyze(project.folder, "python"),
+    ]
+    status = max(status, 1 if extra else 0)
+    out.extend(prefixed(extra, project_prefix(project, root)))
+    return status, out
 
 
 def godot_violations(
@@ -415,10 +454,7 @@ def java_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
     del fix
     status = 0
     prefix = project_prefix(project, root)
-    out: list[quality.Violation] = []
-    for violation in java_quality.analyze(project.folder):
-        path = violation.path if not prefix else f"{prefix}/{violation.path}"
-        out.append(replace(violation, path=path))
+    out = prefixed(java_quality.analyze(project.folder), prefix)
     if (project.folder / "pom.xml").is_file():
         for check in (CHECKSTYLE, PMD):
             check_status, found = maven_check(check, project, root)

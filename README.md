@@ -105,6 +105,14 @@ constructor; mappers en vez de construir DTOs en el servicio; y tests unitarios
 para cada servicio. Si el proyecto no es Maven, Checkstyle/PMD no corren y el
 reporte lo dice.
 
+En Python, Go, Rust y TypeScript el mismo reporte exige dirección de capas
+(`domain` no importa `application`/`infrastructure`/`web`; `application` no
+importa infraestructura ni web; `model` no importa vista/controlador/páginas en
+frontend; `lib` no importa páginas/componentes), dominio sin frameworks,
+DTOs/esquemas sin tipos del dominio, JSDoc en exports de TypeScript y tests
+reales: existencia, tamaño, cantidad de casos y al menos una aserción. Rust
+además exige `missing_docs`.
+
 `--fix` aplica solo lo que cada herramienta marca como arreglo seguro:
 formateadores, orden de imports, lints con `fix` y `spotless`. Nombres,
 complejidad, capas y SRP se reportan como `manual` porque un arreglo automático
@@ -297,12 +305,12 @@ crates de un workspace Rust se funden para no repetir clippy.
 
 | Manifiesto | Baseline |
 |---|---|
-| `package.json` | ESLint + Stylelint + dependency-cruiser (ciclos) |
-| `go.mod` | golangci-lint (sin reglas de capas) |
-| `pyproject.toml`, `requirements.txt` | ruff (incluye `T20`, `BLE`, `A`) |
+| `package.json` | ESLint + Stylelint + dependency-cruiser + capas + JSDoc + tests |
+| `go.mod` | golangci-lint + capas + tests |
+| `pyproject.toml`, `requirements.txt` | ruff + capas + tests |
 | `pom.xml` | Checkstyle + PMD + analizador de arquitectura/DTO/Spring/tests + Semgrep |
 | `build.gradle`, `build.gradle.kts` | Analizador de arquitectura/DTO/Spring/tests + Semgrep (sin Checkstyle/PMD) |
-| `Cargo.toml` | `cargo fmt` + clippy de diseño (`many_single_char_names`, `too_many_lines`, `cognitive_complexity`, `too_many_arguments`, `module_name_repetitions`, `unwrap`/`expect`/`panic`/`todo`) sobre todos los targets |
+| `Cargo.toml` | `cargo fmt` + clippy de diseño + `missing_docs` + capas + tests |
 | `project.godot` | `gdlint` + `gdformat --check` |
 
 Antes, apuntar el runner a un monorepo React devolvía `Nada que revisar` y
@@ -324,13 +332,15 @@ python tools/lint.py --project C:\Users\jdsal\Documents\Programming-personal
 Ese comando audita todos los proyectos del árbol; el resultado puede ser largo,
 así que empieza por una carpeta. Para Godot necesitas `gdtoolkit`:
 `uv tool install gdtoolkit` (aporta `gdlint` y `gdformat`). Límites conocidos:
-no ejecuta `tsc` ni los tests del proyecto externo (necesita sus dependencias).
-Java se revisa con Checkstyle, PMD, un analizador de arquitectura/DTO/tests y
-Semgrep; Gradle conserva el analizador y Semgrep, pero no Checkstyle/PMD, y no
-se ejecutan los tests del proyecto. Rust se revisa sin tests ni cobertura.
-Godot depende de `gdtoolkit` y su parser puede no entender sintaxis nueva. No hay
-escaneo de secretos ni soporte específico de C/C++, C# o Kotlin. Un resultado
-`2` significa "no pude verificar", nunca "está limpio".
+no ejecuta `tsc` ni los tests del proyecto externo (necesita sus dependencias);
+los tests se revisan de forma estática (existencia, tamaño y aserciones), no se
+ejecutan ni se mide cobertura. Java se revisa con Checkstyle, PMD, un analizador
+de arquitectura/DTO/tests y Semgrep; Gradle conserva el analizador y Semgrep,
+pero no Checkstyle/PMD. Rust se revisa sin ejecutar tests ni cobertura; clippy
+exige documentación pública. Godot depende de `gdtoolkit` y su parser puede no
+entender sintaxis nueva. No hay escaneo de secretos ni soporte específico de
+C/C++, C# o Kotlin. Un resultado `2` significa "no pude verificar", nunca "está
+limpio".
 
 ## Política propia (Semgrep)
 
