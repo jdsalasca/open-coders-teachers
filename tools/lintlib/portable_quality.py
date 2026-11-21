@@ -97,7 +97,7 @@ def external_path(violation: quality.Violation, root: Path) -> quality.Violation
     path = Path(raw)
     if path.is_absolute():
         with contextlib.suppress(ValueError):
-            raw = path.resolve().relative_to(root).as_posix()
+            raw = path.resolve().relative_to(root.resolve()).as_posix()
     return replace(violation, path=raw)
 
 
