@@ -760,6 +760,27 @@ def _coverage(text: str, tool: str) -> list[Finding]:
     return [Finding(rule="coverage-total", message=summary, tool=tool)] if summary else []
 
 
+def _semgrep(text: str) -> list[Finding]:
+    """Semgrep en formato JSON."""
+    data = _map(_json(text))
+    out: list[Finding] = []
+    for result in _items(data.get("results")):
+        row = _map(result)
+        start = _map(row.get("start"))
+        extra = _map(row.get("extra"))
+        out.append(
+            Finding(
+                path=_text(row.get("path")),
+                line=_int(start.get("line")),
+                column=_int(start.get("col")),
+                rule=_text(row.get("check_id")) or "semgrep",
+                message=_text(extra.get("message")),
+                tool="semgrep",
+            )
+        )
+    return out
+
+
 def parse_xml(report: str, text: str) -> list[Finding]:
     """Parsea un reporte XML de Maven segun su tipo."""
     parsers = {
@@ -801,6 +822,7 @@ def _structured(cmd: Command, text: str, folder: str) -> list[Finding] | None:
         "go-test": lambda value: _tests(value, "go test"),
         "maven-test": _maven,
         "coverage": lambda value: _coverage(value, cmd.argv[0]),
+        "semgrep-json": _semgrep,
         "generic": lambda value: parse_generic(value, cmd.argv[0]),
     }
     parser = parsers.get(cmd.report)

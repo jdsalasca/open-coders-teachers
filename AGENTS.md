@@ -55,7 +55,10 @@ automáticamente podría romper el diseño.
 Para proyectos externos usa `python tools/lint.py --project <ruta> --validate`
 (o pasa la carpeta directo). El baseline portable no ejecuta tests ni cobertura;
 en Rust aplica clippy de diseño con umbrales de 40 líneas, complejidad 8 y 4
-parámetros (`tools/rust/clippy.toml`), además de formato.
+parámetros (`tools/rust/clippy.toml`), además de formato. En Java aplica
+Checkstyle, PMD y un analizador de arquitectura: dominio sin JPA/Spring/Lombok,
+capas hacia dentro, DTOs sin tipos del dominio, `@RestController`/`@Service`,
+inyección por constructor, mappers y tests unitarios.
 
 ## Lint en cada edición
 

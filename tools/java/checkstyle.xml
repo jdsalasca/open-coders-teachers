@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC
+  "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+  "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<module name="Checker">
+  <property name="charset" value="UTF-8"/>
+  <property name="severity" value="error"/>
+  <property name="fileExtensions" value="java"/>
+
+  <module name="FileTabCharacter"/>
+  <module name="NewlineAtEndOfFile"/>
+  <module name="LineLength">
+    <property name="max" value="120"/>
+  </module>
+  <module name="FileLength">
+    <property name="max" value="400"/>
+  </module>
+
+  <module name="TreeWalker">
+    <module name="UnusedImports"/>
+    <module name="RedundantImport"/>
+    <module name="AvoidStarImport"/>
+    <module name="IllegalImport"/>
+    <module name="CustomImportOrder">
+      <property name="customImportOrderRules"
+                value="STATIC###THIRD_PARTY_PACKAGE###STANDARD_JAVA_PACKAGE"/>
+      <property name="sortImportsInGroupAlphabetically" value="true"/>
+    </module>
+
+    <module name="UnusedLocalVariable"/>
+
+    <module name="ParameterNumber">
+      <property name="max" value="4"/>
+    </module>
+    <module name="MethodLength">
+      <property name="max" value="40"/>
+    </module>
+    <module name="CyclomaticComplexity">
+      <property name="max" value="8"/>
+    </module>
+    <module name="NestedIfDepth">
+      <property name="max" value="3"/>
+    </module>
+    <module name="NestedForDepth">
+      <property name="max" value="3"/>
+    </module>
+    <module name="NestedTryDepth">
+      <property name="max" value="2"/>
+    </module>
+    <module name="ClassFanOutComplexity">
+      <property name="max" value="20"/>
+    </module>
+    <module name="BooleanExpressionComplexity">
+      <property name="max" value="3"/>
+    </module>
+
+    <module name="DeclarationOrder"/>
+    <module name="NeedBraces"/>
+    <module name="ParameterAssignment"/>
+    <module name="HiddenField">
+      <property name="ignoreConstructorParameter" value="true"/>
+      <property name="ignoreSetter" value="true"/>
+    </module>
+    <module name="IllegalCatch"/>
+    <module name="IllegalThrows"/>
+    <module name="LeftCurly"/>
+    <module name="RightCurly"/>
+    <module name="ModifierOrder"/>
+    <module name="VisibilityModifier"/>
+    <module name="EmptyBlock"/>
+    <module name="OneStatementPerLine"/>
+    <module name="MultipleVariableDeclarations"/>
+    <module name="ArrayTypeStyle"/>
+    <module name="UpperEll"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+    <module name="EqualsAvoidNull"/>
+
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="MemberName"/>
+    <module name="ConstantName"/>
+    <module name="LocalVariableName"/>
+    <module name="ParameterName"/>
+    <module name="PackageName"/>
+    <module name="StaticVariableName"/>
+
+    <module name="MissingJavadocType"/>
+    <module name="SummaryJavadoc"/>
+    <module name="NonEmptyAtclauseDescription"/>
+    <module name="MissingJavadocMethod">
+      <property name="scope" value="public"/>
+    </module>
+    <module name="JavadocType">
+      <property name="scope" value="public"/>
+    </module>
+    <module name="JavadocMethod">
+      <property name="accessModifiers" value="public"/>
+    </module>
+  </module>
+</module>

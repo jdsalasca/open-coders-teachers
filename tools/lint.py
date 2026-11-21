@@ -879,6 +879,8 @@ CONFIG_LANGS = {
     "tools/check_adr.py": "*",
     "tools/coverage_gate.py": "*",
     "tools/rust/clippy.toml": "*",
+    "tools/java/checkstyle.xml": "*",
+    "tools/java/pmd.xml": "*",
 }
 
 

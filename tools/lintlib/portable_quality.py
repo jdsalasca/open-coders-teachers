@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import contextlib
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from lintlib import quality
+from lintlib import java_quality, quality
 from lintlib.common import NODE_EXTS, ROOT, TOOLS, Command, exec_external, relative
 from lintlib.portable import (
     Project,
@@ -83,6 +83,39 @@ RUST_LINTS = (
 SIZE_RE = re.compile(r"^\s*(.+?):1 archivo de (\d+) lineas \(maximo (\d+)\)")
 
 RUST_ENV = {"CLIPPY_CONF_DIR": str(TOOLS / "rust")}
+
+
+@dataclass(frozen=True)
+class MavenCheck:
+    """Plugin de Maven que deja un XML de violaciones."""
+
+    goal: str
+    settings: tuple[str, ...]
+    artifact: str
+    report: str
+
+
+CHECKSTYLE = MavenCheck(
+    goal="org.apache.maven.plugins:maven-checkstyle-plugin:3.6.0:check",
+    settings=(
+        f"-Dcheckstyle.config.location={TOOLS / 'java' / 'checkstyle.xml'}",
+        "-Dcheckstyle.failOnViolation=false",
+        "-Dcheckstyle.consoleOutput=false",
+    ),
+    artifact="target/checkstyle-result.xml",
+    report="checkstyle-xml",
+)
+
+PMD = MavenCheck(
+    goal="org.apache.maven.plugins:maven-pmd-plugin:3.28.0:pmd",
+    settings=(
+        f"-Dpmd.rulesets={TOOLS / 'java' / 'pmd.xml'}",
+        "-Dpmd.failOnViolation=false",
+        "-Dpmd.printFailingErrors=false",
+    ),
+    artifact="target/pmd.xml",
+    report="pmd-xml",
+)
 
 
 def project_prefix(project: Project, root: Path) -> str:
@@ -332,11 +365,75 @@ def godot_violations(
     return max(fmt[0], lint[0]), [*fmt[1], *lint[1]]
 
 
+def maven_check(
+    check: MavenCheck, project: Project, root: Path
+) -> tuple[int, list[quality.Violation]]:
+    """Ejecuta un plugin de Maven y lee su XML de violaciones."""
+    artifact = project.folder / check.artifact
+    artifact.unlink(missing_ok=True)
+    result = exec_external(["mvn", "-q", "-B", check.goal, *check.settings], project.folder)
+    code, output = result
+    prefix = project_prefix(project, root)
+    if code is None:
+        message = output or "mvn no esta instalado"
+        return 2, [
+            quality.Violation(
+                prefix or ".",
+                1,
+                1,
+                "calidad",
+                "herramienta",
+                message,
+                "portable",
+                False,
+            )
+        ]
+    if not artifact.exists():
+        if code == 0:
+            return 0, []
+        message = next((line.strip() for line in output.splitlines() if line.strip()), "mvn fallo")
+        return 1, [
+            quality.Violation(
+                prefix or ".",
+                1,
+                1,
+                "calidad",
+                check.report,
+                message[:300],
+                "portable",
+                False,
+            )
+        ]
+    text = artifact.read_text(encoding="utf-8", errors="replace")
+    findings = quality.parse_xml(check.report, text)
+    violations = [quality.to_violation(finding, prefix, "calidad") for finding in findings]
+    return (0 if code == 0 else 1), violations
+
+
 def java_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[quality.Violation]]:
-    """Semgrep como baseline de seguridad para Java."""
+    """Arquitectura, DTOs, Spring, Checkstyle, PMD y Semgrep para Java."""
     del fix
-    return run_text_result(
-        Command(["semgrep"], report="generic"),
+    status = 0
+    prefix = project_prefix(project, root)
+    out: list[quality.Violation] = []
+    for violation in java_quality.analyze(project.folder):
+        path = violation.path if not prefix else f"{prefix}/{violation.path}"
+        out.append(replace(violation, path=path))
+    if (project.folder / "pom.xml").is_file():
+        for check in (CHECKSTYLE, PMD):
+            check_status, found = maven_check(check, project, root)
+            status = max(status, check_status)
+            out.extend(found)
+    else:
+        message = (
+            "Checkstyle y PMD portables requieren Maven; el analisis de arquitectura si corrio"
+        )
+        out.append(
+            quality.Violation(prefix or ".", 1, 1, "calidad", "gradle", message, "portable", False)
+        )
+        status = 1
+    semgrep = run_json_result(
+        Command(["semgrep"], report="semgrep-json"),
         [
             "semgrep",
             "--config",
@@ -345,11 +442,15 @@ def java_violations(project: Project, root: Path, fix: bool) -> tuple[int, list[
             str(ROOT / ".semgrep" / "rules.yml"),
             "--error",
             "--quiet",
+            "--json",
             ".",
         ],
         project,
         root,
     )
+    status = max(status, semgrep[0])
+    out.extend(semgrep[1])
+    return status, out
 
 
 def project_violations(

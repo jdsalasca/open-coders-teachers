@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import check_links
 import coverage_gate
 import lint
-from lintlib import common, portable_quality, quality
+from lintlib import common, java_quality, portable_quality, quality
 
 
 def check(condition: bool, message: str = "") -> None:
@@ -813,6 +813,59 @@ def test_portable_clippy_enfocado() -> None:
     check("clippy::too_many_lines" in lints)
     check("clippy::cognitive_complexity" in lints)
     check("clippy::pedantic" not in lints)
+
+
+def test_java_arquitectura() -> None:
+    """Java externo exige DTOs, capas, Spring y tests."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        main = root / "src" / "main" / "java" / "com" / "x"
+        for folder in ("domain", "service", "repo", "web/dto"):
+            (main / folder).mkdir(parents=True)
+        (main / "domain" / "User.java").write_text(
+            "package com.x.domain;\n"
+            "import jakarta.persistence.Entity;\n"
+            "@Entity\n"
+            "public class User {}\n",
+            encoding="utf-8",
+        )
+        (main / "repo" / "UserRepository.java").write_text(
+            "package com.x.repo;\n"
+            "public interface UserRepository extends JpaRepository<User, Long> {}\n",
+            encoding="utf-8",
+        )
+        (main / "service" / "UserService.java").write_text(
+            "package com.x.service;\n"
+            "import com.x.repo.UserRepository;\n"
+            "import com.x.web.dto.Dtos;\n"
+            "public class UserService {\n"
+            "  public Object crear() { return new Dtos.UserDto(1L); }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (main / "web" / "dto" / "Dtos.java").write_text(
+            "package com.x.web.dto;\n"
+            "import com.x.domain.User;\n"
+            "public final class Dtos {\n"
+            "  public record UserDto(Long id) {}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        (main / "web" / "UserController.java").write_text(
+            "package com.x.web;\npublic class UserController {}\n",
+            encoding="utf-8",
+        )
+
+        rules = {violation.rule for violation in java_quality.analyze(root)}
+
+    check("dominio-framework" in rules, str(rules))
+    check("capa-dependencia" in rules, str(rules))
+    check("dto-dominio" in rules, str(rules))
+    check("spring-controller" in rules, str(rules))
+    check("spring-service" in rules, str(rules))
+    check("mapper" in rules, str(rules))
+    check("sin-tests" in rules, str(rules))
+    check("sin-test-unitario" in rules, str(rules))
 
 
 if __name__ == "__main__":

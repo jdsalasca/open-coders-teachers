@@ -97,6 +97,14 @@ IA: `naming-convention`, `N802`, `revive` y `TypeName` son `nombres`;
 `CustomImportOrder` son `imports`. Lo que una herramienta no expone con archivo
 y línea se reporta a nivel de carpeta; no se inventa una ubicación.
 
+En Java externo, además de Checkstyle/PMD, el reporte exige dominio sin
+`jakarta.persistence`, Spring ni Lombok; capas que no apunten hacia
+`service → web/repo` ni `web → repo`; DTOs sin imports del dominio; clases
+`*Controller` con `@RestController` y `*Service` con `@Service`; inyección por
+constructor; mappers en vez de construir DTOs en el servicio; y tests unitarios
+para cada servicio. Si el proyecto no es Maven, Checkstyle/PMD no corren y el
+reporte lo dice.
+
 `--fix` aplica solo lo que cada herramienta marca como arreglo seguro:
 formateadores, orden de imports, lints con `fix` y `spotless`. Nombres,
 complejidad, capas y SRP se reportan como `manual` porque un arreglo automático
@@ -292,7 +300,8 @@ crates de un workspace Rust se funden para no repetir clippy.
 | `package.json` | ESLint + Stylelint + dependency-cruiser (ciclos) |
 | `go.mod` | golangci-lint (sin reglas de capas) |
 | `pyproject.toml`, `requirements.txt` | ruff (incluye `T20`, `BLE`, `A`) |
-| `pom.xml`, `build.gradle`, `build.gradle.kts` | Semgrep `p/java` + reglas de `System.out`, `printStackTrace` y `catch (Exception)` |
+| `pom.xml` | Checkstyle + PMD + analizador de arquitectura/DTO/Spring/tests + Semgrep |
+| `build.gradle`, `build.gradle.kts` | Analizador de arquitectura/DTO/Spring/tests + Semgrep (sin Checkstyle/PMD) |
 | `Cargo.toml` | `cargo fmt` + clippy de diseño (`many_single_char_names`, `too_many_lines`, `cognitive_complexity`, `too_many_arguments`, `module_name_repetitions`, `unwrap`/`expect`/`panic`/`todo`) sobre todos los targets |
 | `project.godot` | `gdlint` + `gdformat --check` |
 
@@ -315,11 +324,13 @@ python tools/lint.py --project C:\Users\jdsal\Documents\Programming-personal
 Ese comando audita todos los proyectos del árbol; el resultado puede ser largo,
 así que empieza por una carpeta. Para Godot necesitas `gdtoolkit`:
 `uv tool install gdtoolkit` (aporta `gdlint` y `gdformat`). Límites conocidos:
-no ejecuta `tsc` ni los tests del proyecto externo (necesita sus dependencias). Java se revisa con
-Semgrep: seguridad y patrones, no arquitectura ni estilo. Rust se revisa sin
-tests ni cobertura. Godot depende de `gdtoolkit` y su parser puede no entender
-sintaxis nueva. No hay escaneo de secretos ni soporte específico de C/C++,
-C# o Kotlin. Un resultado `2` significa "no pude verificar", nunca "está limpio".
+no ejecuta `tsc` ni los tests del proyecto externo (necesita sus dependencias).
+Java se revisa con Checkstyle, PMD, un analizador de arquitectura/DTO/tests y
+Semgrep; Gradle conserva el analizador y Semgrep, pero no Checkstyle/PMD, y no
+se ejecutan los tests del proyecto. Rust se revisa sin tests ni cobertura.
+Godot depende de `gdtoolkit` y su parser puede no entender sintaxis nueva. No hay
+escaneo de secretos ni soporte específico de C/C++, C# o Kotlin. Un resultado
+`2` significa "no pude verificar", nunca "está limpio".
 
 ## Política propia (Semgrep)
 

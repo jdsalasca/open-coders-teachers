@@ -49,6 +49,14 @@ Decisiones concretas:
    complejidad, 4 parámetros). Los casts numéricos quedan fuera del baseline
    externo para no ahogar el reporte; el teacher de Rust los cubre con
    `pedantic`.
+8. **Java externo**: Checkstyle y PMD con configs portables
+   (`tools/java/checkstyle.xml`, `tools/java/pmd.xml`) y un analizador propio
+   (`tools/lintlib/java_quality.py`) que exige dominio sin JPA/Spring/Lombok,
+   capas hacia dentro (`service` no importa `web`/`repo`, `web` no importa
+   `repo`), DTOs sin tipos del dominio, `@RestController`/`@Service`,
+   inyección por constructor, mappers fuera del servicio y tests unitarios por
+   servicio. Checkstyle/PMD requieren Maven; Gradle conserva el analizador y
+   Semgrep.
 
 ## Consecuencias
 
@@ -66,9 +74,12 @@ Decisiones concretas:
 - Una regla desconocida cae en `calidad`; no se adivina la categoría.
 - En proyectos externos, `--validate` usa el baseline portable: no ejecuta los
   tests ni la cobertura del proyecto, ni los plugins de Maven. Para el gate
-  completo hay que usar el runner del proyecto.
+  completo hay que usar el runner del proyecto. En Java, los tests se revisan
+  de forma estática (existencia, tamaño y aserciones), no se ejecutan.
 - `--validate` no aplica a `--audit`, `--security` ni `--mutation`; para
   proyectos externos sí aplica junto a `--project`.
+- Checkstyle/PMD de Java externo asumen Maven; Gradle solo recibe el
+  analizador de arquitectura y Semgrep.
 - Algunas herramientas solo permiten reportar a nivel de carpeta (por ejemplo,
   `lint-imports` o un fallo de build de Maven sin archivo).
 - No sustituye la revisión de diseño: SRP, acoplamiento y nombres siguen
