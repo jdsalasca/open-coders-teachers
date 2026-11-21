@@ -465,6 +465,7 @@ def _java_dip(root: Path) -> list[quality.Violation]:
 
 def _ts_exports(root: Path) -> dict[str, dict[str, str]]:
     """Archivo TypeScript -> export -> clase/interfaz."""
+    root = root.resolve()
     out: dict[str, dict[str, str]] = {}
     for path in sorted(root.rglob("*")):
         if path.suffix not in {".ts", ".tsx"}:
@@ -527,6 +528,7 @@ def _ts_dip_for(
 
 def _ts_dip(root: Path) -> list[quality.Violation]:
     """Controladores TypeScript que importan clases concretas."""
+    root = root.resolve()
     exports = _ts_exports(root)
     out: list[quality.Violation] = []
     for path in sorted(root.rglob("*")):
