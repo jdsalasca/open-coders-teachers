@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from lintlib import quality
+from lintlib import quality, solid
 
 PACKAGE_RE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 IMPORT_RE = re.compile(r"^\s*import\s+(?:static\s+)?([\w.]+)\s*;", re.MULTILINE)
@@ -355,4 +355,6 @@ def analyze(root: Path) -> list[quality.Violation]:
         out.extend(god_file_violations(file))
         out.extend(entity_boundary_violations(file, entities))
     out.extend(test_violations(root, main_files))
+    units = [solid.Unit(file.relative, file.text, file.imports) for file in main_files]
+    out.extend(solid.analyze(units, "java"))
     return quality.dedupe(out)

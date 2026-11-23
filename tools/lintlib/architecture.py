@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from lintlib import quality
+from lintlib import quality, solid
 
 LAYERS = (
     "domain",
@@ -263,6 +263,14 @@ def analyze(root: Path, language: str) -> list[quality.Violation]:
         return []
     frameworks = FRAMEWORKS.get(language, ())
     out: list[quality.Violation] = []
+    units: list[solid.Unit] = []
     for source in builder(root):
         out.extend(_layer_violations(source, frameworks))
+        path = root / source.relative
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            text = ""
+        units.append(solid.Unit(source.relative, text, source.imports))
+    out.extend(solid.analyze(units, language))
     return quality.dedupe(out)

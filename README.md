@@ -275,6 +275,35 @@ La infraestructura implementa puertos del dominio; el composition root
 (`main.go`, `Main.java`, `main.ts`, `main.tsx`, `main.rs`) es la única pieza que
 conoce todas las capas.
 
+## SOLID y clean code
+
+Cinco reglas que ninguna herramienta del set cubre de forma portable, aplicadas a
+los seis lenguajes:
+
+| Regla | Qué detecta | Por qué importa |
+| :--- | :--- | :--- |
+| `todo-pendiente` | `TODO`, `FIXME`, `XXX`, `HACK` | deuda que entra al código sin que nadie la vea |
+| `lsp-no-implementado` | implementación que lanza "no implementado" fuera de una base abstracta | rompe el contrato de su interfaz |
+| `srp-dependencias` | constructor con más de 4 dependencias inyectadas | la clase tiene más de una responsabilidad |
+| `dominio-util` | el dominio importa `util`/`helpers`/`common` del proyecto | arrastra dependencias que el dominio no debe conocer |
+| `capa-ciclo` | dos paquetes que se importan mutuamente | rompe la dirección de capas |
+
+Las cuatro primeras nacen como `accionable`; el ciclo es `capas`: no es estilo,
+es arquitectura rota. `dominio-util` y `capa-ciclo` ignoran la biblioteca estándar
+(`java.util`, `fmt`, `os`…) para no marcar imports que no son del proyecto, y
+`lsp-no-implementado` no reporta una base abstracta, donde declarar el contrato
+sin implementarlo es correcto.
+
+Ejemplo en Java:
+
+```java
+public class Checkout {
+  public Checkout(PriceService a, StockService b, PayService c, MailService d, AuditService e) { }
+}
+// srp-dependencias: 5 dependencias inyectadas (PriceService, StockService, PayService...);
+// la clase probablemente tenga mas de una responsabilidad
+```
+
 ## Así se ve TypeScript-teacher
 
 <img src="docs/images/typescript-teacher.png" alt="Tarjeta de TypeScript teacher con el contador y el botón Incrementar" width="720">

@@ -22,6 +22,7 @@ from lintlib import (
     java_quality,
     portable_quality,
     quality,
+    solid,
     test_quality,
     ts_quality,
 )
@@ -1134,6 +1135,99 @@ def test_action_clasifica_hallazgos() -> None:
         [violation("bodyclose"), violation("MethodName"), violation("MethodName")]
     )
     check(counts == {"bloqueante": 1, "patron": 2}, f"conteo inesperado: {counts}")
+
+
+def test_solid_detecta_las_cinco_reglas() -> None:
+    """TODO, LSP, SRP por dependencias, dominio->util y ciclos."""
+    units = [
+        solid.Unit(
+            "src/domain/Order.java",
+            "class Order {\n  // TODO: persistir el estado\n"
+            "  void refund() { throw new UnsupportedOperationException(); }\n}",
+            (("src.util.Dates", 2),),
+        ),
+        solid.Unit(
+            "src/util/Dates.java",
+            "class Dates {}",
+            (("src.domain.Order", 1),),
+        ),
+        solid.Unit(
+            "src/application/Checkout.java",
+            "class Checkout {\n  public Checkout(PriceService a, StockService b, "
+            "PayService c, MailService d, AuditService e) {}\n}",
+            (),
+        ),
+    ]
+    found = solid.analyze(units, "java")
+    rules = {violation.rule for violation in found}
+    for rule in ("todo-pendiente", "lsp-no-implementado", "srp-dependencias"):
+        check(rule in rules, f"no detecto {rule}: {sorted(rules)}")
+    check("dominio-util" in rules, f"no detecto dominio-util: {sorted(rules)}")
+    check("capa-ciclo" in rules, f"no detecto capa-ciclo: {sorted(rules)}")
+    ciclo = next(v for v in found if v.rule == "capa-ciclo")
+    check(ciclo.category == "capas", "el ciclo es de capas, no de estilo")
+
+
+def test_solid_no_reporta_base_abstracta() -> None:
+    """Un puerto abstracto puede declarar el contrato sin implementarlo."""
+    unit = solid.Unit(
+        "src/domain/Port.java",
+        "abstract class Port {\n  void x() { throw new UnsupportedOperationException(); }\n}",
+        (),
+    )
+    found = solid.lsp_violations([unit], "java")
+    check(not found, f"no deberia reportar una base abstracta: {[v.rule for v in found]}")
+
+
+def test_solid_respeta_el_limite_de_dependencias() -> None:
+    """Cuatro dependencias entran; cinco no."""
+    cuatro = solid.Unit(
+        "src/application/A.java",
+        "class A { public A(AService a, BService b, CService c, DService d) {} }",
+        (),
+    )
+    cinco = solid.Unit(
+        "src/application/B.java",
+        "class B { public B(AService a, BService b, CService c, DService d, EService e) {} }",
+        (),
+    )
+    check(not solid.srp_violations([cuatro], "java"), "cuatro no deberia reportar")
+    check(bool(solid.srp_violations([cinco], "java")), "cinco deberia reportar")
+
+
+def test_solid_go_detecta_lsp_y_srp() -> None:
+    """Go: panic de no implementado y constructor con demasiadas dependencias."""
+    units = [
+        solid.Unit(
+            "internal/domain/order.go",
+            'package domain\n// TODO: revisar\n'
+            'func (o Order) Refund() { panic("not implemented") }',
+            (("example/internal/util", 3),),
+        ),
+        solid.Unit(
+            "internal/application/service.go",
+            'package application\nfunc NewService(a AService, b BService, c CService, '
+            "d DService, e EService) *Service { return nil }",
+            (),
+        ),
+    ]
+    found = solid.analyze(units, "go")
+    rules = {violation.rule for violation in found}
+    for rule in ("todo-pendiente", "lsp-no-implementado", "srp-dependencias"):
+        check(rule in rules, f"no detecto {rule} en Go: {sorted(rules)}")
+    check("dominio-util" in rules, f"no detecto dominio-util en Go: {sorted(rules)}")
+
+
+def test_solid_ignora_stdlib_en_dominio() -> None:
+    """java.util no es una utilidad del proyecto; com.acme.util si."""
+    unit = solid.Unit(
+        "src/domain/Task.java",
+        "class Task {}",
+        (("java.util.List", 2), ("com.acme.util.Dates", 3)),
+    )
+    found = solid.util_violations([unit], "java")
+    check(len(found) == 1, f"esperaba solo el del proyecto: {[v.message for v in found]}")
+    check("com.acme.util.Dates" in found[0].message, "deberia senalar el import del proyecto")
 
 
 if __name__ == "__main__":
