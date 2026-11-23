@@ -99,6 +99,26 @@ IA: `naming-convention`, `N802`, `revive` y `TypeName` son `nombres`;
 `CustomImportOrder` son `imports`. Lo que una herramienta no expone con archivo
 y línea se reporta a nivel de carpeta; no se inventa una ubicación.
 
+### Qué hacer con cada hallazgo
+
+Cada violación lleva además un grupo de **acción**, para leer el reporte en orden
+de urgencia y no en orden de archivo:
+
+| Acción | Qué agrupa | Para qué |
+| :--- | :--- | :--- |
+| `bloqueante` | fallos de herramienta, `bodyclose`, `errcheck`, `gosec`, `SA1012`, `contextcheck` | rompen el build, la seguridad o un contrato |
+| `accionable` | imports muertos, Javadoc, complejidad de método, tests faltantes | se corrigen en el PR |
+| `patron` | `MethodName`, `VisibilityModifier`, `HiddenField`, `lll`, formato | convención del repo dueño; ruido al revisar código ajeno |
+| `deuda` | `FileLength`, `ClassFanOutComplexity`, `MethodCount` | estructura previa; no la introduce el cambio |
+
+**La regla no se oculta: todo sigue visible.** El grupo solo ordena y etiqueta,
+así que al revisar otro repo se miran primero los dos primeros y se puede auditar
+qué quedó en los otros dos. Lo que no está mapeado cae en `accionable` para que
+nadie lo pierda por falta de clasificación.
+
+En texto, el resumen agrega una línea `Accion:`. En `--json`, el encabezado trae
+`by_action` y cada violación un campo `action`.
+
 En Java externo, además de Checkstyle/PMD, el reporte exige dominio sin
 `jakarta.persistence`, Spring ni Lombok; capas que no apunten hacia
 `service → web/repo` ni `web → repo`; DTOs sin imports del dominio; clases

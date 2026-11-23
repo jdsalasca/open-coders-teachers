@@ -893,6 +893,84 @@ def summary(violations: list[Violation]) -> dict[str, int]:
     return {category: count for category, count in counts.items() if count}
 
 
+# ------------------------------------------------------------------ accion
+
+ACTIONS = ("bloqueante", "accionable", "patron", "deuda")
+
+# Rompen el build, la seguridad o un contrato observable: se miran primero.
+_BLOCKING_RULES = {
+    "herramienta",
+    "bodyclose",
+    "errcheck",
+    "errorlint",
+    "nilerr",
+    "forcetypeassert",
+    "gosec",
+    "rowserrcheck",
+    "sqlclosecheck",
+    "contextcheck",
+    "containedctx",
+    "noctx",
+    "sa1012",
+    "govet",
+}
+
+# Deuda estructural: no la introduce el cambio, pero conviene verla aparte.
+_DEBT_RULES = {
+    "filelength",
+    "classfanoutcomplexity",
+    "methodcount",
+    "outertypenumber",
+    "max-file-lines",
+    "max-file-slop",
+}
+
+# Convenciones del repo: naming, orden, formato. Ruido al revisar codigo ajeno.
+_PATTERN_RULES = {
+    "methodname",
+    "typename",
+    "membername",
+    "constantname",
+    "localvariablename",
+    "parametername",
+    "visibilitymodifier",
+    "hiddenfield",
+    "parameternumber",
+    "declarationorder",
+    "onestatementperline",
+    "needbraces",
+    "lll",
+    "format",
+    "gci",
+}
+
+
+def action_of(violation: Violation) -> str:
+    """Agrupa la violacion por lo que hay que hacer con ella.
+
+    El orden importa: una regla de convencion que ademas es bloqueante se
+    reporta como bloqueante. Lo no clasificado cae en "accionable" para que
+    nadie lo pierda por falta de mapeo.
+    """
+    rule = violation.rule.strip().lower()
+    if rule in _BLOCKING_RULES or rule.startswith("teacher/"):
+        return "bloqueante"
+    if rule in _DEBT_RULES:
+        return "deuda"
+    if rule in _PATTERN_RULES:
+        return "patron"
+    return "accionable"
+
+
+def summary_by_action(violations: list[Violation]) -> dict[str, int]:
+    """Cuenta violaciones por grupo de accion."""
+    counts: dict[str, int] = dict.fromkeys(ACTIONS, 0)
+    for violation in violations:
+        action = action_of(violation)
+        counts[action] = counts.get(action, 0) + 1
+    return {action: count for action, count in counts.items() if count}
+
+
 def render_text(violations: list[Violation]) -> str:
     """Reporte legible agrupado por archivo."""
     if not violations:
@@ -904,17 +982,27 @@ def render_text(violations: list[Violation]) -> str:
     for path in sorted(grouped):
         lines.append(path)
         for violation in sorted(
-            grouped[path], key=lambda item: (item.line, item.column, item.category)
+            grouped[path],
+            key=lambda item: (
+                ACTIONS.index(action_of(item)),
+                item.line,
+                item.column,
+                item.category,
+            ),
         ):
             mark = "auto" if violation.fixable else "manual"
             lines.append(
-                f"  {violation.category:<12} {violation.line:>4}:{violation.column:<3} "
+                f"  {action_of(violation):<11} {violation.category:<12} "
+                f"{violation.line:>4}:{violation.column:<3} "
                 f"{violation.message} [{violation.rule}] ({mark})"
             )
         lines.append("")
     counts = summary(violations)
     detail = " · ".join(f"{category} {count}" for category, count in counts.items())
     lines.append(f"Resumen: {detail}")
+    actions = summary_by_action(violations)
+    accion = " · ".join(f"{action} {count}" for action, count in actions.items())
+    lines.append(f"Accion:  {accion}")
     return "\n".join(lines)
 
 
@@ -928,7 +1016,11 @@ def render_json(violations: list[Violation]) -> str:
             "ok": not violations,
             "total": len(violations),
             "summary": summary(violations),
-            "violations": [asdict(violation) for violation in ordered],
+            "by_action": summary_by_action(violations),
+            "violations": [
+                {**asdict(violation), "action": action_of(violation)}
+                for violation in ordered
+            ],
         },
         ensure_ascii=False,
         indent=2,

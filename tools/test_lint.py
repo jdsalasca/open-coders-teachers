@@ -1115,6 +1115,27 @@ def test_scoped_projects() -> None:
     check(scoped[0].files == [changed.as_posix()], str(scoped[0].files))
 
 
+def test_action_clasifica_hallazgos() -> None:
+    """Cada regla cae en el grupo de accion que le corresponde."""
+
+    def violation(rule: str, category: str = "calidad") -> quality.Violation:
+        return quality.Violation("a.py", 1, 1, category, rule, "mensaje", "test", False)
+
+    check(quality.action_of(violation("bodyclose")) == "bloqueante", "bodyclose es bloqueante")
+    check(quality.action_of(violation("SA1012")) == "bloqueante", "SA1012 es bloqueante")
+    check(quality.action_of(violation("UnusedImports")) == "accionable", "imports es accionable")
+    check(quality.action_of(violation("MethodName", "nombres")) == "patron", "naming es patron")
+    check(quality.action_of(violation("FileLength")) == "deuda", "file length es deuda")
+    check(
+        quality.action_of(violation("regla-sin-mapear")) == "accionable",
+        "lo no clasificado cae en accionable, no se pierde",
+    )
+    counts = quality.summary_by_action(
+        [violation("bodyclose"), violation("MethodName"), violation("MethodName")]
+    )
+    check(counts == {"bloqueante": 1, "patron": 2}, f"conteo inesperado: {counts}")
+
+
 if __name__ == "__main__":
     for name, test in list(globals().items()):
         if name.startswith("test_") and callable(test):
