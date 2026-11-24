@@ -311,7 +311,7 @@ cace el defecto, no solo el estilo.
 
 ### Java
 
-- **PMD** pasa de 7 a 24 reglas: `PreserveStackTrace`, `CloseResource`,
+- **PMD** pasa de 7 a 25 reglas: `PreserveStackTrace`, `CloseResource`,
   `SimpleDateFormatNeedsLocale`, `InvalidLogMessageFormat`, `LawOfDemeter`,
   `NPathComplexity`, `CognitiveComplexity`, `GodClass`, `ImmutableField`,
   `LiteralsFirstInComparisons`, `UnusedFormalParameter`, `ReturnEmptyCollectionRatherThanNull`,
@@ -325,10 +325,9 @@ cace el defecto, no solo el estilo.
 
 ### Go
 
-Siete linters nuevos: `err113` (errores dinámicos), `musttag` (structs JSON sin
+Seis linters nuevos: `err113` (errores dinámicos), `musttag` (structs JSON sin
 tags), `ireturn` (retorno de interfaces), `maintidx` (mantenibilidad),
-`forbidigo` (`fmt.Print` en producción), `nolintlint` (`nolint` sin justificar) y
-`maintidx`.
+`forbidigo` (`fmt.Print` en producción) y `nolintlint` (`nolint` sin justificar).
 
 ### Lo que se probó y quedó fuera
 
