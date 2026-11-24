@@ -17,7 +17,7 @@ public record TaskView(int id, String title, boolean done) {
    * @param task entidad de dominio
    * @return vista de la tarea
    */
-  public static TaskView from(Task task) {
+  public static TaskView from(final Task task) {
     return new TaskView(task.id(), task.title(), task.done());
   }
 }

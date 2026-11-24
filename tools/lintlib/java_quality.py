@@ -56,6 +56,10 @@ TEST_LARGE = Rule("tests", "test-largo")
 TEST_GIANT = Rule("tests", "test-gigante")
 TEST_MISSING = Rule("tests", "sin-test-unitario")
 NO_TESTS = Rule("tests", "sin-tests")
+TRANSACTIONAL_CONTROLLER = Rule("capas", "transaccional-en-controller")
+ENTITY_LOCATION = Rule("capas", "entidad-fuera-de-infra")
+PII_LOG = Rule("calidad", "pii-en-log")
+SLEEP_PRODUCTION = Rule("calidad", "sleep-en-produccion")
 
 
 @dataclass(frozen=True)
@@ -335,6 +339,69 @@ def test_violations(root: Path, main_files: list[JavaFile]) -> list[quality.Viol
     return out
 
 
+PII_LOG_RE = re.compile(
+    r"log\s*\.\s*(?:info|warn|error|debug|trace)\s*\([^;]*"
+    r"\b(?:email|e-mail|mail|phone|telefono|documento|cpf|dni|address|direccion)\b",
+    re.IGNORECASE,
+)
+SLEEP_RE = re.compile(r"Thread\s*\.\s*sleep\s*\(")
+# Capas donde una @Entity de JPA no deberia aparecer.
+NON_PERSISTENCE = {"web", "controller", "service", "application"}
+
+
+def strict_violations(file: JavaFile) -> list[quality.Violation]:
+    """Reglas de exigencia que no cubre ninguna herramienta externa."""
+    out: list[quality.Violation] = []
+    kind = package_kind(file.package)
+    name = Path(file.relative).name
+
+    if name.endswith("Controller.java") and "@Transactional" in file.text:
+        line = _line(file.text, file.text.index("@Transactional"))
+        out.append(
+            _path_violation(
+                file.relative,
+                line,
+                TRANSACTIONAL_CONTROLLER,
+                "el controller declara @Transactional; la transaccion pertenece al servicio",
+            )
+        )
+
+    if "@Entity" in file.text and kind in NON_PERSISTENCE:
+        line = _line(file.text, file.text.index("@Entity"))
+        out.append(
+            _path_violation(
+                file.relative,
+                line,
+                ENTITY_LOCATION,
+                f"@Entity en la capa {kind}; la persistencia va en infraestructura",
+            )
+        )
+
+    pii = PII_LOG_RE.search(file.text)
+    if pii:
+        out.append(
+            _path_violation(
+                file.relative,
+                _line(file.text, pii.start()),
+                PII_LOG,
+                "el log podria exponer datos personales; registra un identificador, no el dato",
+            )
+        )
+
+    sleep = SLEEP_RE.search(file.text)
+    if sleep:
+        out.append(
+            _path_violation(
+                file.relative,
+                _line(file.text, sleep.start()),
+                SLEEP_PRODUCTION,
+                "Thread.sleep en produccion bloquea el hilo; usa un scheduler o un timeout",
+            )
+        )
+
+    return out
+
+
 def analyze(root: Path) -> list[quality.Violation]:
     """Analiza un proyecto Java y devuelve violaciones deterministas."""
     main_files = scan(root)
@@ -354,6 +421,7 @@ def analyze(root: Path) -> list[quality.Violation]:
         out.extend(mapper_violations(file))
         out.extend(god_file_violations(file))
         out.extend(entity_boundary_violations(file, entities))
+        out.extend(strict_violations(file))
     out.extend(test_violations(root, main_files))
     units = [solid.Unit(file.relative, file.text, file.imports) for file in main_files]
     out.extend(solid.analyze(units, "java"))

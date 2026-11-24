@@ -11,6 +11,8 @@ import java.util.Objects;
  */
 public record Task(int id, String title, boolean done) {
 
+  private static final int MAX_TITLE_LENGTH = 200;
+
   /** Valida las invariantes del dominio. */
   public Task {
     if (id < 1) {
@@ -20,12 +22,12 @@ public record Task(int id, String title, boolean done) {
     if (title.codePoints().allMatch(Task::isSpace)) {
       throw new IllegalArgumentException("el titulo no puede estar vacio");
     }
-    if (title.codePointCount(0, title.length()) > 200) {
-      throw new IllegalArgumentException("el titulo supera los 200 caracteres");
+    if (title.codePointCount(0, title.length()) > MAX_TITLE_LENGTH) {
+      throw new IllegalArgumentException("el titulo supera los " + MAX_TITLE_LENGTH + " caracteres");
     }
   }
 
-  private static boolean isSpace(int codePoint) {
+  private static boolean isSpace(final int codePoint) {
     return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
   }
 }

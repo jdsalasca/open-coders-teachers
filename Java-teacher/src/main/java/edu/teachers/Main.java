@@ -19,7 +19,7 @@ public final class Main {
    *
    * @param args argumentos de linea de comandos
    */
-  public static void main(String[] args) {
+  public static void main(final String[] args) {
     TaskService service = new TaskService(new InMemoryTaskRepository());
     Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
     TaskController controller = new TaskController(service, validator);

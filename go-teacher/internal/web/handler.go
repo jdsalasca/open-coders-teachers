@@ -14,6 +14,9 @@ import (
 	"teachers/goteacher/internal/domain"
 )
 
+// ErrInvalidQueryParameter senala un parametro de consulta invalido.
+var ErrInvalidQueryParameter = errors.New("parametro de consulta invalido")
+
 // MaxBodyBytes es el tamano maximo del payload HTTP.
 const MaxBodyBytes = 1 << 20
 
@@ -120,7 +123,7 @@ func queryInt(values url.Values, name string, fallback int) (int, error) {
 	}
 	value, err := strconv.Atoi(raw)
 	if err != nil {
-		return 0, fmt.Errorf("%s invalido", name)
+		return 0, fmt.Errorf("%w: %s", ErrInvalidQueryParameter, name)
 	}
 	return value, nil
 }

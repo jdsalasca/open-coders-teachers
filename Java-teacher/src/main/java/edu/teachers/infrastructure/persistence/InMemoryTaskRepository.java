@@ -21,7 +21,7 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
    *
    * @param initialId valor inicial del contador
    */
-  InMemoryTaskRepository(int initialId) {
+  InMemoryTaskRepository(final int initialId) {
     nextId = initialId;
   }
 
@@ -30,7 +30,7 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
    * hueco: los ids no garantizan continuidad.
    */
   @Override
-  public synchronized Task create(String title) {
+  public synchronized Task create(final String title) {
     if (nextId == Integer.MAX_VALUE) {
       throw new IllegalStateException(IDS_EXHAUSTED);
     }

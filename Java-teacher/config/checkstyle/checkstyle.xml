@@ -95,5 +95,32 @@
     <module name="JavadocMethod">
       <property name="accessModifiers" value="public"/>
     </module>
+
+    <!-- exigencia adicional: literales, firmas y salidas -->
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="printStackTrace\("/>
+      <property name="message" value="No uses printStackTrace; propaga la causa o usa un logger."/>
+      <property name="ignoreComments" value="false"/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="\b(TODO|FIXME|XXX|HACK)\b"/>
+      <property name="message" value="Resuelve la marca pendiente o registrala fuera del codigo."/>
+      <property name="ignoreComments" value="false"/>
+    </module>
+    <module name="MagicNumber">
+      <property name="ignoreNumbers" value="-1, 0, 1, 2"/>
+      <property name="ignoreFieldDeclaration" value="true"/>
+      <property name="ignoreAnnotation" value="true"/>
+    </module>
+    <module name="FinalParameters">
+      <property name="tokens" value="METHOD_DEF, CTOR_DEF"/>
+    </module>
+    <module name="ReturnCount">
+      <property name="max" value="4"/>
+      <property name="maxForVoid" value="4"/>
+    </module>
+    <module name="ClassDataAbstractionCoupling">
+      <property name="max" value="10"/>
+    </module>
   </module>
 </module>

@@ -5,15 +5,46 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/schema/ruleset_2_0_0.xsd">
   <description>Reglas PMD complementarias a Checkstyle</description>
 
+  <!-- bestpractices: uso y firmas -->
   <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
   <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
   <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
   <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+  <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
+  <rule ref="category/java/bestpractices.xml/AvoidReassigningParameters"/>
+  <rule ref="category/java/bestpractices.xml/LiteralsFirstInComparisons"/>
+  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"/>
+
+  <!-- design: forma de la clase y del metodo -->
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
+  <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"/>
   <rule ref="category/java/design.xml/TooManyMethods">
     <properties>
       <property name="maxmethods" value="15"/>
     </properties>
   </rule>
+  <rule ref="category/java/design.xml/ExcessivePublicCount"/>
+  <rule ref="category/java/design.xml/ImmutableField"/>
+  <rule ref="category/java/design.xml/LawOfDemeter"/>
+  <rule ref="category/java/design.xml/NPathComplexity"/>
+  <rule ref="category/java/design.xml/CognitiveComplexity">
+    <properties>
+      <property name="reportLevel" value="15"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/design.xml/GodClass"/>
+
+  <!-- errorprone: defectos silenciosos -->
   <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+  <rule ref="category/java/errorprone.xml/CloseResource"/>
+  <rule ref="category/java/errorprone.xml/SimpleDateFormatNeedsLocale"/>
+  <rule ref="category/java/errorprone.xml/InvalidLogMessageFormat"/>
+  <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals"/>
+  <rule ref="category/java/errorprone.xml/ReturnEmptyCollectionRatherThanNull"/>
+  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition">
+    <properties>
+      <property name="ignoreMagicNumbers" value="-1,0,1"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/errorprone.xml/AvoidDuplicateLiterals"/>
 </ruleset>

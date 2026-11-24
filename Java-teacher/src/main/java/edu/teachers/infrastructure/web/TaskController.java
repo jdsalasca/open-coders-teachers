@@ -21,7 +21,7 @@ public class TaskController {
    * @param service servicio de tareas
    * @param validator validador de Bean Validation
    */
-  public TaskController(TaskService service, Validator validator) {
+  public TaskController(final TaskService service, final Validator validator) {
     this.service = Objects.requireNonNull(service, "service");
     this.validator = Objects.requireNonNull(validator, "validator");
   }
@@ -32,7 +32,7 @@ public class TaskController {
    * @param request datos de entrada
    * @return tarea creada como DTO
    */
-  public TaskView create(CreateTaskRequest request) {
+  public TaskView create(final CreateTaskRequest request) {
     Objects.requireNonNull(request, "request");
     Set<ConstraintViolation<CreateTaskRequest>> violations = validator.validate(request);
     if (!violations.isEmpty()) {

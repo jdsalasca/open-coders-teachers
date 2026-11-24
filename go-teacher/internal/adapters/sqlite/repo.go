@@ -13,6 +13,9 @@ import (
 	"teachers/goteacher/internal/domain"
 )
 
+// ErrIDOutOfRange senala un id que no entra en int.
+var ErrIDOutOfRange = errors.New("id fuera de rango")
+
 // Repository guarda tareas en SQLite.
 type Repository struct {
 	db *sql.DB
@@ -193,7 +196,7 @@ func newTask(id int64, title string, done bool) (domain.Task, error) {
 
 func toInt(value int64) (int, error) {
 	if value < 1 || value > int64(int(^uint(0)>>1)) {
-		return 0, fmt.Errorf("id fuera de rango: %d", value)
+		return 0, fmt.Errorf("%w: %d", ErrIDOutOfRange, value)
 	}
 	return int(value), nil
 }

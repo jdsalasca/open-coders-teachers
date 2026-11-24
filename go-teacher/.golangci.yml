@@ -37,7 +37,28 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - usestdlibvars
+    - err113
+    - musttag
+    - ireturn
+    - maintidx
+    - forbidigo
+    - nolintlint
   settings:
+    err113:
+      check-error-free-returns: false
+    ireturn:
+      allow:
+        - error
+        - empty
+        - generic
+        - stdlib
+    forbidigo:
+      forbid:
+        - pattern: '^fmt\.Print.*$'
+          msg: usa un logger estructurado
+    nolintlint:
+      require-explanation: true
+      require-specific: true
     funlen:
       lines: 40
       statements: 40
@@ -102,6 +123,17 @@ linters:
           - lll
           - cyclop
           - errcheck
+          - err113
+          - wrapcheck
+      # Composition root: unico lugar que conoce todas las capas y arma el error final.
+      - path: cmd/api/main\.go
+        linters:
+          - wrapcheck
+          - err113
+      # Repositorio en memoria didactico: devuelve el error del dominio tal cual.
+      - path: internal/adapters/memory/
+        linters:
+          - wrapcheck
 
 formatters:
   enable:

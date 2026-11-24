@@ -15,7 +15,7 @@ public class TaskService {
    *
    * @param repository puerto del dominio, obligatorio
    */
-  public TaskService(TaskRepositoryPort repository) {
+  public TaskService(final TaskRepositoryPort repository) {
     this.repository = Objects.requireNonNull(repository, "repository");
   }
 
@@ -25,7 +25,7 @@ public class TaskService {
    * @param title titulo de la tarea
    * @return tarea creada
    */
-  public Task add(String title) {
+  public Task add(final String title) {
     return repository.create(title);
   }
 

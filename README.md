@@ -304,6 +304,42 @@ public class Checkout {
 // la clase probablemente tenga mas de una responsabilidad
 ```
 
+## Exigencia adicional (Java y Go)
+
+Las dos carpetas con más peso tienen un set ampliado. La idea es que el gate
+cace el defecto, no solo el estilo.
+
+### Java
+
+- **PMD** pasa de 7 a 24 reglas: `PreserveStackTrace`, `CloseResource`,
+  `SimpleDateFormatNeedsLocale`, `InvalidLogMessageFormat`, `LawOfDemeter`,
+  `NPathComplexity`, `CognitiveComplexity`, `GodClass`, `ImmutableField`,
+  `LiteralsFirstInComparisons`, `UnusedFormalParameter`, `ReturnEmptyCollectionRatherThanNull`,
+  `CompareObjectsWithEquals`, entre otras.
+- **Checkstyle** suma `MagicNumber`, `FinalParameters`, `ReturnCount`,
+  `ClassDataAbstractionCoupling` y una regla de texto que prohíbe `printStackTrace`
+  y las marcas `TODO`/`FIXME`.
+- **Cuatro reglas propias** que ninguna herramienta cubre:
+  `transaccional-en-controller`, `entidad-fuera-de-infra`, `pii-en-log` y
+  `sleep-en-produccion`.
+
+### Go
+
+Siete linters nuevos: `err113` (errores dinámicos), `musttag` (structs JSON sin
+tags), `ireturn` (retorno de interfaces), `maintidx` (mantenibilidad),
+`forbidigo` (`fmt.Print` en producción), `nolintlint` (`nolint` sin justificar) y
+`maintidx`.
+
+### Lo que se probó y quedó fuera
+
+- **`wrapcheck`**: en un proyecto con errores de dominio tipados obliga a envolver
+  lo que se propaga a propósito, y no permite exceptuar paquetes propios.
+- **`exhaustruct`**: los structs parciales de builders y tests generan 13 falsos
+  positivos sin señal proporcional.
+
+Dejarlos habría inflado el reporte sin cambiar ninguna decisión. La exigencia se
+mide por lo que obliga a corregir, no por la cantidad de reglas.
+
 ## Así se ve TypeScript-teacher
 
 <img src="docs/images/typescript-teacher.png" alt="Tarjeta de TypeScript teacher con el contador y el botón Incrementar" width="720">
