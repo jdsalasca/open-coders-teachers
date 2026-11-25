@@ -23,6 +23,10 @@ UNWRAP_RE = re.compile(r"\.\s*(?:unwrap|expect)\s*\(")
 TS_BANG_RE = re.compile(r"\w!\s*[.;,)\[]")
 TS_ANY_RE = re.compile(r":\s*any\b")
 PY_NONE_RE = re.compile(r"[!=]=\s*None\b")
+GO_SLEEP_RE = re.compile(r"\btime\s*\.\s*Sleep\s*\(")
+GO_EXEC_SHELL_RE = re.compile(r'exec\s*\.\s*Command\s*\(\s*"(?:sh|bash)"')
+GO_FLOAT_RE = re.compile(r"\bfloat(?:32|64)\b")
+MONEY_NAME_RE = re.compile(r"(?i)(price|amount|money|total|cost|tarifa|precio|monto)")
 
 # El composition root puede fallar ruidosamente: es el borde del programa.
 COMPOSITION = {"main.go", "main.rs", "main.py", "main.ts", "main.tsx", "App.tsx"}
@@ -134,11 +138,40 @@ def python_violations(units: list[Unit]) -> list[quality.Violation]:
     return out
 
 
+def go_security_violations(units: list[Unit]) -> list[quality.Violation]:
+    """Dormir, shell y dinero en punto flotante."""
+    out: list[quality.Violation] = []
+    for unit in units:
+        if _is_composition(unit.relative):
+            continue
+        sleep = GO_SLEEP_RE.search(unit.text)
+        if sleep:
+            out.append(_violation(
+                unit.relative, _line(unit.text, sleep.start()), "calidad",
+                "go-sleep-produccion",
+                "time.Sleep bloquea la goroutine; usa un ticker, un timer o el contexto"))
+        shell = GO_EXEC_SHELL_RE.search(unit.text)
+        if shell:
+            out.append(_violation(
+                unit.relative, _line(unit.text, shell.start()), "seguridad",
+                "go-exec-shell",
+                "exec.Command con sh -c permite inyeccion de comandos; pasa los argumentos"))
+        if MONEY_NAME_RE.search(unit.relative) or MONEY_NAME_RE.search(unit.text):
+            money = GO_FLOAT_RE.search(unit.text)
+            if money:
+                out.append(_violation(
+                    unit.relative, _line(unit.text, money.start()), "calidad",
+                    "go-float-dinero",
+                    "float para dinero acumula error; usa enteros en la unidad minima"))
+    return out
+
+
 def analyze(units: list[Unit], language: str) -> list[quality.Violation]:
     """Aplica las reglas de nulos y errores del lenguaje."""
     out: list[quality.Violation] = []
     if language == "go":
         out.extend(panic_violations(units))
+        out.extend(go_security_violations(units))
     elif language == "rust":
         out.extend(unwrap_violations(units))
     elif language == "typescript":

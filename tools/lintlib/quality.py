@@ -915,6 +915,9 @@ _BLOCKING_RULES = {
     "govet",
     "doonnext-side-effect",
     "go-panic",
+    "sql-concatenacion",
+    "secreto-hardcodeado",
+    "go-exec-shell",
 }
 
 # Deuda estructural: no la introduce el cambio, pero conviene verla aparte.
@@ -948,6 +951,7 @@ _PATTERN_RULES = {
     "optional-is-present",
     "python-none-comparison",
     "ts-any",
+    "sleep-en-test",
 }
 
 

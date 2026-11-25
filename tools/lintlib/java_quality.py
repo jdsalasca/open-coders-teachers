@@ -63,6 +63,11 @@ NULL_LAMBDA = Rule("calidad", "null-lambda")
 OBJECTMAPPER_MANUAL = Rule("calidad", "serializador-manual")
 DOONNEXT_SIDE_EFFECT = Rule("calidad", "doonnext-side-effect")
 MOCK_WITHOUT_EXTENSION = Rule("tests", "mockito-sin-extendwith")
+SQL_CONCATENATION = Rule("seguridad", "sql-concatenacion")
+THROW_IN_FINALLY = Rule("calidad", "throw-en-finally")
+HARDCODED_SECRET = Rule("seguridad", "secreto-hardcodeado")
+INSECURE_RANDOM = Rule("seguridad", "random-inseguro")
+SLEEP_IN_TEST = Rule("tests", "sleep-en-test")
 ENTITY_LOCATION = Rule("capas", "entidad-fuera-de-infra")
 PII_LOG = Rule("calidad", "pii-en-log")
 SLEEP_PRODUCTION = Rule("calidad", "sleep-en-produccion")
@@ -312,6 +317,10 @@ def test_file_violations(path: Path, root: Path) -> list[quality.Violation]:
         message = f"test con {tests} casos; divide por responsabilidad"
         out.append(_path_violation(relative, 1, TEST_GIANT, message))
     out.extend(missing_assertions(relative, text))
+    if "Thread.sleep" in text:
+        out.append(_path_violation(
+            relative, 1, SLEEP_IN_TEST,
+            "Thread.sleep en un test lo vuelve lento y fragil; usa un reloj o un await"))
     if "@Mock" in text and "MockitoExtension" not in text:
         out.append(_path_violation(
             relative, 1, MOCK_WITHOUT_EXTENSION,
@@ -359,6 +368,13 @@ STRING_FORMAT_RE = re.compile(r"\bString\s*\.\s*format\s*\(")
 OPTIONAL_PRESENT_RE = re.compile(r"Optional\s*\.\s*ofNullable\s*\([^)]*\)\s*\.\s*isPresent\s*\(")
 NULL_LAMBDA_RE = re.compile(r"->\s*\w+\s*[!=]=\s*null\b")
 OBJECTMAPPER_RE = re.compile(r"new\s+(?:ObjectMapper|Gson)\s*\(")
+SQL_CONCAT_RE = re.compile(r'"[^"\n]*\b(?:select|insert|update|delete)\b[^"\n]*"\s*\+', re.I)
+THROW_FINALLY_RE = re.compile(r"finally\s*\{[^}]*\bthrow\b", re.S)
+SECRET_RE = re.compile(
+    r'(?i)\b(?:password|passwd|secret|token|api[_-]?key|access[_-]?key)\b\s*=\s*"([^"\n]{6,})"'
+)
+RANDOM_RE = re.compile(r"\bMath\s*\.\s*random\s*\(")
+SENSITIVE_NAME_RE = re.compile(r"(?i)(token|secret|password|session|nonce)")
 DOONNEXT_RE = re.compile(
     r"\.\s*doOnNext\s*\(\s*\w+\s*->\s*[^)]*\.(?:add|set|put|remove|sort|clear)\s*\("
 )
@@ -415,6 +431,33 @@ def strict_violations(file: JavaFile) -> list[quality.Violation]:
                 "Thread.sleep en produccion bloquea el hilo; usa un scheduler o un timeout",
             )
         )
+
+    sql = SQL_CONCAT_RE.search(file.text)
+    if sql:
+        out.append(_path_violation(
+            file.relative, _line(file.text, sql.start()), SQL_CONCATENATION,
+            "la consulta se arma por concatenacion; parametriza la query"))
+
+    finally_throw = THROW_FINALLY_RE.search(file.text)
+    if finally_throw:
+        out.append(_path_violation(
+            file.relative, _line(file.text, finally_throw.start()), THROW_IN_FINALLY,
+            "un throw en finally descarta la excepcion original"))
+
+    for secret in SECRET_RE.finditer(file.text):
+        value = secret.group(1)
+        if any(mark in value for mark in ("${", "#{", "example", "dummy", "fake", "placeholder", "test")):
+            continue
+        out.append(_path_violation(
+            file.relative, _line(file.text, secret.start()), HARDCODED_SECRET,
+            "secreto literal en el codigo; va en configuracion o secreto del scope"))
+        break
+
+    if RANDOM_RE.search(file.text) and SENSITIVE_NAME_RE.search(Path(file.relative).name):
+        random = RANDOM_RE.search(file.text)
+        out.append(_path_violation(
+            file.relative, _line(file.text, random.start()), INSECURE_RANDOM,
+            "Math.random no es criptografico; usa SecureRandom"))
 
     for pattern, rule, message in (
         (STRING_FORMAT_RE, STRING_FORMAT,

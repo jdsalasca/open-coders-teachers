@@ -319,12 +319,12 @@ cace el defecto, no solo el estilo.
 - **Checkstyle** suma `MagicNumber`, `FinalParameters`, `ReturnCount`,
   `ClassDataAbstractionCoupling` y una regla de texto que prohíbe `printStackTrace`
   y las marcas `TODO`/`FIXME`.
-- **Diez reglas propias** que ninguna herramienta cubre:
+- **Quince reglas propias** que ninguna herramienta cubre:
   `transaccional-en-controller`, `entidad-fuera-de-infra`, `pii-en-log`,
   `sleep-en-produccion`, `string-format`, `optional-is-present`, `null-lambda`,
   `serializador-manual`, `doonnext-side-effect` (bloqueante, efecto en un
-  operador reactivo) y `mockito-sin-extendwith` (tests con `@Mock` sin
-  `@ExtendWith`).
+  operador reactivo), `mockito-sin-extendwith`, `sql-concatenacion`,
+  `secreto-hardcodeado`, `throw-en-finally`, `random-inseguro` y `sleep-en-test`.
 
 ### Go
 
@@ -332,6 +332,10 @@ Ocho linters nuevos: `err113` (errores dinámicos), `musttag` (structs JSON sin
 tags), `ireturn` (retorno de interfaces), `maintidx` (mantenibilidad menor a 20),
 `gocognit` (complejidad cognitiva mayor a 15), `forbidigo` (`fmt.Print` en
 producción) y `nolintlint` (`nolint` sin justificar).
+
+Y tres reglas propias de seguridad: `go-exec-shell` (bloqueante, `sh -c` con
+argumentos del llamador), `go-sleep-produccion` y `go-float-dinero` (punto
+flotante para importes).
 
 ### Lo que se probó y quedó fuera
 
@@ -358,6 +362,17 @@ El mismo defecto tiene otra forma en cada lenguaje, así que la regla es distint
 
 El composition root (`main.go`, `main.rs`, `cmd/**`) queda exento: es el borde del
 programa y ahí fallar ruidosamente es correcto.
+
+### Seguridad
+
+| Regla | Lenguaje | Qué caza | Acción |
+| :--- | :--- | :--- | :--- |
+| `sql-concatenacion` | Java | consulta armada con `+` | bloqueante |
+| `secreto-hardcodeado` | Java | `password`/`token`/`api key` literal | bloqueante |
+| `go-exec-shell` | Go | `exec.Command("sh", "-c", ...)` | bloqueante |
+| `throw-en-finally` | Java | `throw` en `finally`, que descarta la causa | accionable |
+| `random-inseguro` | Java | `Math.random()` en clases de token/sesión | accionable |
+| `sleep-en-test` | Java | `Thread.sleep` en un test | patrón |
 
 ## Mensajes de commit
 

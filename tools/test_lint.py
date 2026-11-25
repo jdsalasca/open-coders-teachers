@@ -1264,6 +1264,37 @@ def test_commit_msg_valida() -> None:
     check(any("modelo o asistente" in problem for problem in attributed), "atribuir a un modelo debe fallar")
 
 
+def test_seguridad_java_y_go() -> None:
+    """SQL concatenado, secreto literal, finally con throw y shell en exec."""
+    from pathlib import Path as _Path
+
+    from lintlib import java_quality
+    from lintlib.solid import Unit
+
+    java = java_quality.JavaFile(
+        _Path("Repo.java"),
+        "Repo.java",
+        "com.acme",
+        (),
+        (),
+        'class Repo {\n'
+        '  private static final String PASSWORD = "super-secreto-123";\n'
+        '  String q(String id) { return "SELECT * FROM t WHERE id = " + id; }\n'
+        '  void f() { try { g(); } catch (Exception e) { h(); } finally { throw new RuntimeException(); } }\n'
+        "}",
+    )
+    rules = {v.rule for v in java_quality.strict_violations(java)}
+    for rule in ("sql-concatenacion", "secreto-hardcodeado", "throw-en-finally"):
+        check(rule in rules, f"no detecto {rule}: {sorted(rules)}")
+
+    go = nullsafety.go_security_violations([
+        Unit("internal/payment/charge.go", 'func Charge(amount float64) { time.Sleep(time.Second) }', ()),
+    ])
+    go_rules = {v.rule for v in go}
+    check("go-sleep-produccion" in go_rules, f"no detecto sleep: {sorted(go_rules)}")
+    check("go-float-dinero" in go_rules, f"no detecto float: {sorted(go_rules)}")
+
+
 if __name__ == "__main__":
     for name, test in list(globals().items()):
         if name.startswith("test_") and callable(test):
