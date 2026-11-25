@@ -913,6 +913,7 @@ _BLOCKING_RULES = {
     "noctx",
     "sa1012",
     "govet",
+    "doonnext-side-effect",
 }
 
 # Deuda estructural: no la introduce el cambio, pero conviene verla aparte.
@@ -942,6 +943,8 @@ _PATTERN_RULES = {
     "lll",
     "format",
     "gci",
+    "null-lambda",
+    "optional-is-present",
 }
 
 

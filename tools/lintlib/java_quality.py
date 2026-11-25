@@ -57,6 +57,12 @@ TEST_GIANT = Rule("tests", "test-gigante")
 TEST_MISSING = Rule("tests", "sin-test-unitario")
 NO_TESTS = Rule("tests", "sin-tests")
 TRANSACTIONAL_CONTROLLER = Rule("capas", "transaccional-en-controller")
+STRING_FORMAT = Rule("calidad", "string-format")
+OPTIONAL_PRESENT = Rule("calidad", "optional-is-present")
+NULL_LAMBDA = Rule("calidad", "null-lambda")
+OBJECTMAPPER_MANUAL = Rule("calidad", "serializador-manual")
+DOONNEXT_SIDE_EFFECT = Rule("calidad", "doonnext-side-effect")
+MOCK_WITHOUT_EXTENSION = Rule("tests", "mockito-sin-extendwith")
 ENTITY_LOCATION = Rule("capas", "entidad-fuera-de-infra")
 PII_LOG = Rule("calidad", "pii-en-log")
 SLEEP_PRODUCTION = Rule("calidad", "sleep-en-produccion")
@@ -306,6 +312,10 @@ def test_file_violations(path: Path, root: Path) -> list[quality.Violation]:
         message = f"test con {tests} casos; divide por responsabilidad"
         out.append(_path_violation(relative, 1, TEST_GIANT, message))
     out.extend(missing_assertions(relative, text))
+    if "@Mock" in text and "MockitoExtension" not in text:
+        out.append(_path_violation(
+            relative, 1, MOCK_WITHOUT_EXTENSION,
+            "usa @Mock sin @ExtendWith(MockitoExtension.class); los mocks quedan nulos"))
     return out
 
 
@@ -345,6 +355,13 @@ PII_LOG_RE = re.compile(
     re.IGNORECASE,
 )
 SLEEP_RE = re.compile(r"Thread\s*\.\s*sleep\s*\(")
+STRING_FORMAT_RE = re.compile(r"\bString\s*\.\s*format\s*\(")
+OPTIONAL_PRESENT_RE = re.compile(r"Optional\s*\.\s*ofNullable\s*\([^)]*\)\s*\.\s*isPresent\s*\(")
+NULL_LAMBDA_RE = re.compile(r"->\s*\w+\s*[!=]=\s*null\b")
+OBJECTMAPPER_RE = re.compile(r"new\s+(?:ObjectMapper|Gson)\s*\(")
+DOONNEXT_RE = re.compile(
+    r"\.\s*doOnNext\s*\(\s*\w+\s*->\s*[^)]*\.(?:add|set|put|remove|sort|clear)\s*\("
+)
 # Capas donde una @Entity de JPA no deberia aparecer.
 NON_PERSISTENCE = {"web", "controller", "service", "application"}
 
@@ -398,6 +415,22 @@ def strict_violations(file: JavaFile) -> list[quality.Violation]:
                 "Thread.sleep en produccion bloquea el hilo; usa un scheduler o un timeout",
             )
         )
+
+    for pattern, rule, message in (
+        (STRING_FORMAT_RE, STRING_FORMAT,
+         "String.format depende del locale; concatena o usa placeholders del logger"),
+        (OPTIONAL_PRESENT_RE, OPTIONAL_PRESENT,
+         "Optional.ofNullable(x).isPresent() es Objects.nonNull(x)"),
+        (NULL_LAMBDA_RE, NULL_LAMBDA,
+         "en un predicado usa Objects::isNull o Objects::nonNull"),
+        (OBJECTMAPPER_RE, OBJECTMAPPER_MANUAL,
+         "no instancies un serializador propio; usa el cliente del framework"),
+        (DOONNEXT_RE, DOONNEXT_SIDE_EFFECT,
+         "doOnNext con efecto sobre estado compartido; mueve el efecto o usa map"),
+    ):
+        match = pattern.search(file.text)
+        if match:
+            out.append(_path_violation(file.relative, _line(file.text, match.start()), rule, message))
 
     return out
 

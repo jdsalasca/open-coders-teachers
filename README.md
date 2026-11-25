@@ -319,9 +319,12 @@ cace el defecto, no solo el estilo.
 - **Checkstyle** suma `MagicNumber`, `FinalParameters`, `ReturnCount`,
   `ClassDataAbstractionCoupling` y una regla de texto que prohíbe `printStackTrace`
   y las marcas `TODO`/`FIXME`.
-- **Cuatro reglas propias** que ninguna herramienta cubre:
-  `transaccional-en-controller`, `entidad-fuera-de-infra`, `pii-en-log` y
-  `sleep-en-produccion`.
+- **Diez reglas propias** que ninguna herramienta cubre:
+  `transaccional-en-controller`, `entidad-fuera-de-infra`, `pii-en-log`,
+  `sleep-en-produccion`, `string-format`, `optional-is-present`, `null-lambda`,
+  `serializador-manual`, `doonnext-side-effect` (bloqueante, efecto en un
+  operador reactivo) y `mockito-sin-extendwith` (tests con `@Mock` sin
+  `@ExtendWith`).
 
 ### Go
 
