@@ -342,6 +342,31 @@ tags), `ireturn` (retorno de interfaces), `maintidx` (mantenibilidad),
 Dejarlos habría inflado el reporte sin cambiar ninguna decisión. La exigencia se
 mide por lo que obliga a corregir, no por la cantidad de reglas.
 
+### Nulos y errores, en los seis lenguajes
+
+El mismo defecto tiene otra forma en cada lenguaje, así que la regla es distinta:
+
+| Regla | Lenguaje | Qué caza |
+| :--- | :--- | :--- |
+| `go-panic` | Go | `panic` fuera del composition root |
+| `rust-unwrap` | Rust | `unwrap()` / `expect()` en producción |
+| `ts-non-null-assertion` | TS | `x!` apaga `strictNullChecks` |
+| `ts-any` | TS | `any` desactiva el tipado |
+| `python-none-comparison` | Python | `== None` en vez de `is None` |
+
+El composition root (`main.go`, `main.rs`, `cmd/**`) queda exento: es el borde del
+programa y ahí fallar ruidosamente es correcto.
+
+## Mensajes de commit
+
+`.githooks/commit-msg` llama a `tools/commit_msg.py`, sin dependencias externas:
+
+- `tipo(scope): resumen` — tipos: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`,
+  `build`, `ci`, `chore`, `revert`.
+- Resumen en minúscula, sin punto final, entre 10 y 72 caracteres.
+- Si hay cuerpo, explica **el porqué** (mínimo 20 caracteres).
+- Prohibido atribuir el cambio a un modelo o asistente (`Co-authored-by` / `Signed-off-by`).
+
 ## Así se ve TypeScript-teacher
 
 <img src="docs/images/typescript-teacher.png" alt="Tarjeta de TypeScript teacher con el contador y el botón Incrementar" width="720">
@@ -638,7 +663,7 @@ baja de 80%. Python (`mutmut`) no soporta Windows nativo y Rust
 
 | Práctica | Herramienta |
 |---|---|
-| Mensajes de commit convencionales | `commitlint` en `.githooks/commit-msg` |
+| Mensajes de commit convencionales | `tools/commit_msg.py` en `.githooks/commit-msg` |
 | Mutantes sobrevivientes | Stryker, semanal |
 | Property tests | Hypothesis, fast-check, testing/quick, jqwik, proptest |
 | Accesibilidad renderizada | Playwright + axe-core |

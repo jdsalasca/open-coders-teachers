@@ -1,7 +1,6 @@
 #!/bin/sh
 # Exige mensajes convencionales: "tipo(scope): resumen en imperativo".
-BIN=tools/node/node_modules/.bin/commitlint
-if [ -x "$BIN" ]; then
-  exec "$BIN" --edit "$1"
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 tools/commit_msg.py "$1"
 fi
-echo "[aviso] commitlint no instalado (tools/node): se omite la revision del mensaje"
+exec python tools/commit_msg.py "$1"

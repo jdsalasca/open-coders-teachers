@@ -914,6 +914,7 @@ _BLOCKING_RULES = {
     "sa1012",
     "govet",
     "doonnext-side-effect",
+    "go-panic",
 }
 
 # Deuda estructural: no la introduce el cambio, pero conviene verla aparte.
@@ -945,6 +946,8 @@ _PATTERN_RULES = {
     "gci",
     "null-lambda",
     "optional-is-present",
+    "python-none-comparison",
+    "ts-any",
 }
 
 

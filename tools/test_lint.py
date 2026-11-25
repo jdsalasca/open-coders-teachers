@@ -21,6 +21,7 @@ from lintlib import (
     common,
     java_quality,
     portable_quality,
+    nullsafety,
     quality,
     solid,
     test_quality,
@@ -1228,6 +1229,39 @@ def test_solid_ignora_stdlib_en_dominio() -> None:
     found = solid.util_violations([unit], "java")
     check(len(found) == 1, f"esperaba solo el del proyecto: {[v.message for v in found]}")
     check("com.acme.util.Dates" in found[0].message, "deberia senalar el import del proyecto")
+
+
+def test_nullsafety_detecta_por_lenguaje() -> None:
+    """Cada lenguaje falla distinto ante un valor ausente."""
+    from lintlib.solid import Unit
+
+    go = nullsafety.analyze([Unit("internal/domain/x.go", 'func f() { panic("x") }', ())], "go")
+    check([v.rule for v in go] == ["go-panic"], f"go: {[v.rule for v in go]}")
+
+    root = nullsafety.analyze([Unit("cmd/api/main.go", 'func main() { panic("x") }', ())], "go")
+    check(not root, "el composition root puede fallar ruidosamente")
+
+    rust = nullsafety.analyze([Unit("src/lib.rs", "fn f() { v.unwrap(); }", ())], "rust")
+    check([v.rule for v in rust] == ["rust-unwrap"], f"rust: {[v.rule for v in rust]}")
+
+    ts = nullsafety.analyze([Unit("src/app.ts", "const y = x!.value;", ())], "typescript")
+    check([v.rule for v in ts] == ["ts-non-null-assertion"], f"ts: {[v.rule for v in ts]}")
+
+    py = nullsafety.analyze([Unit("app/domain/x.py", "if v == None: pass", ())], "python")
+    check([v.rule for v in py] == ["python-none-comparison"], f"py: {[v.rule for v in py]}")
+
+
+def test_commit_msg_valida() -> None:
+    """Formato convencional, sin atribuir el cambio a un modelo."""
+    import commit_msg
+
+    check(commit_msg.validate("feat(api): agrega timeout al cliente") == [], "un mensaje valido no reporta")
+    check(commit_msg.validate("agrega timeout") != [], "sin tipo debe fallar")
+    check(commit_msg.validate("feat: Agrega algo") != [], "el resumen va en minuscula")
+    check(commit_msg.validate("feat: agrega algo con punto.") != [], "sin punto final")
+    check(commit_msg.validate("wip: probando") != [], "wip no va")
+    attributed = commit_msg.validate("feat: agrega algo\n\nCo-authored-by: Codex <codex@openai.com>")
+    check(any("modelo o asistente" in problem for problem in attributed), "atribuir a un modelo debe fallar")
 
 
 if __name__ == "__main__":
