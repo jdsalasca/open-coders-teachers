@@ -76,7 +76,7 @@ func TestListDetectaCancelacionMientrasEsperaElMutex(t *testing.T) {
 	repo := &Repository{}
 
 	assertCancelWhileWaiting(t, repo, func(ctx context.Context) error {
-		_, err := repo.List(ctx, domain.Page{Limit: 10})
+		_, err := repo.List(ctx, domain.Page{Limit: 10, Offset: 0})
 		return err
 	})
 }

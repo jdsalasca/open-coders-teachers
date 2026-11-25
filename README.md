@@ -328,16 +328,18 @@ cace el defecto, no solo el estilo.
 
 ### Go
 
-Seis linters nuevos: `err113` (errores dinámicos), `musttag` (structs JSON sin
-tags), `ireturn` (retorno de interfaces), `maintidx` (mantenibilidad),
-`forbidigo` (`fmt.Print` en producción) y `nolintlint` (`nolint` sin justificar).
+Ocho linters nuevos: `err113` (errores dinámicos), `musttag` (structs JSON sin
+tags), `ireturn` (retorno de interfaces), `maintidx` (mantenibilidad menor a 20),
+`gocognit` (complejidad cognitiva mayor a 15), `forbidigo` (`fmt.Print` en
+producción) y `nolintlint` (`nolint` sin justificar).
 
 ### Lo que se probó y quedó fuera
 
 - **`wrapcheck`**: en un proyecto con errores de dominio tipados obliga a envolver
   lo que se propaga a propósito, y no permite exceptuar paquetes propios.
-- **`exhaustruct`**: los structs parciales de builders y tests generan 13 falsos
-  positivos sin señal proporcional.
+- **`exhaustruct`** (y su sucesor `exhaustruct_v5`): los structs parciales de
+  builders y de tests generan 14 falsos positivos, y la opción `include` no
+  permite acotarlo a los tipos de dominio. Sin señal proporcional.
 
 Dejarlos habría inflado el reporte sin cambiar ninguna decisión. La exigencia se
 mide por lo que obliga a corregir, no por la cantidad de reglas.

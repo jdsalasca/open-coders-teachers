@@ -41,6 +41,7 @@ linters:
     - musttag
     - ireturn
     - maintidx
+    - gocognit
     - forbidigo
     - nolintlint
   settings:
@@ -66,6 +67,10 @@ linters:
       line-length: 100
     cyclop:
       max-complexity: 8
+    gocognit:
+      min-complexity: 15
+    maintidx:
+      under: 20
     dupl:
       threshold: 100
     interfacebloat:

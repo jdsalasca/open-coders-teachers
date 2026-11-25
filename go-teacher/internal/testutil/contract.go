@@ -31,7 +31,7 @@ func RepositoryContract(t *testing.T, repo domain.RepositoryPort) {
 
 func assertInvalidPage(t *testing.T, repo domain.RepositoryPort) {
 	t.Helper()
-	_, err := repo.List(context.Background(), domain.Page{Limit: 0})
+	_, err := repo.List(context.Background(), domain.Page{Limit: 0, Offset: 0})
 	if !errors.Is(err, domain.ErrInvalidPage) {
 		t.Fatalf("err = %v, quiero ErrInvalidPage", err)
 	}
