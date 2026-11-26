@@ -23,6 +23,7 @@ from lintlib import (
     portable_quality,
     nullsafety,
     quality,
+    tickets,
     solid,
     test_quality,
     ts_quality,
@@ -1293,6 +1294,24 @@ def test_seguridad_java_y_go() -> None:
     go_rules = {v.rule for v in go}
     check("go-sleep-produccion" in go_rules, f"no detecto sleep: {sorted(go_rules)}")
     check("go-float-dinero" in go_rules, f"no detecto float: {sorted(go_rules)}")
+
+
+def test_clave_en_comentario() -> None:
+    """La clave de seguimiento va en la rama o el PR, no en un comentario."""
+    from lintlib.solid import Unit
+
+    unit = Unit("app/x.py", "# ABC-123: ajusta el calculo\nX = 1  # UTF-8\n", ())
+    found = tickets.violations([unit], "python")
+    check(len(found) == 1, f"esperaba 1, obtuve {len(found)}")
+    check(found[0].rule == "clave-en-comentario", found[0].rule)
+
+    # Una clave dentro de un string no es un comentario.
+    literal = Unit("app/y.py", 'X = "ABC-123"\n', ())
+    check(not tickets.violations([literal], "python"), "no reporta strings")
+
+    # Las siglas tecnicas no son claves.
+    technical = Unit("app/z.py", "# UTF-8 y SHA-256\n", ())
+    check(not tickets.violations([technical], "python"), "no reporta siglas tecnicas")
 
 
 if __name__ == "__main__":

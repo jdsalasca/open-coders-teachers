@@ -384,6 +384,18 @@ programa y ahí fallar ruidosamente es correcto.
 - Si hay cuerpo, explica **el porqué** (mínimo 20 caracteres).
 - Prohibido atribuir el cambio a un modelo o asistente (`Co-authored-by` / `Signed-off-by`).
 
+
+### Claves de seguimiento
+
+`clave-en-comentario` rechaza pares tipo `ABC-123` dentro de un comentario. La
+clave solo sirve para quien tiene acceso a la herramienta de seguimiento; en el
+código agrega ruido y no explica nada. El comentario dice el motivo técnico, y la
+clave vive en la rama, el PR o el commit.
+
+Se revisan **comentarios**, no strings ni identificadores, y se excluyen las
+siglas técnicas (`UTF-8`, `ISO-8859`, `SHA-256`, `RFC-1234`). Es `accionable`, no
+bloqueante: algún repo usa pares `ABC-123` como código de negocio.
+
 ## Así se ve TypeScript-teacher
 
 <img src="docs/images/typescript-teacher.png" alt="Tarjeta de TypeScript teacher con el contador y el botón Incrementar" width="720">

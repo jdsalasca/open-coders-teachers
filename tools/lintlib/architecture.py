@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from lintlib import nullsafety, quality, solid
+from lintlib import nullsafety, quality, solid, tickets
 
 LAYERS = (
     "domain",
@@ -274,4 +274,5 @@ def analyze(root: Path, language: str) -> list[quality.Violation]:
         units.append(solid.Unit(source.relative, text, source.imports))
     out.extend(solid.analyze(units, language))
     out.extend(nullsafety.analyze(units, language))
+    out.extend(tickets.analyze(units, language))
     return quality.dedupe(out)
